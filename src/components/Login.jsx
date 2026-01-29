@@ -61,7 +61,7 @@ const Login = ({ onClose }) => {
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
               />
-              Duy trì trạng thái đăng nhập
+              Nhớ mật khẩu
             </label>
           </div>
           
@@ -75,10 +75,6 @@ const Login = ({ onClose }) => {
         </div>
         
         <button className="register-button">Đăng ký</button>
-        
-        <div className="admin-link">
-          <p>Trạm gần bạn liên xác có vấn đề? <a href="#">Liên hệ Admin</a></p>
-        </div>
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import './Dashboard.css';
 
 function Dashboard() {
   const [showLogin, setShowLogin] = useState(false);
+  const [showStats, setShowStats] = useState(true);
 
   if (showLogin) {
     return <Login onClose={() => setShowLogin(false)} />;
@@ -19,32 +20,40 @@ function Dashboard() {
             Báo cáo
           </button>
           <button className="btn-secondary">Xem đơn</button>
+          <button className="btn-login" onClick={() => setShowLogin(true)}>Đăng nhập</button>
         </div>
       </header>
 
       {/* Statistics Bar */}
-      <div className="stats-bar">
-        <div className="stat-item">
-          <div className="stat-icon">🕐</div>
-          <div className="stat-number">69</div>
-          <div className="stat-label">Các yêu cầu đã nhận</div>
+      {showStats && (
+        <div className="stats-bar">
+          <div className="stat-item">
+            <div className="stat-icon">🕐</div>
+            <div className="stat-number">--</div>
+            <div className="stat-label">Các yêu cầu đã nhận</div>
+          </div>
+          <div className="stat-item">
+            <div className="stat-icon">👥</div>
+            <div className="stat-number">--</div>
+            <div className="stat-label">Người dược trợ</div>
+          </div>
+          <div className="stat-item">
+            <div className="stat-icon">❤️</div>
+            <div className="stat-number">--</div>
+            <div className="stat-label">Đã hỗ trợ</div>
+          </div>
+          <div className="stat-item">
+            <div className="stat-icon">😊</div>
+            <div className="stat-number">--</div>
+            <div className="stat-label">Báo an toàn</div>
+          </div>
         </div>
-        <div className="stat-item">
-          <div className="stat-icon">👥</div>
-          <div className="stat-number">69</div>
-          <div className="stat-label">Người dược trợ</div>
-        </div>
-        <div className="stat-item">
-          <div className="stat-icon">❤️</div>
-          <div className="stat-number">69</div>
-          <div className="stat-label">Đã hỗ trợ</div>
-        </div>
-        <div className="stat-item">
-          <div className="stat-icon">😊</div>
-          <div className="stat-number">69</div>
-          <div className="stat-label">Báo an toàn</div>
-        </div>
-      </div>
+      )}
+      
+      {/* Toggle Button */}
+      <button className="stats-toggle" onClick={() => setShowStats(!showStats)}>
+        <span className={showStats ? "arrow-up" : "arrow-down"}>▲</span>
+      </button>
 
       {/* Map Container */}
       <div className="map-container">
@@ -70,7 +79,7 @@ function Dashboard() {
 
       {/* Bottom Navigation */}
       <nav className="bottom-nav">
-        <button className="nav-item active">Thống Tin</button>
+        <button className="nav-item">Thông Tin</button>
         <button className="nav-item">Hướng Dẫn</button>
         <button className="nav-item">Liên Hệ</button>
       </nav>
