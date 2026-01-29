@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './Login.css';
 
-const Login = () => {
+const Login = ({ onClose }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
@@ -16,6 +16,11 @@ const Login = () => {
     <div className="login-container">
       <div className="login-header">
         <h1>Hệ Thống Quản Lí Cứu Hộ Cứu Trợ Lũ Lụt</h1>
+        {onClose && (
+          <button className="close-button" onClick={onClose}>
+            ✕
+          </button>
+        )}
       </div>
       
       <div className="login-box">
