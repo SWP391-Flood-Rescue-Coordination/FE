@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import './Login.css';
 
 const Login = ({ onClose }) => {
-  const [username, setUsername] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
+  const [rememberPassword, setRememberPassword] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log('Login attempt:', { username, password, rememberMe });
+    console.log('Login attempt:', { phone, password, rememberPassword });
     // Xử lý logic đăng nhập ở đây
   };
 
@@ -26,18 +26,18 @@ const Login = ({ onClose }) => {
       <div className="login-box">
         <h2>Đăng Nhập</h2>
         <p className="login-subtitle">
-          Đăng nhập để có quyền truy cập người dùng vào hệ thống
+          Đăng nhập để có quyền lưu hoạt động hoặc yêu cầu hỗ trợ
         </p>
         
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label htmlFor="username">Tài khoản</label>
+            <label htmlFor="phone">Số điện thoại</label>
             <input
-              type="text"
-              id="username"
-              placeholder="Nhập tài khoản của bạn"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              type="tel"
+              id="phone"
+              placeholder="Nhập số điện thoại của bạn"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
               required
             />
           </div>
@@ -58,11 +58,12 @@ const Login = ({ onClose }) => {
             <label className="remember-me">
               <input
                 type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
+                checked={rememberPassword}
+                onChange={(e) => setRememberPassword(e.target.checked)}
               />
               Nhớ mật khẩu
             </label>
+            <a href="#" className="forgot-password">Quên mật khẩu?</a>
           </div>
           
           <button type="submit" className="login-button">
@@ -71,10 +72,8 @@ const Login = ({ onClose }) => {
         </form>
         
         <div className="login-footer">
-          <p>Tạo tài khoản mới?</p>
+          <p>Tạo tài khoản mới? <a href="#" className="register-link">Đăng ký</a></p>
         </div>
-        
-        <button className="register-button">Đăng ký</button>
       </div>
     </div>
   );
