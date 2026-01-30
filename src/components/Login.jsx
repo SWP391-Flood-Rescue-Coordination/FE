@@ -61,7 +61,7 @@ const Login = ({ onClose }) => {
                 checked={rememberPassword}
                 onChange={(e) => setRememberPassword(e.target.checked)}
               />
-              Nhớ mật khẩu
+              Lưu thông tin đăng nhập
             </label>
             <a href="#" className="forgot-password">Quên mật khẩu?</a>
           </div>
@@ -72,7 +72,7 @@ const Login = ({ onClose }) => {
         </form>
         
         <div className="login-footer">
-          <p>Tạo tài khoản mới? <a href="#" className="register-link">Đăng ký</a></p>
+          <p>Bạn hiện chưa có tài khoản? <a href="#" className="register-link">Đăng ký</a></p>
         </div>
       </div>
     </div>

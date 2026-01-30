@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
 import Login from './Login';
+import ReportForm from './ReportForm';
 import './Dashboard.css';
 
 function Dashboard() {
   const [showLogin, setShowLogin] = useState(false);
   const [showStats, setShowStats] = useState(true);
+  const [showReport, setShowReport] = useState(false);
+  const [showLevelDropdown, setShowLevelDropdown] = useState(false);
+  const [selectedLevel, setSelectedLevel] = useState('Mức 1 - Mức 5');
 
   if (showLogin) {
     return <Login onClose={() => setShowLogin(false)} />;
@@ -16,13 +20,16 @@ function Dashboard() {
       <header className="dashboard-header">
         <h1>Hệ Thống Quản Lí Cứu Hộ Cứu Trợ Lũ Lụt</h1>
         <div className="header-buttons">
-          <button className="btn-primary">
+          <button className="btn-primary" onClick={() => setShowReport(true)}>
             Báo cáo
           </button>
-          <button className="btn-secondary">Xem đơn</button>
+          <button className="btn-secondary">Xem báo cáo</button>
           <button className="btn-login" onClick={() => setShowLogin(true)}>Đăng nhập</button>
         </div>
       </header>
+
+      {/* Report Form Popup */}
+      {showReport && <ReportForm onClose={() => setShowReport(false)} />}
 
       {/* Statistics Bar */}
       {showStats && (
@@ -35,7 +42,7 @@ function Dashboard() {
           <div className="stat-item">
             <div className="stat-icon">👥</div>
             <div className="stat-number">--</div>
-            <div className="stat-label">Người dược trợ</div>
+            <div className="stat-label">Người được cứu trợ</div>
           </div>
           <div className="stat-item">
             <div className="stat-icon">❤️</div>
@@ -73,6 +80,38 @@ function Dashboard() {
             <span>Mức 1</span>
             <div className="level-bar"></div>
             <span>Mức 5</span>
+          </div>
+          <div className="level-dropdown">
+            <button 
+              className="level-dropdown-btn" 
+              onClick={() => setShowLevelDropdown(!showLevelDropdown)}
+            >
+              <span className={showLevelDropdown ? "dropdown-arrow up" : "dropdown-arrow down"}>▼</span>
+            </button>
+            {showLevelDropdown && (
+              <div className="level-dropdown-menu">
+                <div className="level-option" onClick={() => { setSelectedLevel('Mức 5 - Rất cao'); setShowLevelDropdown(false); }}>
+                  <span className="level-indicator level-5-bg"></span>
+                  <span>Mức 5 - Rất cao</span>
+                </div>
+                <div className="level-option" onClick={() => { setSelectedLevel('Mức 4 - Cao'); setShowLevelDropdown(false); }}>
+                  <span className="level-indicator level-4-bg"></span>
+                  <span>Mức 4 - Cao</span>
+                </div>
+                <div className="level-option" onClick={() => { setSelectedLevel('Mức 3 - Trung bình'); setShowLevelDropdown(false); }}>
+                  <span className="level-indicator level-3-bg"></span>
+                  <span>Mức 3 - Trung bình</span>
+                </div>
+                <div className="level-option" onClick={() => { setSelectedLevel('Mức 2 - Thấp'); setShowLevelDropdown(false); }}>
+                  <span className="level-indicator level-2-bg"></span>
+                  <span>Mức 2 - Thấp</span>
+                </div>
+                <div className="level-option" onClick={() => { setSelectedLevel('Mức 1 - Rất thấp'); setShowLevelDropdown(false); }}>
+                  <span className="level-indicator level-1-bg"></span>
+                  <span>Mức 1 - Rất thấp</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
