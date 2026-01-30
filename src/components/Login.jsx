@@ -18,7 +18,7 @@ const Login = ({ onClose }) => {
         <h1>Hệ Thống Quản Lí Cứu Hộ Cứu Trợ Lũ Lụt</h1>
         {onClose && (
           <button className="close-button" onClick={onClose}>
-            ✕
+            Back
           </button>
         )}
       </div>
