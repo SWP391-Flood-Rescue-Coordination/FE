@@ -18,7 +18,8 @@ const Login = ({ onClose }) => {
         <h1>Hệ Thống Quản Lí Cứu Hộ Cứu Trợ Lũ Lụt</h1>
         {onClose && (
           <button className="close-button" onClick={onClose}>
-            Back
+            <span className="arrow-icon">←</span>
+            Về trang chủ
           </button>
         )}
       </div>
