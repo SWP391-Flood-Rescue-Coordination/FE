@@ -37,7 +37,7 @@ function ReportForm({ onClose }) {
   return (
     <div className="report-overlay">
       <div className="report-modal">
-        <h2>Báo Cáo Cứu Hộ - Cứu Trợ</h2>
+        <h2>Báo Cáo Cứu Hộ</h2>
         
         <form onSubmit={handleSubmit}>
           <div className="form-row">
@@ -210,8 +210,8 @@ function ReportForm({ onClose }) {
 
           {/* Actions */}
           <div className="form-actions">
-            <button type="submit" className="submit-btn">Nộp đơn</button>
-            <button type="button" className="cancel-btn" onClick={onClose}>Hủy đơn</button>
+            <button type="submit" className="submit-btn">Nộp báo cáo</button>
+            <button type="button" className="cancel-btn" onClick={onClose}>Hủy</button>
           </div>
         </form>
       </div>
