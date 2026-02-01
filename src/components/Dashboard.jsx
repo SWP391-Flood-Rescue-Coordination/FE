@@ -62,29 +62,19 @@ function Dashboard() {
         <h1>Hệ Thống Quản Lí Cứu Hộ Cứu Trợ Lũ Lụt</h1>
         <div className="header-buttons">
           <button className="btn-primary" onClick={() => setShowReport(true)}>
-            📄  Báo cáo
+            📄  Tạo báo cáo
           </button>
           <div className="view-report-wrapper">
             <button 
               className="btn-secondary" 
-              onClick={() => {
-                if (reportHistory.length > 0) {
-                  setSelectedReport(reportHistory[0]);
-                  setTimeout(() => setShowViewReport(true), 0);
-                } else {
-                  setShowStatusDetail(true);
-                }
-              }}
+              onClick={() => setShowStatusDetail(true)}
             >
               Xem báo cáo
             </button>
             {reportHistory.length > 0 && (
               <div className="status-popup">
                 <div className={`status-icon ${reportHistory[0].status === 'approved' ? 'approved' : 'pending'}`}></div>
-                <div className="status-text">
-                  <span className="status-title">{reportHistory[0].status === 'approved' ? 'Đã duyệt' : 'Đang duyệt'}</span>
-                  <span className="status-detail" onClick={() => setShowStatusDetail(!showStatusDetail)}>Chi tiết</span>
-                </div>
+                <span className="status-title">{reportHistory[0].status === 'approved' ? 'Đã duyệt' : 'Đang duyệt'}</span>
               </div>
             )}
           </div>
