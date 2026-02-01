@@ -1,21 +1,45 @@
 import React, { useState } from 'react';
 import './Login.css';
 
-const Login = ({ onClose }) => {
+const Login = ({ onClose, onShowForgotPassword, onShowRegister }) => {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [rememberPassword, setRememberPassword] = useState(false);
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     console.log('Login attempt:', { phone, password, rememberPassword });
     // Xử lý logic đăng nhập ở đây
+    // Giả sử đăng nhập thành công
+    setShowSuccessPopup(true);
+  };
+
+  const handleForgotPasswordClick = (e) => {
+    e.preventDefault();
+    if (onShowForgotPassword) {
+      onShowForgotPassword();
+    }
+  };
+
+  const handleRegisterClick = (e) => {
+    e.preventDefault();
+    if (onShowRegister) {
+      onShowRegister();
+    }
+  };
+
+  const handleSuccessConfirm = () => {
+    setShowSuccessPopup(false);
+    // Đóng Login và quay về Dashboard
+    if (onClose) {
+      onClose();
+    }
   };
 
   return (
     <div className="login-container">
       <div className="login-header">
-        <h1>Hệ Thống Quản Lí Cứu Hộ Cứu Trợ Lũ Lụt</h1>
         {onClose && (
           <button className="close-button" onClick={onClose}>
             <span className="arrow-icon">←</span>
@@ -64,7 +88,7 @@ const Login = ({ onClose }) => {
               />
               Lưu thông tin đăng nhập
             </label>
-            <a href="#" className="forgot-password">Quên mật khẩu?</a>
+            <a href="#" className="forgot-password" onClick={handleForgotPasswordClick}>Quên mật khẩu?</a>
           </div>
           
           <button type="submit" className="login-button">
@@ -73,9 +97,21 @@ const Login = ({ onClose }) => {
         </form>
         
         <div className="login-footer">
-          <p>Bạn hiện chưa có tài khoản? <a href="#" className="register-link">Đăng ký</a></p>
+          <p>Bạn hiện chưa có tài khoản? <a href="#" className="register-link" onClick={handleRegisterClick}>Đăng ký tại đây</a></p>
         </div>
       </div>
+
+      {/* Popup Đăng Nhập Thành Công */}
+      {showSuccessPopup && (
+        <div className="success-overlay">
+          <div className="success-box">
+            <h2 className="success-title">Đăng Nhập<br />Thành Công!</h2>
+            <button onClick={handleSuccessConfirm} className="success-button">
+              Xác nhận
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

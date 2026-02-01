@@ -1,17 +1,51 @@
 import React, { useState } from 'react';
 import Login from './Login';
+import ForgotPassword from './ForgotPassword';
+import Register from './Register';
 import ReportForm from './ReportForm';
 import './Dashboard.css';
 
 function Dashboard() {
   const [showLogin, setShowLogin] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [showRegister, setShowRegister] = useState(false);
   const [showStats, setShowStats] = useState(true);
   const [showReport, setShowReport] = useState(false);
   const [showLevelDropdown, setShowLevelDropdown] = useState(false);
   const [selectedLevel, setSelectedLevel] = useState('Mức 1 - Mức 5');
 
   if (showLogin) {
-    return <Login onClose={() => setShowLogin(false)} />;
+    return <Login 
+      onClose={() => setShowLogin(false)} 
+      onShowForgotPassword={() => {
+        setShowLogin(false);
+        setShowForgotPassword(true);
+      }}
+      onShowRegister={() => {
+        setShowLogin(false);
+        setShowRegister(true);
+      }}
+    />;
+  }
+
+  if (showForgotPassword) {
+    return <ForgotPassword 
+      onClose={() => setShowForgotPassword(false)} 
+      onShowLogin={() => {
+        setShowForgotPassword(false);
+        setShowLogin(true);
+      }}
+    />;
+  }
+
+  if (showRegister) {
+    return <Register 
+      onClose={() => setShowRegister(false)} 
+      onShowLogin={() => {
+        setShowRegister(false);
+        setShowLogin(true);
+      }}
+    />;
   }
 
   return (
