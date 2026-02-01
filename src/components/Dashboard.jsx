@@ -3,7 +3,10 @@ import Login from './Login';
 import ForgotPassword from './ForgotPassword';
 import Register from './Register';
 import ReportForm from './ReportForm';
+import ViewReport from './ViewReport';
 import './Dashboard.css';
+
+
 
 function Dashboard() {
   const [showLogin, setShowLogin] = useState(false);
@@ -11,8 +14,12 @@ function Dashboard() {
   const [showRegister, setShowRegister] = useState(false);
   const [showStats, setShowStats] = useState(true);
   const [showReport, setShowReport] = useState(false);
+  const [showViewReport, setShowViewReport] = useState(false);
+  const [reportHistory, setReportHistory] = useState([]);
+  const [selectedReport, setSelectedReport] = useState(null);
   const [showLevelDropdown, setShowLevelDropdown] = useState(false);
   const [selectedLevel, setSelectedLevel] = useState('Mức 1 - Mức 5');
+  const [showStatusDetail, setShowStatusDetail] = useState(false);
 
   if (showLogin) {
     return <Login 
@@ -55,15 +62,108 @@ function Dashboard() {
         <h1>Hệ Thống Quản Lí Cứu Hộ Cứu Trợ Lũ Lụt</h1>
         <div className="header-buttons">
           <button className="btn-primary" onClick={() => setShowReport(true)}>
-            Báo cáo
+            📄  Báo cáo
           </button>
-          <button className="btn-secondary">Xem báo cáo</button>
+          <div className="view-report-wrapper">
+            <button 
+              className="btn-secondary" 
+              onClick={() => {
+                if (reportHistory.length > 0) {
+                  setSelectedReport(reportHistory[0]);
+                  setTimeout(() => setShowViewReport(true), 0);
+                } else {
+                  setShowStatusDetail(true);
+                }
+              }}
+            >
+              Xem báo cáo
+            </button>
+            {reportHistory.length > 0 && (
+              <div className="status-popup">
+                <div className={`status-icon ${reportHistory[0].status === 'approved' ? 'approved' : 'pending'}`}></div>
+                <div className="status-text">
+                  <span className="status-title">{reportHistory[0].status === 'approved' ? 'Đã duyệt' : 'Đang duyệt'}</span>
+                  <span className="status-detail" onClick={() => setShowStatusDetail(!showStatusDetail)}>Chi tiết</span>
+                </div>
+              </div>
+            )}
+          </div>
           <button className="btn-login" onClick={() => setShowLogin(true)}>Đăng nhập</button>
         </div>
       </header>
 
       {/* Report Form Popup */}
-      {showReport && <ReportForm onClose={() => setShowReport(false)} />}
+      {showReport && <ReportForm onClose={(reportData) => {
+        if (reportData) {
+          const newReport = {
+            ...reportData,
+            submittedDate: new Date().toISOString()
+          };
+          setReportHistory([newReport, ...reportHistory]);
+        }
+        setShowReport(false);
+      }} />}
+
+      {/* View Report Popup */}
+      {showViewReport && selectedReport && <ViewReport 
+        reportData={selectedReport} 
+        onClose={() => {
+          setShowViewReport(false);
+          setShowStatusDetail(false);
+        }} 
+      />}
+
+      {/* Request History Detail Popup */}
+      {showStatusDetail && (
+        <div className="detail-overlay" onClick={() => setShowStatusDetail(false)}>
+          <div className="detail-popup" onClick={(e) => e.stopPropagation()}>
+            <div className="detail-header">
+              <h3>Lịch sử báo cáo</h3>
+              <button className="close-btn" onClick={() => setShowStatusDetail(false)}>×</button>
+            </div>
+            <div className="detail-list">
+              <div className="detail-list-header">
+                <span className="detail-col-date">Ngày sửa đổi</span>
+                <span className="detail-col-status">Trạng thái</span>
+              </div>
+              {reportHistory.length === 0 ? (
+                <div className="empty-message">
+                  Chưa có đơn nào được gửi
+                </div>
+              ) : (
+                reportHistory.map((report, index) => {
+                  const reportDate = new Date(report.submittedDate);
+                  return (
+                    <div 
+                      key={index} 
+                      className="detail-item" 
+                      onClick={() => {
+                        setSelectedReport(report);
+                        setShowStatusDetail(false);
+                        setShowViewReport(true);
+                      }}
+                    >
+                      <span className="detail-date">
+                        {reportDate.toLocaleString('vi-VN', {
+                          day: '2-digit', 
+                          month: '2-digit', 
+                          year: 'numeric', 
+                          hour: '2-digit', 
+                          minute: '2-digit', 
+                          hour12: false
+                        })} CH
+                      </span>
+                      <span className={`detail-status ${report.status === 'approved' ? 'approved' : 'pending'}`}>
+                        {report.status === 'approved' ? 'Đã duyệt' : 'Đang duyệt'}
+                      </span>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Statistics Bar */}
       {showStats && (
@@ -76,7 +176,7 @@ function Dashboard() {
           <div className="stat-item">
             <div className="stat-icon">👥</div>
             <div className="stat-number">--</div>
-            <div className="stat-label">Người được cứu trợ</div>
+            <div className="stat-label">Được cứu trợ</div>
           </div>
           <div className="stat-item">
             <div className="stat-icon">❤️</div>

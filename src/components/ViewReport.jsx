@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import './ReportForm.css';
+import './ViewReport.css';
 
-function ReportForm({ onClose }) {
-  const [formData, setFormData] = useState({
+function ViewReport({ onClose, reportData }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState(reportData || {
     phone: '',
     location: '',
     address: '',
@@ -18,11 +19,25 @@ function ReportForm({ onClose }) {
     status: 'pending'
   });
 
+  const isApproved = formData.status === 'approved';
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log('Report submitted:', formData);
-    // Xử lý submit form
-    onClose(formData);
+    if (isEditing) {
+      console.log('Report updated:', formData);
+      setIsEditing(false);
+      // Có thể gọi API để cập nhật ở đây
+    }
+  };
+
+  const handleEditClick = (e) => {
+    if (!isApproved) {
+      if (!isEditing) {
+        e.preventDefault();
+        setIsEditing(true);
+      }
+      // Nếu isEditing = true, để form submit tự nhiên
+    }
   };
 
   const handleConditionChange = (condition) => {
@@ -38,7 +53,7 @@ function ReportForm({ onClose }) {
   return (
     <div className="report-overlay">
       <div className="report-modal">
-        <h2>Báo Cáo Cứu Hộ</h2>
+        <h2>Trạng Thái Báo Cáo Cứu Hộ</h2>
         
         <form onSubmit={handleSubmit}>
           <div className="form-row">
@@ -48,36 +63,9 @@ function ReportForm({ onClose }) {
                 <label>Số điện thoại</label>
                 <input
                   type="tel"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
                   value={formData.phone}
-                  onChange={(e) => {
-                    // Lọc bỏ tất cả ký tự không phải số
-                    const numericValue = e.target.value.replace(/[^0-9]/g, '');
-                    setFormData({...formData, phone: numericValue});
-                  }}
-                  onKeyDown={(e) => {
-                    // Cho phép: backspace, delete, tab, escape, enter, arrow keys, ctrl+a, ctrl+c, ctrl+v, ctrl+x
-                    const allowedKeys = ['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'];
-                    if (allowedKeys.includes(e.key) || (e.ctrlKey && ['a', 'c', 'v', 'x'].includes(e.key.toLowerCase()))) {
-                      return;
-                    }
-                    // Chặn tất cả ngoại trừ số
-                    if (!/^[0-9]$/.test(e.key)) {
-                      e.preventDefault();
-                    }
-                  }}
-                  onPaste={(e) => {
-                    e.preventDefault();
-                    // Lấy text từ clipboard và chỉ giữ lại số
-                    const pasteData = e.clipboardData.getData('text');
-                    const numericData = pasteData.replace(/[^0-9]/g, '');
-                    if (numericData) {
-                      const currentValue = formData.phone;
-                      const newValue = currentValue + numericData;
-                      setFormData({...formData, phone: newValue});
-                    }
-                  }}
+                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                  disabled={!isEditing}
                   required
                 />
               </div>
@@ -90,9 +78,14 @@ function ReportForm({ onClose }) {
                     type="text"
                     value={formData.location}
                     onChange={(e) => setFormData({...formData, location: e.target.value})}
+                    disabled={!isEditing}
                     required
                   />
-                  <button type="button" className="location-btn">
+                  <button 
+                    type="button" 
+                    className="location-btn"
+                    disabled={!isEditing}
+                  >
                     📍 Chọn vị trí trên bản đồ
                   </button>
                 </div>
@@ -105,46 +98,21 @@ function ReportForm({ onClose }) {
                   type="text"
                   value={formData.address}
                   onChange={(e) => setFormData({...formData, address: e.target.value})}
+                  disabled={!isEditing}
                   required
                 />
               </div>
 
-              {/* Số lượng đầu người */}
-              <div className="form-field people-count-field">
-                <label>Số lượng đầu người</label>
+              {/* Số người */}
+              <div className="form-field">
+                <label>Số người</label>
                 <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  min="0"
+                  type="number"
                   value={formData.totalPeople}
-                  onChange={(e) => {
-                    // Lọc bỏ tất cả ký tự không phải số
-                    const numericValue = e.target.value.replace(/[^0-9]/g, '');
-                    setFormData({...formData, totalPeople: numericValue});
-                  }}
-                  onKeyDown={(e) => {
-                    // Cho phép: backspace, delete, tab, escape, enter, arrow keys, ctrl+a, ctrl+c, ctrl+v, ctrl+x
-                    const allowedKeys = ['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'];
-                    if (allowedKeys.includes(e.key) || (e.ctrlKey && ['a', 'c', 'v', 'x'].includes(e.key.toLowerCase()))) {
-                      return;
-                    }
-                    // Chặn tất cả ngoại trừ số
-                    if (!/^[0-9]$/.test(e.key)) {
-                      e.preventDefault();
-                    }
-                  }}
-                  onPaste={(e) => {
-                    e.preventDefault();
-                    // Lấy text từ clipboard và chỉ giữ lại số
-                    const pasteData = e.clipboardData.getData('text');
-                    const numericData = pasteData.replace(/[^0-9]/g, '');
-                    if (numericData) {
-                      const currentValue = formData.totalPeople;
-                      const newValue = currentValue + numericData;
-                      setFormData({...formData, totalPeople: newValue});
-                    }
-                  }}
+                  onChange={(e) => setFormData({...formData, totalPeople: parseInt(e.target.value) || 0})}
+                  disabled={!isEditing}
+                  min="0"
+                  required
                 />
               </div>
             </div>
@@ -159,6 +127,7 @@ function ReportForm({ onClose }) {
                       type="checkbox"
                       checked={formData.conditions.needSupplies}
                       onChange={() => handleConditionChange('needSupplies')}
+                      disabled={!isEditing}
                     />
                     Hết nhu yếu phẩm
                   </label>
@@ -167,6 +136,7 @@ function ReportForm({ onClose }) {
                       type="checkbox"
                       checked={formData.conditions.houseCollapsed}
                       onChange={() => handleConditionChange('houseCollapsed')}
+                      disabled={!isEditing}
                     />
                     Sập nhà
                   </label>
@@ -175,6 +145,7 @@ function ReportForm({ onClose }) {
                       type="checkbox"
                       checked={formData.conditions.needMedical}
                       onChange={() => handleConditionChange('needMedical')}
+                      disabled={!isEditing}
                     />
                     Cần điều trị y tế
                   </label>
@@ -183,16 +154,18 @@ function ReportForm({ onClose }) {
                       type="checkbox"
                       checked={formData.conditions.floodUnder1m}
                       onChange={() => handleConditionChange('floodUnder1m')}
+                      disabled={!isEditing}
                     />
-                    Ngập {'<'} 1m
+                    Ngập &lt; 1m
                   </label>
                   <label className="checkbox-label">
                     <input
                       type="checkbox"
                       checked={formData.conditions.floodOver1m}
                       onChange={() => handleConditionChange('floodOver1m')}
+                      disabled={!isEditing}
                     />
-                    Ngập {'>'} 1m
+                    Ngập &gt; 1m
                   </label>
                 </div>
               </div>
@@ -201,18 +174,27 @@ function ReportForm({ onClose }) {
               <div className="form-field">
                 <label>Ghi chú:</label>
                 <textarea
-                  rows="4"
+                  rows="5"
                   value={formData.notes}
                   onChange={(e) => setFormData({...formData, notes: e.target.value})}
-                />
+                  disabled={!isEditing}
+                ></textarea>
               </div>
             </div>
           </div>
 
-          {/* Actions */}
           <div className="form-actions">
-            <button type="submit" className="submit-btn">Nộp báo cáo</button>
-            <button type="button" className="cancel-btn" onClick={() => onClose(null)}>Hủy</button>
+            <button 
+              type={isEditing ? "submit" : "button"}
+              className={`submit-btn ${isApproved ? 'disabled' : ''}`}
+              onClick={handleEditClick}
+              disabled={isApproved}
+            >
+              {isEditing ? 'Lưu thay đổi' : 'Chỉnh sửa'}
+            </button>
+            <button type="button" className="cancel-btn" onClick={onClose}>
+              Đóng
+            </button>
           </div>
         </form>
       </div>
@@ -220,4 +202,4 @@ function ReportForm({ onClose }) {
   );
 }
 
-export default ReportForm;
+export default ViewReport;
