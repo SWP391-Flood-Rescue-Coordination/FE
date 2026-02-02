@@ -1,0 +1,216 @@
+﻿.coordinator-page {
+  min-height: 100vh;
+  padding: 40px 60px;
+  background: #f5f5f7;
+  color: #111;
+}
+
+.coordinator-header h1 {
+  margin: 0 0 6px 0;
+  color: #dc2626;
+  font-size: 32px;
+}
+
+.coordinator-header p {
+  margin: 0 0 24px 0;
+  color: #666;
+}
+
+.requests-table {
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #eee;
+  overflow: hidden;
+}
+
+.search-bar {
+  margin-bottom: 14px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  background: #fff;
+}
+
+.table-header,
+.table-row {
+  display: grid;
+  grid-template-columns: 70px 160px 140px 150px 180px 220px 200px 160px 160px 180px 160px;
+  gap: 10px;
+  padding: 14px 16px;
+  align-items: center;
+}
+
+.table-header {
+  background: #fafafa;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 1px solid #eee;
+}
+
+.filter-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 13px;
+  color: #333;
+  cursor: pointer;
+  position: relative;
+}
+
+.filter-button:hover {
+  border-color: #dc2626;
+}
+
+.filter-icon {
+  font-size: 12px;
+  color: #666;
+}
+
+.filter-select {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+.filter-select,
+.filter-select option {
+  background: #fff;
+  color: #000;
+}
+
+.table-row {
+  border-bottom: 1px solid #f1f1f1;
+  font-size: 14px;
+  color: #444;
+}
+
+.table-row:last-child {
+  border-bottom: none;
+}
+
+.table-empty {
+  padding: 20px 16px;
+  color: #666;
+}
+
+.row-input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 13px;
+  background: #fff;
+}
+
+.row-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.row-edit-button,
+.row-save-button,
+.row-cancel-button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.row-edit-button {
+  background: #dc2626;
+  color: #fff;
+}
+
+.row-edit-button:hover {
+  background: #b91c1c;
+}
+
+.row-save-button {
+  background: #16a34a;
+  color: #fff;
+}
+
+.row-save-button:hover {
+  background: #15803d;
+}
+
+.row-cancel-button {
+  background: #e5e7eb;
+  color: #333;
+}
+
+.row-cancel-button:hover {
+  background: #d1d5db;
+}
+
+.save-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  padding: 20px;
+}
+
+.save-popup {
+  background: #fff;
+  border-radius: 16px;
+  padding: 40px 50px;
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.save-popup h3 {
+  color: #dc2626;
+  font-size: 28px;
+  margin-bottom: 24px;
+}
+
+.save-popup button {
+  padding: 12px 16px;
+  border: none;
+  border-radius: 6px;
+  background: #dc2626;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.save-popup button:hover {
+  background: #b91c1c;
+}
+
+@media (max-width: 1100px) {
+  .table-header,
+  .table-row {
+    grid-template-columns: 80px 1fr;
+    grid-auto-rows: auto;
+  }
+
+  .table-header > div:nth-child(n + 3),
+  .table-row > div:nth-child(n + 3),
+  .table-header > button:nth-child(n + 3) {
+    display: none;
+  }
+}
