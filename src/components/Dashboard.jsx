@@ -74,7 +74,7 @@ function Dashboard() {
             {reportHistory.length > 0 && (
               <div className="status-popup">
                 <div className={`status-icon ${reportHistory[0].status === 'approved' ? 'approved' : 'pending'}`}></div>
-                <span className="status-title">{reportHistory[0].status === 'approved' ? 'Đã duyệt' : 'Đang duyệt'}</span>
+                <span className="status-title">{reportHistory[0].status === 'approved' ? 'Đã duyệt' : 'Đang chờ duyệt'}</span>
               </div>
             )}
           </div>
@@ -113,7 +113,7 @@ function Dashboard() {
             </div>
             <div className="detail-list">
               <div className="detail-list-header">
-                <span className="detail-col-date">Ngày sửa đổi</span>
+                <span className="detail-col-date">Thời gian báo cáo</span>
                 <span className="detail-col-status">Trạng thái</span>
               </div>
               {reportHistory.length === 0 ? (
@@ -144,7 +144,7 @@ function Dashboard() {
                         })} CH
                       </span>
                       <span className={`detail-status ${report.status === 'approved' ? 'approved' : 'pending'}`}>
-                        {report.status === 'approved' ? 'Đã duyệt' : 'Đang duyệt'}
+                        {report.status === 'approved' ? 'Đã duyệt' : 'Đang chờ duyệt'}
                       </span>
                     </div>
                   );
