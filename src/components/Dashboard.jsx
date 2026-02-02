@@ -243,7 +243,7 @@ function Dashboard() {
       {/* Bottom Navigation */}
       <nav className="bottom-nav">
         <button className="nav-item">Thông Tin</button>
-        <button className="nav-item">Hướng Dẫn</button>
+        <button className="nav-item">Khảo Sát</button>
         <button className="nav-item">Liên Hệ</button>
       </nav>
     </div>
