@@ -1,15 +1,20 @@
 import React, { useState } from 'react';
 import './Login.css';
 
-const Login = ({ onClose, onShowForgotPassword, onShowRegister }) => {
+const Register = ({ onClose, onShowLogin }) => {
   const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log('Login attempt:', { username, password, rememberMe });
-    // Xử lý logic đăng nhập ở đây
+    if (password !== confirmPassword) {
+      alert('Mật khẩu không khớp!');
+      return;
+    }
+    console.log('Register attempt:', { username, email, password });
+    // Xử lý logic đăng ký ở đây
   };
 
   return (
@@ -24,9 +29,9 @@ const Login = ({ onClose, onShowForgotPassword, onShowRegister }) => {
       </div>
       
       <div className="login-box">
-        <h2>Đăng Nhập</h2>
+        <h2>Đăng Ký</h2>
         <p className="login-subtitle">
-          Đăng nhập để có quyền truy cập người dùng vào hệ thống
+          Tạo tài khoản mới để truy cập hệ thống
         </p>
         
         <form onSubmit={handleSubmit}>
@@ -43,6 +48,18 @@ const Login = ({ onClose, onShowForgotPassword, onShowRegister }) => {
           </div>
           
           <div className="form-group">
+            <label htmlFor="email">Email</label>
+            <input
+              type="email"
+              id="email"
+              placeholder="Nhập email của bạn"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+          
+          <div className="form-group">
             <label htmlFor="password">Mật khẩu</label>
             <input
               type="password"
@@ -54,37 +71,35 @@ const Login = ({ onClose, onShowForgotPassword, onShowRegister }) => {
             />
           </div>
           
-          <div className="form-options">
-            <label className="remember-me">
-              <input
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-              />
-              Nhớ mật khẩu
-            </label>
-            {onShowForgotPassword && (
-              <a href="#" className="forgot-password" onClick={(e) => { e.preventDefault(); onShowForgotPassword(); }}>
-                Quên mật khẩu?
-              </a>
-            )}
+          <div className="form-group">
+            <label htmlFor="confirmPassword">Xác nhận mật khẩu</label>
+            <input
+              type="password"
+              id="confirmPassword"
+              placeholder="Nhập lại mật khẩu của bạn"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+            />
           </div>
           
           <button type="submit" className="login-button">
-            Đăng nhập
+            Đăng ký
           </button>
         </form>
-        {onShowRegister && (
-          <button className="register-button" onClick={onShowRegister}>Đăng ký</button>
-        )}
+        
         <div className="login-footer">
-          <p>Tạo tài khoản mới?</p>
+          <p>Đã có tài khoản?</p>
         </div>
         
-        <button className="register-button">Đăng ký</button>
+        {onShowLogin && (
+          <button className="register-button" onClick={onShowLogin}>
+            Đăng nhập
+          </button>
+        )}
       </div>
     </div>
   );
 };
 
-export default Login;
+export default Register;
