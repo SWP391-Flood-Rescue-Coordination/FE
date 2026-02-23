@@ -24,6 +24,82 @@ function Dashboard() {
         </div>
       </header>
 
+<<<<<<< Updated upstream
+=======
+      {/* Report Form Popup */}
+      {showReport && <ReportForm onClose={(reportData) => {
+        if (reportData) {
+          const newReport = {
+            ...reportData,
+            submittedDate: new Date().toISOString()
+          };
+          setReportHistory([newReport, ...reportHistory]);
+        }
+        setShowReport(false);
+      }} />}
+
+      {/* View Report Popup */}
+      {showViewReport && selectedReport && <ViewReport 
+        reportData={selectedReport} 
+        onClose={() => {
+          setShowViewReport(false);
+          setShowStatusDetail(false);
+        }} 
+      />}
+
+      {/* Request History Detail Popup */}
+      {showStatusDetail && (
+        <div className="detail-overlay" onClick={() => setShowStatusDetail(false)}>
+          <div className="detail-popup" onClick={(e) => e.stopPropagation()}>
+            <div className="detail-header">
+              <h3>Lịch sử báo cáo</h3>
+              <button className="close-btn" onClick={() => setShowStatusDetail(false)}>×</button>
+            </div>
+            <div className="detail-list">
+              <div className="detail-list-header">
+                <span className="detail-col-date">Ngày sửa đổi</span>
+                <span className="detail-col-status">Trạng thái</span>
+              </div>
+              {reportHistory.length === 0 ? (
+                <div className="empty-message">
+                  Chưa có đơn nào được gửi
+                </div>
+              ) : (
+                reportHistory.map((report, index) => {
+                  const reportDate = new Date(report.submittedDate);
+                  return (
+                    <div 
+                      key={index} 
+                      className="detail-item" 
+                      onClick={() => {
+                        setSelectedReport(report);
+                        setShowStatusDetail(false);
+                        setShowViewReport(true);
+                      }}
+                    >
+                      <span className="detail-date">
+                        {reportDate.toLocaleString('vi-VN', {
+                          day: '2-digit', 
+                          month: '2-digit', 
+                          year: 'numeric', 
+                          hour: '2-digit', 
+                          minute: '2-digit', 
+                          hour12: false
+                        })} CH
+                      </span>
+                      <span className={`detail-status ${report.status === 'approved' ? 'approved' : 'pending'}`}>
+                        {report.status === 'approved' ? 'Đã duyệt' : 'Đang chờ duyệt'}
+                      </span>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+>>>>>>> Stashed changes
       {/* Statistics Bar */}
       {showStats && (
         <div className="stats-bar">
