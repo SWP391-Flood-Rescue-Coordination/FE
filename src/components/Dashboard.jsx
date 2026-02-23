@@ -1,13 +1,58 @@
 import React, { useState } from 'react';
 import Login from './Login';
+import ForgotPassword from './ForgotPassword';
+import Register from './Register';
+import ReportForm from './ReportForm';
+import ViewReport from './ViewReport';
 import './Dashboard.css';
+
+
 
 function Dashboard() {
   const [showLogin, setShowLogin] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [showRegister, setShowRegister] = useState(false);
   const [showStats, setShowStats] = useState(true);
+  const [showReport, setShowReport] = useState(false);
+  const [showViewReport, setShowViewReport] = useState(false);
+  const [reportHistory, setReportHistory] = useState([]);
+  const [selectedReport, setSelectedReport] = useState(null);
+  const [showLevelDropdown, setShowLevelDropdown] = useState(false);
+  const [selectedLevel, setSelectedLevel] = useState('Mức 1 - Mức 5');
+  const [showStatusDetail, setShowStatusDetail] = useState(false);
 
   if (showLogin) {
-    return <Login onClose={() => setShowLogin(false)} />;
+    return <Login 
+      onClose={() => setShowLogin(false)} 
+      onShowForgotPassword={() => {
+        setShowLogin(false);
+        setShowForgotPassword(true);
+      }}
+      onShowRegister={() => {
+        setShowLogin(false);
+        setShowRegister(true);
+      }}
+    />;
+  }
+
+  if (showForgotPassword) {
+    return <ForgotPassword 
+      onClose={() => setShowForgotPassword(false)} 
+      onShowLogin={() => {
+        setShowForgotPassword(false);
+        setShowLogin(true);
+      }}
+    />;
+  }
+
+  if (showRegister) {
+    return <Register 
+      onClose={() => setShowRegister(false)} 
+      onShowLogin={() => {
+        setShowRegister(false);
+        setShowLogin(true);
+      }}
+    />;
   }
 
   return (
@@ -16,16 +61,27 @@ function Dashboard() {
       <header className="dashboard-header">
         <h1>Hệ Thống Quản Lí Cứu Hộ Cứu Trợ Lũ Lụt</h1>
         <div className="header-buttons">
-          <button className="btn-primary">
-            Báo cáo
+          <button className="btn-primary" onClick={() => setShowReport(true)}>
+            📄  Tạo báo cáo
           </button>
-          <button className="btn-secondary">Xem đơn</button>
+          <div className="view-report-wrapper">
+            <button 
+              className="btn-secondary" 
+              onClick={() => setShowStatusDetail(true)}
+            >
+              Xem báo cáo
+            </button>
+            {reportHistory.length > 0 && (
+              <div className="status-popup">
+                <div className={`status-icon ${reportHistory[0].status === 'approved' ? 'approved' : 'pending'}`}></div>
+                <span className="status-title">{reportHistory[0].status === 'approved' ? 'Đã duyệt' : 'Đang chờ duyệt'}</span>
+              </div>
+            )}
+          </div>
           <button className="btn-login" onClick={() => setShowLogin(true)}>Đăng nhập</button>
         </div>
       </header>
 
-<<<<<<< Updated upstream
-=======
       {/* Report Form Popup */}
       {showReport && <ReportForm onClose={(reportData) => {
         if (reportData) {
@@ -99,7 +155,6 @@ function Dashboard() {
         </div>
       )}
 
->>>>>>> Stashed changes
       {/* Statistics Bar */}
       {showStats && (
         <div className="stats-bar">
@@ -111,7 +166,7 @@ function Dashboard() {
           <div className="stat-item">
             <div className="stat-icon">👥</div>
             <div className="stat-number">--</div>
-            <div className="stat-label">Người dược trợ</div>
+            <div className="stat-label">Được cứu trợ</div>
           </div>
           <div className="stat-item">
             <div className="stat-icon">❤️</div>
@@ -149,6 +204,38 @@ function Dashboard() {
             <span>Mức 1</span>
             <div className="level-bar"></div>
             <span>Mức 5</span>
+          </div>
+          <div className="level-dropdown">
+            <button 
+              className="level-dropdown-btn" 
+              onClick={() => setShowLevelDropdown(!showLevelDropdown)}
+            >
+              <span className={showLevelDropdown ? "dropdown-arrow up" : "dropdown-arrow down"}>▼</span>
+            </button>
+            {showLevelDropdown && (
+              <div className="level-dropdown-menu">
+                <div className="level-option" onClick={() => { setSelectedLevel('Mức 5 - Rất cao'); setShowLevelDropdown(false); }}>
+                  <span className="level-indicator level-5-bg"></span>
+                  <span>Mức 5 - Rất cao</span>
+                </div>
+                <div className="level-option" onClick={() => { setSelectedLevel('Mức 4 - Cao'); setShowLevelDropdown(false); }}>
+                  <span className="level-indicator level-4-bg"></span>
+                  <span>Mức 4 - Cao</span>
+                </div>
+                <div className="level-option" onClick={() => { setSelectedLevel('Mức 3 - Trung bình'); setShowLevelDropdown(false); }}>
+                  <span className="level-indicator level-3-bg"></span>
+                  <span>Mức 3 - Trung bình</span>
+                </div>
+                <div className="level-option" onClick={() => { setSelectedLevel('Mức 2 - Thấp'); setShowLevelDropdown(false); }}>
+                  <span className="level-indicator level-2-bg"></span>
+                  <span>Mức 2 - Thấp</span>
+                </div>
+                <div className="level-option" onClick={() => { setSelectedLevel('Mức 1 - Rất thấp'); setShowLevelDropdown(false); }}>
+                  <span className="level-indicator level-1-bg"></span>
+                  <span>Mức 1 - Rất thấp</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
