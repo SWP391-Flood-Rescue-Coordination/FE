@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
-import Login from './Login';
-import ForgotPassword from './ForgotPassword';
-import Register from './Register';
+import { useNavigate } from 'react-router-dom';
 import ReportForm from './ReportForm';
 import ViewReport from './ViewReport';
 import './Dashboard.css';
@@ -9,9 +7,7 @@ import './Dashboard.css';
 
 
 function Dashboard() {
-  const [showLogin, setShowLogin] = useState(false);
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [showRegister, setShowRegister] = useState(false);
+  const navigate = useNavigate();
   const [showStats, setShowStats] = useState(true);
   const [showReport, setShowReport] = useState(false);
   const [showViewReport, setShowViewReport] = useState(false);
@@ -20,40 +16,6 @@ function Dashboard() {
   const [showLevelDropdown, setShowLevelDropdown] = useState(false);
   const [selectedLevel, setSelectedLevel] = useState('Mức 1 - Mức 5');
   const [showStatusDetail, setShowStatusDetail] = useState(false);
-
-  if (showLogin) {
-    return <Login 
-      onClose={() => setShowLogin(false)} 
-      onShowForgotPassword={() => {
-        setShowLogin(false);
-        setShowForgotPassword(true);
-      }}
-      onShowRegister={() => {
-        setShowLogin(false);
-        setShowRegister(true);
-      }}
-    />;
-  }
-
-  if (showForgotPassword) {
-    return <ForgotPassword 
-      onClose={() => setShowForgotPassword(false)} 
-      onShowLogin={() => {
-        setShowForgotPassword(false);
-        setShowLogin(true);
-      }}
-    />;
-  }
-
-  if (showRegister) {
-    return <Register 
-      onClose={() => setShowRegister(false)} 
-      onShowLogin={() => {
-        setShowRegister(false);
-        setShowLogin(true);
-      }}
-    />;
-  }
 
   return (
     <div className="dashboard">
@@ -78,7 +40,7 @@ function Dashboard() {
               </div>
             )}
           </div>
-          <button className="btn-login" onClick={() => setShowLogin(true)}>Đăng nhập</button>
+          <button className="btn-login" onClick={() => navigate('/login')}>Đăng nhập</button>
         </div>
       </header>
 
