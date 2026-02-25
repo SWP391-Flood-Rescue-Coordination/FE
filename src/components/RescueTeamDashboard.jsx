@@ -14,11 +14,70 @@ function RescueTeamDashboard() {
       description: 'Gia đình 5 người bị mắc kẹt, nước ngập cao 1.5m, có trẻ em và người già',
       estimatedTime: '30 phút',
       priority: 'Cao',
-      
+      status: 'Chờ xử lý'
+    },
+    {
+      id: 2,
+      address: '456 Lê Lợi, Quận 3, TP.HCM',
+      phone: '0987654321',
+      location: { lat: 10.7769, lng: 106.7009 },
+      description: 'Người dân kêu cứu, nước đang dâng cao, cần hỗ trợ khẩn cấp',
+      estimatedTime: '45 phút',
+      priority: 'Trung bình',
+      status: 'Chờ xử lý'
     }
   ]);
 
   const [selectedMission, setSelectedMission] = useState(null);
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const getSortedMissions = () => {
+    if (!sortConfig.key) return missions;
+
+    const sorted = [...missions].sort((a, b) => {
+      let aValue, bValue;
+
+      switch(sortConfig.key) {
+        case 'id':
+          aValue = a.id;
+          bValue = b.id;
+          break;
+        case 'address':
+          aValue = a.address.toLowerCase();
+          bValue = b.address.toLowerCase();
+          break;
+        case 'phone':
+          aValue = a.phone;
+          bValue = b.phone;
+          break;
+        case 'priority':
+          const priorityOrder = { 'Khẩn cấp': 3, 'Cao': 2, 'Trung bình': 1 };
+          aValue = priorityOrder[a.priority] || 0;
+          bValue = priorityOrder[b.priority] || 0;
+          break;
+        case 'time':
+          aValue = parseInt(a.estimatedTime);
+          bValue = parseInt(b.estimatedTime);
+          break;
+        default:
+          return 0;
+      }
+
+      if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return sorted;
+  };
 
   const handleSelectMission = (mission) => {
     setSelectedMission(mission);
@@ -55,7 +114,7 @@ function RescueTeamDashboard() {
     <div className="rescue-dashboard">
       {/* Header */}
       <header className="rescue-header">
-        <h1>Rescue Team Dashboard</h1>
+        <h1>Hệ Thống Quản Lí Cứu Hộ Cứu Trợ Lũ Lụt</h1>
       </header>
 
       {/* Content */}
@@ -77,19 +136,46 @@ function RescueTeamDashboard() {
               <table className="mission-table">
                 <thead>
                   <tr>
-                    <th>STT</th>
-                    <th>Địa chỉ</th>
-                    <th>Số điện thoại</th>
-                    <th>Mức độ ưu tiên</th>
-                    <th>Thời gian xử lý</th>
-                    <th>Trạng thái</th>
-                    <th>Hành động</th>
+                    <th onClick={() => handleSort('id')} className="sortable-header">
+                      Operation ID 
+                      <span className="sort-icon">
+                        {sortConfig.key === 'id' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : '▴'}
+                      </span>
+                    </th>
+                    <th onClick={() => handleSort('address')} className="sortable-header">
+                      Địa chỉ 
+                      <span className="sort-icon">
+                        {sortConfig.key === 'address' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : '▴'}
+                      </span>
+                    </th>
+                    <th onClick={() => handleSort('phone')} className="sortable-header">
+                      Số điện thoại 
+                      <span className="sort-icon">
+                        {sortConfig.key === 'phone' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : '▴'}
+                      </span>
+                    </th>
+                    <th onClick={() => handleSort('priority')} className="sortable-header">
+                      Mức độ ưu tiên 
+                      <span className="sort-icon">
+                        {sortConfig.key === 'priority' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : '▴'}
+                      </span>
+                    </th>
+                    <th onClick={() => handleSort('time')} className="sortable-header">
+                      Thời gian xử lý 
+                      <span className="sort-icon">
+                        {sortConfig.key === 'time' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : '▴'}
+                      </span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {missions.map((mission, index) => (
-                    <tr key={mission.id}>
-                      <td>{index + 1}</td>
+                  {getSortedMissions().map((mission, index) => (
+                    <tr 
+                      key={mission.id}
+                      onClick={() => handleSelectMission(mission)}
+                      className="mission-row"
+                    >
+                      <td>{mission.id}</td>
                       <td>{mission.address}</td>
                       <td>{mission.phone}</td>
                       <td>
@@ -98,17 +184,6 @@ function RescueTeamDashboard() {
                         </span>
                       </td>
                       <td>{mission.estimatedTime}</td>
-                      <td>
-                        <span className="status-badge">{mission.status}</span>
-                      </td>
-                      <td>
-                        <button 
-                          className="btn-view-detail"
-                          onClick={() => handleSelectMission(mission)}
-                        >
-                          Xem chi tiết
-                        </button>
-                      </td>
                     </tr>
                   ))}
                 </tbody>
