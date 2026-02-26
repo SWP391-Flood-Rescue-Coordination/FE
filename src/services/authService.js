@@ -22,22 +22,22 @@ const getLoginErrorMessage = (error) => {
     if (validationMessages.length > 0) {
       return validationMessages.join(' ')
     }
-    return data?.title || 'Du lieu dang nhap khong hop le.'
+    return data?.title || 'Dữ liệu đăng nhập không hợp lệ'
   }
 
   if (status === 401) {
-    return data?.message || 'Thong tin dang nhap khong chinh xac.'
+    return data?.message || 'Thông tin đăng nhập không chính xác'
   }
 
   if (status === 403) {
-    return 'Ban khong co quyen truy cap.'
+    return 'Bạn không có quyền truy cập vào hệ thống. Vui lòng liên hệ quản trị viên để được hỗ trợ.'
   }
 
   if (status >= 500) {
-    return 'He thong dang gap loi. Vui long thu lai sau.'
+    return 'Hệ thống đang gặp lỗi. Vui lòng thử lại sau.'
   }
 
-  return data?.message || data?.title || 'Khong the dang nhap. Vui long thu lai.'
+  return data?.message || data?.title || 'Không thể đăng nhập. Vui lòng thử lại.'
 }
 
 const authService = {
@@ -46,11 +46,11 @@ const authService = {
     const passwordValue = String(password ?? '')
 
     if (!PHONE_REGEX.test(trimmedPhone)) {
-      return { valid: false, message: 'So dien thoai khong dung dinh dang (+84/84/0 + 9 chu so).' }
+      return { valid: false, message: 'Số điện thoại không đúng định dạng.' }
     }
 
-    if (passwordValue.length < 6 || passwordValue.length > 20) {
-      return { valid: false, message: 'Mat khau phai tu 6 den 20 ky tu.' }
+    if (passwordValue.length < 5 || passwordValue.length > 20) {
+      return { valid: false, message: 'Mật khẩu phải từ 5 đến 20 ký tự.' }
     }
 
     return { valid: true, message: '' }

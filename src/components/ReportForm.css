@@ -30,6 +30,26 @@
   text-align: center;
 }
 
+.report-feedback {
+  margin-bottom: 16px;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.report-feedback-error {
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+}
+
+.report-feedback-success {
+  background-color: #f0fdf4;
+  border: 1px solid #86efac;
+  color: #166534;
+}
+
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -83,6 +103,13 @@
 .form-field textarea:focus {
   outline: none;
   border-color: #dc2626;
+}
+
+.report-input-hint {
+  display: inline-block;
+  margin-top: 6px;
+  color: #6b7280;
+  font-size: 12px;
 }
 
 .location-group {
@@ -206,6 +233,11 @@
   background-color: #b91c1c;
 }
 
+.submit-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 .cancel-btn {
   flex: 1;
   padding: 14px;
@@ -221,6 +253,11 @@
 
 .cancel-btn:hover {
   background-color: #f5f5f5;
+}
+
+.cancel-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 @media (max-width: 768px) {

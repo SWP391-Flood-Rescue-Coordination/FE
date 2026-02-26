@@ -26,6 +26,7 @@ function Dashboard() {
   const roleKey = String(currentUser?.role ?? '').toUpperCase();
   const roleLabelMap = {
     CITIZEN: 'Công dân',
+    COORDINATOR: 'Điều phối viên',
     RESCUE_COORDINATOR: 'Điều phối viên',
     RESCUE_TEAM: 'Đội cứu hộ',
     MANAGER: 'Quản lý',
@@ -137,7 +138,7 @@ function Dashboard() {
             ...reportData,
             submittedDate: new Date().toISOString()
           };
-          setReportHistory([newReport, ...reportHistory]);
+          setReportHistory((prev) => [newReport, ...prev]);
         }
         setShowReport(false);
       }} />}
