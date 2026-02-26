@@ -1,17 +1,32 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import Login from '../components/Login';
+import React from 'react'
+import { useNavigate } from 'react-router-dom'
+import Login from '../components/Login'
+
+const ROLE_ROUTE_MAP = {
+  CITIZEN: '/',
+  COORDINATOR: '/rescue-coordinator/requests',
+  RESCUE_TEAM: '/rescue-team',
+  MANAGER: '/',
+  ADMIN: '/',
+}
 
 const LoginPage = () => {
-  const navigate = useNavigate();
+  const navigate = useNavigate()
+
+  const handleLoginSuccess = (user) => {
+    const role = String(user?.role ?? '').toUpperCase()
+    const destination = ROLE_ROUTE_MAP[role] || '/'
+    navigate(destination, { replace: true })
+  }
 
   return (
-    <Login 
+    <Login
       onClose={() => navigate('/')}
       onShowForgotPassword={() => navigate('/forgot-password')}
       onShowRegister={() => navigate('/register')}
+      onLoginSuccess={handleLoginSuccess}
     />
-  );
-};
+  )
+}
 
-export default LoginPage;
+export default LoginPage

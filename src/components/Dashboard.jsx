@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ArrowLeftOnRectangleIcon, ArrowRightOnRectangleIcon, UserCircleIcon } from '@heroicons/react/24/outline';
+import authService from '../services/authService';
 import ReportForm from './ReportForm';
 import ViewReport from './ViewReport';
 import './Dashboard.css';
@@ -16,6 +18,44 @@ function Dashboard() {
   const [showLevelDropdown, setShowLevelDropdown] = useState(false);
   const [selectedLevel, setSelectedLevel] = useState('Mức 1 - Mức 5');
   const [showStatusDetail, setShowStatusDetail] = useState(false);
+  const [currentUser, setCurrentUser] = useState(() => authService.getUserInfo());
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const userMenuRef = useRef(null);
+
+  const isAuthenticated = authService.isAuthenticated() && Boolean(currentUser);
+  const roleKey = String(currentUser?.role ?? '').toUpperCase();
+  const roleLabelMap = {
+    CITIZEN: 'Công dân',
+    RESCUE_COORDINATOR: 'Điều phối viên',
+    RESCUE_TEAM: 'Đội cứu hộ',
+    MANAGER: 'Quản lý',
+    ADMIN: 'Quản trị viên',
+  };
+  const roleLabel = roleLabelMap[roleKey] || currentUser?.role || '-';
+
+  useEffect(() => {
+    const handleOutsideClick = (event) => {
+      if (!userMenuRef.current?.contains(event.target)) {
+        setShowUserMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, []);
+
+  const handleToggleUserMenu = () => {
+    setShowUserMenu((prev) => !prev);
+  };
+
+  const handleLogout = () => {
+    authService.logout();
+    setCurrentUser(null);
+    setShowUserMenu(false);
+    navigate('/login');
+  };
 
   return (
     <div className="dashboard">
@@ -40,7 +80,53 @@ function Dashboard() {
               </div>
             )}
           </div>
-          <button className="btn-login" onClick={() => navigate('/login')}>Đăng nhập</button>
+          {isAuthenticated ? (
+            <div className="auth-user-group" ref={userMenuRef}>
+              <button
+                type="button"
+                className="icon-circle-button user-icon-button"
+                onClick={handleToggleUserMenu}
+                aria-label="Thông tin người dùng"
+              >
+                <UserCircleIcon className="header-icon" />
+              </button>
+              <button
+                type="button"
+                className="icon-circle-button logout-icon-button"
+                onClick={handleLogout}
+                aria-label="Đăng xuất"
+              >
+                <ArrowLeftOnRectangleIcon className="header-icon" />
+              </button>
+
+              {showUserMenu && (
+                <div className="user-menu-card">
+                  <h3>Thông tin tài khoản</h3>
+                  <div className="user-info-row">
+                    <span>Tên tài khoản</span>
+                    <strong>{currentUser?.username || '-'}</strong>
+                  </div>
+                  <div className="user-info-row">
+                    <span>Họ Tên</span>
+                    <strong>{currentUser?.fullName || '-'}</strong>
+                  </div>
+                  <div className="user-info-row">
+                    <span>Email</span>
+                    <strong>{currentUser?.email || '-'}</strong>
+                  </div>
+                  <div className="user-info-row">
+                    <span>Vai trò</span>
+                    <strong>{roleLabel}</strong>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <button className="btn-login" onClick={() => navigate('/login')}>
+              <ArrowRightOnRectangleIcon className="header-icon" />
+              Đăng nhập
+            </button>
+          )}
         </div>
       </header>
 

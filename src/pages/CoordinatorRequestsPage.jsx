@@ -655,6 +655,16 @@ function CoordinatorRequestsPage() {
     navigate('/login', { replace: true })
   }
 
+  const closeFilterMenus = () => {
+    setIsStatusFilterOpen(false)
+    setIsPriorityFilterOpen(false)
+  }
+
+  useEffect(() => {
+    setIsStatusFilterOpen(false)
+    setIsPriorityFilterOpen(false)
+  }, [])
+
   return (
     <div className="coordinator-page">
       <header className="coordinator-dashboard-header">
@@ -717,7 +727,7 @@ function CoordinatorRequestsPage() {
         </section>
 
         <section className="coordinator-table-container">
-          <div className="coordinator-table-scroll">
+          <div className="coordinator-table-scroll" onScroll={closeFilterMenus}>
             <table className="coordinator-table">
               <thead>
                 <tr>
