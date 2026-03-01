@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeftOnRectangleIcon, ArrowRightOnRectangleIcon, UserCircleIcon } from '@heroicons/react/24/outline';
 import authService from '../services/authService';
+import rescueRequestService from '../services/rescueRequestService';
 import ReportForm from './ReportForm';
 import ViewReport from './ViewReport';
 import './Dashboard.css';
@@ -18,6 +19,8 @@ function Dashboard() {
   const [showLevelDropdown, setShowLevelDropdown] = useState(false);
   const [selectedLevel, setSelectedLevel] = useState('Mức 1 - Mức 5');
   const [showStatusDetail, setShowStatusDetail] = useState(false);
+  const [isPreparingReportForm, setIsPreparingReportForm] = useState(false);
+  const [hasActiveRequest, setHasActiveRequest] = useState(false);
   const [currentUser, setCurrentUser] = useState(() => authService.getUserInfo());
   const [showUserMenu, setShowUserMenu] = useState(false);
   const userMenuRef = useRef(null);
@@ -58,14 +61,87 @@ function Dashboard() {
     navigate('/login');
   };
 
+  useEffect(() => {
+    let isMounted = true;
+    let intervalId = null;
+
+    const syncActiveRequestStatus = async () => {
+      const isCitizen = isAuthenticated && roleKey === 'CITIZEN';
+      if (!isCitizen) {
+        if (isMounted) {
+          setHasActiveRequest(false);
+          setIsPreparingReportForm(false);
+        }
+        return;
+      }
+
+      if (isMounted) {
+        setIsPreparingReportForm(true);
+      }
+
+      try {
+        const myRequests = await rescueRequestService.getMyRequests();
+        const hasOpenRequest = myRequests.some((item) => !rescueRequestService.isTerminalStatus(item?.status));
+
+        if (isMounted) {
+          setHasActiveRequest(hasOpenRequest);
+        }
+      } catch {
+        if (isMounted) {
+          setHasActiveRequest(false);
+        }
+      } finally {
+        if (isMounted) {
+          setIsPreparingReportForm(false);
+        }
+      }
+    };
+
+    syncActiveRequestStatus();
+
+    if (isAuthenticated && roleKey === 'CITIZEN') {
+      intervalId = window.setInterval(syncActiveRequestStatus, 30000);
+    }
+
+    return () => {
+      isMounted = false;
+      if (intervalId) {
+        window.clearInterval(intervalId);
+      }
+    };
+  }, [isAuthenticated, roleKey]);
+
+  const handleOpenReportForm = () => {
+    if (hasActiveRequest || isPreparingReportForm) {
+      return;
+    }
+    setShowReport(true);
+  };
+
+  const handleCloseReportForm = (reportData) => {
+    if (reportData) {
+      const newReport = {
+        ...reportData,
+        submittedDate: reportData.submittedDate || new Date().toISOString(),
+      };
+      setReportHistory((prev) => [newReport, ...prev]);
+
+      if (!rescueRequestService.isTerminalStatus(reportData?.status)) {
+        setHasActiveRequest(true);
+      }
+    }
+
+    setShowReport(false);
+  };
+
   return (
     <div className="dashboard">
       {/* Header */}
       <header className="dashboard-header">
         <h1>Hệ Thống Quản Lí Cứu Hộ Cứu Trợ Lũ Lụt</h1>
         <div className="header-buttons">
-          <button className="btn-primary" onClick={() => setShowReport(true)}>
-            📄  Tạo báo cáo
+          <button className="btn-primary" onClick={handleOpenReportForm} disabled={isPreparingReportForm || hasActiveRequest}>
+            {isPreparingReportForm ? 'Dang tai...' : hasActiveRequest ? 'Đang chờ xử lý' : 'Tạo báo cáo'}
           </button>
           <div className="view-report-wrapper">
             <button 
@@ -132,16 +208,7 @@ function Dashboard() {
       </header>
 
       {/* Report Form Popup */}
-      {showReport && <ReportForm onClose={(reportData) => {
-        if (reportData) {
-          const newReport = {
-            ...reportData,
-            submittedDate: new Date().toISOString()
-          };
-          setReportHistory((prev) => [newReport, ...prev]);
-        }
-        setShowReport(false);
-      }} />}
+      {showReport && <ReportForm onClose={handleCloseReportForm} />}
 
       {/* View Report Popup */}
       {showViewReport && selectedReport && <ViewReport 
@@ -215,7 +282,7 @@ function Dashboard() {
           <div className="stat-item">
             <div className="stat-icon">👥</div>
             <div className="stat-number">--</div>
-            <div className="stat-label">Được cứu trợ</div>
+            <div className="stat-label">Người được cứu trợ</div>
           </div>
           <div className="stat-item">
             <div className="stat-icon">❤️</div>
@@ -300,3 +367,4 @@ function Dashboard() {
 }
 
 export default Dashboard;
+

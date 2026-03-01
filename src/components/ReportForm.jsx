@@ -5,6 +5,7 @@ import rescueRequestService from '../services/rescueRequestService'
 import './ReportForm.css'
 
 const INITIAL_FORM_DATA = {
+  requestId: null,
   phone: '',
   location: '',
   address: '',
@@ -17,7 +18,7 @@ const INITIAL_FORM_DATA = {
     floodOver1m: false,
   },
   notes: '',
-  status: 'pending',
+  status: 'Pending',
 }
 
 const CITIZEN_ROLE = 'CITIZEN'
@@ -51,13 +52,33 @@ function ReportForm({ onClose }) {
     }
   }
 
+  const handleOpenMap = () => {
+    const coordinates = rescueRequestService.parseCoordinates(formData.location)
+    let query = ''
+
+    if (coordinates.latitude !== null && coordinates.longitude !== null) {
+      query = `${coordinates.latitude},${coordinates.longitude}`
+    } else {
+      const address = String(formData.address ?? '').trim()
+      if (address) {
+        query = address
+      }
+    }
+
+    if (!query) {
+      query = '10.762622,106.660172'
+    }
+
+    window.open(`https://www.google.com/maps?q=${encodeURIComponent(query)}`, '_blank')
+  }
+
   const handleSubmit = async (event) => {
     event.preventDefault()
     setErrorMessage('')
     setSuccessMessage('')
 
     if (!authService.isAuthenticated()) {
-      setErrorMessage('Ban can dang nhap tai khoan cong dan truoc khi gui yeu cau.')
+      setErrorMessage('Bạn cần đăng nhập để gửi yêu cầu cứu hộ.')
       window.setTimeout(() => {
         navigate('/login')
       }, 800)
@@ -67,7 +88,7 @@ function ReportForm({ onClose }) {
     const user = authService.getUserInfo()
     const role = String(user?.role ?? '').toUpperCase()
     if (role !== CITIZEN_ROLE) {
-      setErrorMessage('Chi tai khoan Cong dan moi duoc gui yeu cau cuu ho.')
+      setErrorMessage('Chỉ tài khoản Công dân mới được gửi yêu cầu cứu hộ.')
       return
     }
 
@@ -83,17 +104,18 @@ function ReportForm({ onClose }) {
       const data = await rescueRequestService.createRescueRequest(formData)
 
       if (!data?.success) {
-        setErrorMessage(data?.message || 'Khong the gui yeu cau cuu ho. Vui long thu lai.')
+        setErrorMessage(data?.message || 'Không thể gửi yêu cầu cứu hộ. Vui lòng thử lại.')
         return
       }
 
-      setSuccessMessage(data?.message || 'Gui yeu cau cuu ho thanh cong.')
+      setSuccessMessage(data?.message || 'Gửi yêu cầu cứu hộ thành công.')
 
       const submittedReport = {
         ...formData,
+        mode: 'create',
         submittedDate: new Date().toISOString(),
         requestId: data?.requestId ?? null,
-        status: 'pending',
+        status: 'Pending',
       }
 
       window.setTimeout(() => {
@@ -118,7 +140,7 @@ function ReportForm({ onClose }) {
   return (
     <div className="report-overlay">
       <div className="report-modal">
-        <h2>Bao Cao Cuu Ho</h2>
+        <h2>Báo Cáo Cứu Hộ</h2>
 
         {errorMessage && <div className="report-feedback report-feedback-error">{errorMessage}</div>}
         {successMessage && <div className="report-feedback report-feedback-success">{successMessage}</div>}
@@ -143,25 +165,25 @@ function ReportForm({ onClose }) {
               </div>
 
               <div className="form-field">
-                <label>Vi tri</label>
+                <label>Vị trí</label>
                 <div className="location-group">
                   <input
                     type="text"
                     value={formData.location}
                     onChange={(event) => setFormData((prev) => ({ ...prev, location: event.target.value }))}
-                    placeholder="Vi du: 10.762622,106.660172"
+                    placeholder="Ví dụ: 10.762622,106.660172"
                     disabled={isSubmitting}
                     required
                   />
-                  <button type="button" className="location-btn" disabled={isSubmitting}>
-                    Chon vi tri
+                  <button type="button" className="location-btn" disabled={isSubmitting} onClick={handleOpenMap}>
+                    Chọn vị trí
                   </button>
                 </div>
-                <small className="report-input-hint">Nhap theo format: latitude,longitude</small>
+                <small className="report-input-hint">Nhập theo cấu trúc sau: "vĩ độ", "kinh độ"</small>
               </div>
 
               <div className="form-field">
-                <label>Dia chi</label>
+                <label>Địa chỉ</label>
                 <input
                   type="text"
                   value={formData.address}
@@ -172,7 +194,7 @@ function ReportForm({ onClose }) {
               </div>
 
               <div className="form-field people-count-field">
-                <label>So luong dau nguoi bi anh huong</label>
+                <label>Số lượng người ảnh hưởng</label>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -190,7 +212,7 @@ function ReportForm({ onClose }) {
 
             <div className="form-right">
               <div className="form-field">
-                <label>Tinh trang</label>
+                <label>Tình trạng</label>
                 <div className="checkbox-group">
                   <label className="checkbox-label">
                     <input
@@ -199,7 +221,7 @@ function ReportForm({ onClose }) {
                       onChange={() => handleConditionChange('needSupplies')}
                       disabled={isSubmitting}
                     />
-                    Het nhu yeu pham
+                    Hết nhu yếu phẩm
                   </label>
                   <label className="checkbox-label">
                     <input
@@ -208,7 +230,7 @@ function ReportForm({ onClose }) {
                       onChange={() => handleConditionChange('houseCollapsed')}
                       disabled={isSubmitting}
                     />
-                    Sap nha
+                    Sập nhà
                   </label>
                   <label className="checkbox-label">
                     <input
@@ -217,7 +239,7 @@ function ReportForm({ onClose }) {
                       onChange={() => handleConditionChange('needMedical')}
                       disabled={isSubmitting}
                     />
-                    Can dieu tri y te
+                    Cần điều trị y tế
                   </label>
                   <label className="checkbox-label">
                     <input
@@ -226,7 +248,7 @@ function ReportForm({ onClose }) {
                       onChange={() => handleConditionChange('floodUnder1m')}
                       disabled={isSubmitting}
                     />
-                    Ngap duoi 1m
+                    Ngập dưới 1 mét
                   </label>
                   <label className="checkbox-label">
                     <input
@@ -235,13 +257,13 @@ function ReportForm({ onClose }) {
                       onChange={() => handleConditionChange('floodOver1m')}
                       disabled={isSubmitting}
                     />
-                    Ngap tren 1m
+                    Ngập trên 1 mét
                   </label>
                 </div>
               </div>
 
               <div className="form-field">
-                <label>Ghi chu</label>
+                <label>Ghi chú</label>
                 <textarea
                   rows="4"
                   value={formData.notes}
@@ -254,10 +276,10 @@ function ReportForm({ onClose }) {
 
           <div className="form-actions">
             <button type="submit" className="submit-btn" disabled={isSubmitting}>
-              {isSubmitting ? 'Dang gui...' : 'Nop bao cao'}
+              {isSubmitting ? 'Đang gửi...' : 'Gửi báo cáo'}
             </button>
             <button type="button" className="cancel-btn" onClick={handleClose} disabled={isSubmitting}>
-              Huy
+              Hủy
             </button>
           </div>
         </form>

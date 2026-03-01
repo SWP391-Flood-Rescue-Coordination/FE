@@ -8,6 +8,10 @@ const CONDITION_DESCRIPTION_MAP = {
   floodOver1m: 'Ngap tren 1m',
 }
 
+const TERMINAL_STATUSES = new Set(['COMPLETED', 'CANCELLED', 'CANCELED', 'DUPLICATE', 'DUPLICATED'])
+
+const normalizeText = (value) => String(value ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+
 const flattenValidationErrors = (errors) => {
   if (!errors || typeof errors !== 'object') {
     return []
@@ -39,6 +43,10 @@ const parseCoordinates = (value) => {
 
   return { latitude, longitude }
 }
+
+const normalizeStatus = (status) => String(status ?? '').trim().toUpperCase().replace(/\s+/g, '_')
+
+const isTerminalStatus = (status) => TERMINAL_STATUSES.has(normalizeStatus(status))
 
 const buildTitle = (conditions) => {
   if (conditions?.needMedical) {
@@ -78,6 +86,39 @@ const buildDescription = (notes, conditions) => {
   }
 
   return ''
+}
+
+const inferConditionsFromDescription = (description) => {
+  const normalized = normalizeText(description)
+
+  return {
+    needSupplies: normalized.includes('nhu yeu') || normalized.includes('thuc pham') || normalized.includes('nuoc uong'),
+    houseCollapsed: normalized.includes('sap nha') || normalized.includes('suc do') || normalized.includes('ngoi nha bi hu'),
+    needMedical: normalized.includes('y te') || normalized.includes('can cuu thuong') || normalized.includes('can dieu tri'),
+    floodUnder1m: normalized.includes('duoi 1m') || normalized.includes('< 1m'),
+    floodOver1m: normalized.includes('tren 1m') || normalized.includes('> 1m') || normalized.includes('ngap sau'),
+  }
+}
+
+const toReportFormData = (requestItem) => {
+  const latitude = requestItem?.latitude
+  const longitude = requestItem?.longitude
+  const hasCoordinates = latitude !== null && latitude !== undefined && longitude !== null && longitude !== undefined
+  const description = String(requestItem?.description ?? '').trim()
+
+  return {
+    requestId: requestItem?.requestId ?? requestItem?.request_id ?? null,
+    phone: String(requestItem?.phone ?? '').trim(),
+    location: hasCoordinates ? `${latitude},${longitude}` : '',
+    address: String(requestItem?.address ?? '').trim(),
+    totalPeople:
+      requestItem?.numberOfAffectedPeople !== null && requestItem?.numberOfAffectedPeople !== undefined
+        ? String(requestItem.numberOfAffectedPeople)
+        : '',
+    conditions: inferConditionsFromDescription(description),
+    notes: description,
+    status: requestItem?.status ?? 'Pending',
+  }
 }
 
 const getCreateRequestErrorMessage = (error) => {
@@ -142,12 +183,31 @@ const validateCreatePayloadInput = (formData) => {
   return { valid: true, message: '' }
 }
 
+const unwrapApiData = (response) => {
+  if (response?.data?.data !== undefined) {
+    return response.data.data
+  }
+  return response?.data
+}
+
+const normalizeArray = (value) => (Array.isArray(value) ? value : [])
+
 const rescueRequestService = {
   createRescueRequest: async (formData) => {
     const payload = buildCreatePayload(formData)
     const response = await api.post('/RescueRequest', payload)
     return response?.data ?? {}
   },
+
+  getMyRequests: async () => {
+    const response = await api.get('/RescueRequest/my-requests')
+    return normalizeArray(unwrapApiData(response))
+  },
+
+  parseCoordinates,
+  normalizeStatus,
+  isTerminalStatus,
+  toReportFormData,
   buildCreatePayload,
   validateCreatePayloadInput,
   getCreateRequestErrorMessage,

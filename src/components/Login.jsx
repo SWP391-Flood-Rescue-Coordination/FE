@@ -124,7 +124,7 @@ const Login = ({ onClose, onShowForgotPassword, onShowRegister, onLoginSuccess }
               Lưu thông tin đăng nhập
             </label>
             <a href="#" className="forgot-password" onClick={handleForgotPasswordClick}>
-              Quen mat khau?
+              Quên mật khẩu?
             </a>
           </div>
 

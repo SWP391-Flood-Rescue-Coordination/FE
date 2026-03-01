@@ -55,6 +55,13 @@
   box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
 }
 
+.btn-primary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
 .btn-secondary {
   background-color: white;
   color: #2c3e50;
