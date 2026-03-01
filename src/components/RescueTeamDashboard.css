@@ -269,6 +269,69 @@
   transform: translateY(0);
 }
 
+.btn-complete:disabled {
+  background: #cccccc;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Start Button */
+.btn-start {
+  flex: 1;
+  padding: 18px;
+  background: linear-gradient(#007bff);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+}
+
+.btn-start:hover {
+  background: #0056b3;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(0, 123, 255, 0.4);
+}
+
+.btn-start:active {
+  transform: translateY(0);
+}
+
+.btn-start:disabled {
+  background: #cccccc;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Retry Button */
+.btn-retry {
+  padding: 14px 30px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 20px;
+}
+
+.btn-retry:hover {
+  background: #0056b3;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+.btn-retry:active {
+  transform: translateY(0);
+}
+
 /* Action Buttons Container */
 .action-buttons {
   display: flex;
@@ -427,6 +490,21 @@
   color: #6366f1;
 }
 
+.status-badge.status-assigned {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.status-badge.status-in-progress {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.status-badge.status-completed {
+  background: #d1fae5;
+  color: #059669;
+}
+
 /* Back Button */
 .btn-back {
   flex: 1;
@@ -446,6 +524,13 @@
   background: #5a6268;
   transform: translateY(-3px);
   box-shadow: 0 8px 25px rgba(108, 117, 125, 0.4);
+}
+
+.btn-back:disabled {
+  background: #cccccc;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 /* Responsive */
