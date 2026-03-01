@@ -27,7 +27,13 @@ const sanitizeNumberText = (value) => String(value ?? '').replace(/[^0-9]/g, '')
 
 function RequestForm({ onClose }) {
   const navigate = useNavigate()
-  const [formData, setFormData] = useState(INITIAL_FORM_DATA)
+  const [formData, setFormData] = useState(() => ({
+    ...INITIAL_FORM_DATA,
+    phone: sanitizeNumberText(authService.getDefaultPhone()),
+    conditions: {
+      ...INITIAL_FORM_DATA.conditions,
+    },
+  }))
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
