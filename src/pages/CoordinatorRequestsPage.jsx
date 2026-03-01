@@ -1,49 +1,34 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import coordinatorService from '../services/coordinatorService'
 import './CoordinatorRequestsPage.css'
 
 const STATUS_OPTIONS = [
-  { value: '', label: 'Tất cả' },
-  { value: 'PENDING', label: 'Mới tạo' },
+  { value: '', label: 'Tất cả trạng thái' },
+  { value: 'PENDING', label: 'Chờ tiếp nhận' },
   { value: 'VERIFIED', label: 'Đã xác minh' },
   { value: 'ASSIGNED', label: 'Đã phân công' },
   { value: 'IN_PROGRESS', label: 'Đang xử lý' },
   { value: 'COMPLETED', label: 'Hoàn tất' },
-  { value: 'REJECTED', label: 'Từ chối' },
-  { value: 'CANCELLED', label: 'Hủy' },
+  { value: 'CANCELLED', label: 'Đã hủy' },
   { value: 'DUPLICATE', label: 'Trùng lặp' },
 ]
 
 const PRIORITY_OPTIONS = [
-  { value: '', label: 'Tất cả' },
+  { value: '', label: 'Tất cả mức ưu tiên' },
   { value: 'HIGH', label: 'Cao' },
   { value: 'MEDIUM', label: 'Trung bình' },
   { value: 'LOW', label: 'Thấp' },
 ]
 
-const REQUEST_STATUS_DASHBOARD_ITEMS = [
-  { key: 'PENDING', label: 'Mới tạo' },
-  { key: 'VERIFIED', label: 'Đã xác minh' },
-  { key: 'IN_PROGRESS', label: 'Đang xử lý' },
-  { key: 'COMPLETED', label: 'Hoàn tất' },
-  { key: 'CANCELLED', label: 'Hủy' },
-  { key: 'DUPLICATE', label: 'Trùng lặp' },
-]
-
-const ACTIVE_TEAM_STATUSES = new Set(['ACTIVE', 'IN_PROGRESS', 'BUSY', 'WORKING', 'ON_DUTY'])
-const IN_USE_VEHICLE_STATUSES = new Set(['IN_USE', 'INUSE', 'BUSY', 'ASSIGNED', 'ACTIVE'])
-const MAINTENANCE_VEHICLE_STATUSES = new Set(['MAINTENANCE', 'IN_MAINTENANCE', 'REPAIR'])
-
 const STATUS_LABEL_MAP = {
-  PENDING: 'Mới tạo',
+  PENDING: 'Chờ tiếp nhận',
   VERIFIED: 'Đã xác minh',
   ASSIGNED: 'Đã phân công',
   IN_PROGRESS: 'Đang xử lý',
   COMPLETED: 'Hoàn tất',
-  CANCELLED: 'Hủy',
+  CANCELLED: 'Đã hủy',
   DUPLICATE: 'Trùng lặp',
-  REJECTED: 'Từ chối',
 }
 
 const MOCK_PRIORITY_LEVELS = [
@@ -54,23 +39,20 @@ const MOCK_PRIORITY_LEVELS = [
 
 const MOCK_TEAMS = [
   { id: 1, team_name: 'Đội Cứu hộ Quận 1', status: 'AVAILABLE' },
-  { id: 2, team_name: 'Đội Cứu hộ Quận 3', status: 'ACTIVE' },
-  { id: 3, team_name: 'Đội Cứu hộ Quận 7', status: 'IN_PROGRESS' },
-  { id: 4, team_name: 'Đội Cứu hộ Bình Thạnh', status: 'AVAILABLE' },
+  { id: 2, team_name: 'Đội Cứu hộ Quận 3', status: 'AVAILABLE' },
+  { id: 3, team_name: 'Đội Cứu hộ Quận 7', status: 'ACTIVE' },
 ]
 
 const MOCK_VEHICLES = [
   { id: 1, plate_number: '51A-123.45', status: 'AVAILABLE' },
   { id: 2, plate_number: '51B-222.22', status: 'IN_USE' },
-  { id: 3, plate_number: '51C-333.33', status: 'MAINTENANCE' },
-  { id: 4, plate_number: '51D-444.44', status: 'AVAILABLE' },
+  { id: 3, plate_number: '51C-333.33', status: 'AVAILABLE' },
 ]
 
 const MOCK_REQUESTS = [
   {
     request_id: 1001,
     citizen_id: 501,
-    title: 'Gia đình bị mắc kẹt do ngập',
     phone: '0901234567',
     description: 'Nhà ngập sâu 1.2m, có người già cần hỗ trợ khẩn cấp.',
     latitude: 10.7756,
@@ -85,7 +67,6 @@ const MOCK_REQUESTS = [
   {
     request_id: 1002,
     citizen_id: 502,
-    title: 'Cần sơ tán trẻ em',
     phone: '0912345678',
     description: 'Khu vực nước dâng nhanh, cần di chuyển trẻ em đến nơi an toàn.',
     latitude: 10.7812,
@@ -100,7 +81,6 @@ const MOCK_REQUESTS = [
   {
     request_id: 1003,
     citizen_id: 503,
-    title: 'Thiếu nhu yếu phẩm',
     phone: '0922333444',
     description: 'Khu dân cư bị cô lập, cần nước uống và thực phẩm.',
     latitude: 10.7433,
@@ -115,7 +95,6 @@ const MOCK_REQUESTS = [
   {
     request_id: 1004,
     citizen_id: 504,
-    title: 'Giải cứu người mắc kẹt trên mái nhà',
     phone: '0934555666',
     description: 'Đã được cứu hộ thành công, đang theo dõi sau cứu trợ.',
     latitude: 10.7611,
@@ -127,39 +106,10 @@ const MOCK_REQUESTS = [
     updated_at: '2026-02-24T13:40:00Z',
     updated_by: 'coordinator_02',
   },
-  {
-    request_id: 1005,
-    citizen_id: 505,
-    title: 'Yêu cầu hủy do đã tự di chuyển',
-    phone: '0945666777',
-    description: 'Người dân đã rời khỏi khu vực nguy hiểm, không cần cứu hộ.',
-    latitude: 10.7892,
-    longitude: 106.7201,
-    address: '77 Phan Xích Long, Phú Nhuận, TP.HCM',
-    priority_level_id: 1,
-    status: 'CANCELLED',
-    created_at: '2026-02-24T09:10:00Z',
-    updated_at: '2026-02-24T09:55:00Z',
-    updated_by: 'coordinator_03',
-  },
-  {
-    request_id: 1006,
-    citizen_id: 506,
-    title: 'Yêu cầu bị trùng',
-    phone: '0956777888',
-    description: 'Trùng với request #1001 từ cùng vị trí và liên hệ.',
-    latitude: 10.7756,
-    longitude: 106.7019,
-    address: '12 Nguyễn Huệ, Quận 1, TP.HCM',
-    priority_level_id: 2,
-    status: 'DUPLICATE',
-    created_at: '2026-02-25T08:35:00Z',
-    updated_at: '2026-02-25T08:50:00Z',
-    updated_by: 'coordinator_01',
-  },
 ]
 
-const normalizeText = (value) => String(value).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+const normalizeText = (value) =>
+  String(value).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 
 const getStatusText = (status) => {
   if (!status) {
@@ -168,17 +118,22 @@ const getStatusText = (status) => {
   return String(status).toUpperCase()
 }
 
+const normalizeCancelledStatus = (status) => {
+  if (status === 'CANCELED') {
+    return 'CANCELLED'
+  }
+  return status
+}
+
 const getPriorityInfo = (priorityLevelId, priorityRaw) => {
   const numericId = Number(priorityLevelId)
   if (!Number.isNaN(numericId)) {
     if (numericId === 3) {
       return { key: 'HIGH', label: 'Cao' }
     }
-
     if (numericId === 2) {
       return { key: 'MEDIUM', label: 'Trung bình' }
     }
-
     if (numericId === 1) {
       return { key: 'LOW', label: 'Thấp' }
     }
@@ -189,11 +144,9 @@ const getPriorityInfo = (priorityLevelId, priorityRaw) => {
     if (normalized.includes('cao') || normalized.includes('high')) {
       return { key: 'HIGH', label: 'Cao' }
     }
-
     if (normalized.includes('trung') || normalized.includes('medium')) {
       return { key: 'MEDIUM', label: 'Trung bình' }
     }
-
     if (normalized.includes('thap') || normalized.includes('low')) {
       return { key: 'LOW', label: 'Thấp' }
     }
@@ -206,7 +159,6 @@ const formatDateTime = (value) => {
   if (!value) {
     return '-'
   }
-
   const parsed = new Date(value)
   if (Number.isNaN(parsed.getTime())) {
     return '-'
@@ -221,15 +173,12 @@ const formatLocation = (latitude, longitude) => {
   if (!hasLat && !hasLng) {
     return '-'
   }
-
   if (hasLat && hasLng) {
     return `${latitude}, ${longitude}`
   }
-
   if (hasLat) {
     return `${latitude}`
   }
-
   return `${longitude}`
 }
 
@@ -247,7 +196,6 @@ const normalizeRequest = (item) => {
   return {
     request_id: item.request_id ?? item.requestId ?? item.id ?? null,
     citizen_id: item.citizen_id ?? item.citizenId ?? null,
-    title: item.title ?? '',
     phone: item.phone ?? item.contact_phone ?? item.contactPhone ?? '',
     description: item.description ?? '',
     latitude: item.latitude ?? null,
@@ -256,7 +204,7 @@ const normalizeRequest = (item) => {
     priority_level_id: priorityLevelId,
     priority_key: priorityInfo.key,
     priority_label: priorityInfo.label,
-    status: getStatusText(item.status),
+    status: normalizeCancelledStatus(getStatusText(item.status)),
     created_at: item.created_at ?? item.createdAt ?? null,
     updated_at: item.updated_at ?? item.updatedAt ?? null,
     updated_by: item.updated_by ?? item.updatedBy ?? null,
@@ -280,70 +228,29 @@ const normalizeVehicle = (item) => ({
   status: getStatusText(item.status),
 })
 
-const createInitialRequestStatusSummary = () =>
-  REQUEST_STATUS_DASHBOARD_ITEMS.reduce(
-    (accumulator, item) => ({
-      ...accumulator,
-      [item.key]: 0,
-    }),
-    {},
-  )
-
-const normalizeCancelledStatus = (status) => {
-  if (status === 'CANCELED') {
-    return 'CANCELLED'
-  }
-  return status
-}
-
 const getStatusLabel = (status) => STATUS_LABEL_MAP[normalizeCancelledStatus(status)] || status || '-'
-
-const buildRequestStatusSummary = (requestItems) => {
-  const summary = createInitialRequestStatusSummary()
-  requestItems.forEach((item) => {
-    const normalizedStatus = normalizeCancelledStatus(getStatusText(item.status))
-    if (summary[normalizedStatus] !== undefined) {
-      summary[normalizedStatus] += 1
-    }
-  })
-  return summary
-}
-
-const getTeamStatusText = (item) => getStatusText(item.status ?? item.team_status ?? item.teamStatus)
-
-const buildTeamSummary = (teamItems) => {
-  const total = teamItems.length
-  const active = teamItems.filter((item) => ACTIVE_TEAM_STATUSES.has(getTeamStatusText(item))).length
-  return { total, active }
-}
-
-const getVehicleStatusText = (item) => getStatusText(item.status ?? item.vehicle_status ?? item.vehicleStatus)
-
-const buildVehicleSummary = (vehicleItems) => {
-  const available = vehicleItems.filter((item) => getVehicleStatusText(item) === 'AVAILABLE').length
-  const inUse = vehicleItems.filter((item) => IN_USE_VEHICLE_STATUSES.has(getVehicleStatusText(item))).length
-  const maintenance = vehicleItems.filter((item) => MAINTENANCE_VEHICLE_STATUSES.has(getVehicleStatusText(item))).length
-  return { available, inUse, maintenance }
-}
 
 const buildApiMessage = (error) => {
   const data = error?.response?.data
   return data?.message || data?.error || data?.title || 'Có lỗi xảy ra, vui lòng thử lại.'
 }
 
-function CoordinatorRequestsPage() {
+function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }) {
   const navigate = useNavigate()
+  const normalizedExternalStatus = useMemo(() => {
+    const raw = String(externalStatusFilter ?? '')
+      .trim()
+      .toUpperCase()
+    const exists = STATUS_OPTIONS.some((item) => item.value === raw)
+    return exists ? raw : ''
+  }, [externalStatusFilter])
 
   const [requests, setRequests] = useState([])
   const [priorityLevels, setPriorityLevels] = useState([])
   const [teams, setTeams] = useState([])
   const [vehicles, setVehicles] = useState([])
-  const [isSummaryLoading, setIsSummaryLoading] = useState(false)
-  const [requestStatusSummary, setRequestStatusSummary] = useState(createInitialRequestStatusSummary())
-  const [teamSummary, setTeamSummary] = useState({ total: 0, active: 0 })
-  const [vehicleSummary, setVehicleSummary] = useState({ available: 0, inUse: 0, maintenance: 0 })
 
-  const [statusFilter, setStatusFilter] = useState('PENDING')
+  const [statusFilter, setStatusFilter] = useState(normalizedExternalStatus)
   const [priorityFilter, setPriorityFilter] = useState('')
   const [isStatusFilterOpen, setIsStatusFilterOpen] = useState(false)
   const [isPriorityFilterOpen, setIsPriorityFilterOpen] = useState(false)
@@ -415,8 +322,7 @@ function CoordinatorRequestsPage() {
         ? MOCK_REQUESTS.filter((item) => normalizeCancelledStatus(getStatusText(item.status)) === statusFilter)
         : MOCK_REQUESTS
       const sourceRequests = data.length > 0 ? data : fallbackRequests
-      const normalized = sourceRequests.map(normalizeRequest)
-      setRequests(normalized)
+      setRequests(sourceRequests.map(normalizeRequest))
       setVerifyEditMap({})
     } catch (error) {
       handleApiError(error, '', { silent: true })
@@ -432,7 +338,6 @@ function CoordinatorRequestsPage() {
 
   const fetchOptionData = useCallback(async () => {
     setErrorMessage('')
-
     try {
       const [priorityData, teamData, vehicleData] = await Promise.all([
         coordinatorService.getPriorityLevels(),
@@ -444,19 +349,19 @@ function CoordinatorRequestsPage() {
       const teamSource = teamData.length > 0 ? teamData : MOCK_TEAMS
       const vehicleSource = vehicleData.length > 0 ? vehicleData : MOCK_VEHICLES
 
-      const normalizedPriorities = prioritySource.map(normalizePriority).filter((item) => item.id !== null)
-      const normalizedTeams = teamSource
-        .map(normalizeTeam)
-        .filter((item) => item.id !== null)
-        .filter((item) => !item.status || item.status === 'AVAILABLE')
-      const normalizedVehicles = vehicleSource
-        .map(normalizeVehicle)
-        .filter((item) => item.id !== null)
-        .filter((item) => !item.status || item.status === 'AVAILABLE')
-
-      setPriorityLevels(normalizedPriorities)
-      setTeams(normalizedTeams)
-      setVehicles(normalizedVehicles)
+      setPriorityLevels(prioritySource.map(normalizePriority).filter((item) => item.id !== null))
+      setTeams(
+        teamSource
+          .map(normalizeTeam)
+          .filter((item) => item.id !== null)
+          .filter((item) => !item.status || item.status === 'AVAILABLE'),
+      )
+      setVehicles(
+        vehicleSource
+          .map(normalizeVehicle)
+          .filter((item) => item.id !== null)
+          .filter((item) => !item.status || item.status === 'AVAILABLE'),
+      )
     } catch (error) {
       handleApiError(error, '', { silent: true })
       setPriorityLevels(MOCK_PRIORITY_LEVELS.map(normalizePriority))
@@ -465,35 +370,9 @@ function CoordinatorRequestsPage() {
     }
   }, [handleApiError])
 
-  const fetchDashboardStats = useCallback(async () => {
-    setIsSummaryLoading(true)
-    try {
-      const [allRequests, allTeams, allVehicles] = await Promise.all([
-        coordinatorService.getRescueRequests(''),
-        coordinatorService.getRescueTeams(),
-        coordinatorService.getVehicles(),
-      ])
-
-      const requestSource = allRequests.length > 0 ? allRequests : MOCK_REQUESTS
-      const teamSource = allTeams.length > 0 ? allTeams : MOCK_TEAMS
-      const vehicleSource = allVehicles.length > 0 ? allVehicles : MOCK_VEHICLES
-
-      setRequestStatusSummary(buildRequestStatusSummary(requestSource))
-      setTeamSummary(buildTeamSummary(teamSource))
-      setVehicleSummary(buildVehicleSummary(vehicleSource))
-    } catch (error) {
-      handleApiError(error, '', { silent: true })
-      setRequestStatusSummary(buildRequestStatusSummary(MOCK_REQUESTS))
-      setTeamSummary(buildTeamSummary(MOCK_TEAMS))
-      setVehicleSummary(buildVehicleSummary(MOCK_VEHICLES))
-    } finally {
-      setIsSummaryLoading(false)
-    }
-  }, [handleApiError])
-
   const reloadAll = useCallback(async () => {
-    await Promise.all([fetchRequestList(), fetchOptionData(), fetchDashboardStats()])
-  }, [fetchDashboardStats, fetchOptionData, fetchRequestList])
+    await Promise.all([fetchRequestList(), fetchOptionData()])
+  }, [fetchOptionData, fetchRequestList])
 
   useEffect(() => {
     fetchRequestList()
@@ -504,8 +383,10 @@ function CoordinatorRequestsPage() {
   }, [fetchOptionData])
 
   useEffect(() => {
-    fetchDashboardStats()
-  }, [fetchDashboardStats])
+    if (normalizedExternalStatus !== statusFilter) {
+      setStatusFilter(normalizedExternalStatus)
+    }
+  }, [normalizedExternalStatus, statusFilter])
 
   useEffect(() => {
     const handleOutsideClick = (event) => {
@@ -515,7 +396,6 @@ function CoordinatorRequestsPage() {
       if (!clickedStatusFilter) {
         setIsStatusFilterOpen(false)
       }
-
       if (!clickedPriorityFilter) {
         setIsPriorityFilterOpen(false)
       }
@@ -536,7 +416,6 @@ function CoordinatorRequestsPage() {
       const dateB = new Date(b.created_at).getTime()
       return dateB - dateA
     })
-
     return sorted
   }, [requests, priorityFilter])
 
@@ -570,7 +449,6 @@ function CoordinatorRequestsPage() {
     }
 
     const isEditing = Boolean(verifyEditMap[requestId])
-
     if (!isEditing) {
       setVerifyEditMap((prev) => ({
         ...prev,
@@ -578,14 +456,14 @@ function CoordinatorRequestsPage() {
       }))
       setSelectedPriorityByRequest((prev) => ({
         ...prev,
-        [requestId]: prev[requestId] || '',
+        [requestId]: prev[requestId] || request.priority_level_id || '',
       }))
       return
     }
 
     const selectedPriority = selectedPriorityByRequest[requestId]
     if (!selectedPriority) {
-      setErrorMessage('Vui lòng chọn mức ưu tiên trước khi duyệt.')
+      setErrorMessage('Vui lòng chọn mức ưu tiên trước khi xác thực.')
       return
     }
 
@@ -595,14 +473,14 @@ function CoordinatorRequestsPage() {
 
     try {
       await coordinatorService.verifyRequest(requestId, selectedPriority)
-      setSuccessMessage(`Duyệt request #${requestId} thành công.`)
+      setSuccessMessage(`Xác thực yêu cầu #${requestId} thành công.`)
       setVerifyEditMap((prev) => ({
         ...prev,
         [requestId]: false,
       }))
       await reloadAll()
     } catch (error) {
-      const result = handleApiError(error, 'Request đã được xử lý bởi người khác.')
+      const result = handleApiError(error, 'Yêu cầu đã được xử lý bởi người khác.')
       if (result.shouldReload) {
         await reloadAll()
       }
@@ -616,7 +494,7 @@ function CoordinatorRequestsPage() {
     const selectedVehicle = selectedVehicleByRequest[requestId]
 
     if (!selectedTeam || !selectedVehicle) {
-      setErrorMessage('Vui lòng chọn đội và phương tiện trước khi phân công.')
+      setErrorMessage('Vui lòng chọn đội cứu hộ và phương tiện trước khi phân công.')
       return
     }
 
@@ -626,10 +504,10 @@ function CoordinatorRequestsPage() {
 
     try {
       await coordinatorService.assignRequest(requestId, selectedTeam, selectedVehicle)
-      setSuccessMessage(`Phân công request #${requestId} thành công.`)
+      setSuccessMessage(`Phân công yêu cầu #${requestId} thành công.`)
       await reloadAll()
     } catch (error) {
-      const result = handleApiError(error, 'Dữ liệu bị conflict, request đã được cập nhật bởi người khác.')
+      const result = handleApiError(error, 'Yêu cầu bị xung đột dữ liệu, vui lòng tải lại.')
       if (result.shouldReload) {
         await reloadAll()
       }
@@ -660,16 +538,260 @@ function CoordinatorRequestsPage() {
     setIsPriorityFilterOpen(false)
   }
 
-  useEffect(() => {
-    setIsStatusFilterOpen(false)
-    setIsPriorityFilterOpen(false)
-  }, [])
+  const requestTableSection = (
+    <section className="coordinator-table-container">
+      <div className="coordinator-table-scroll" onScroll={closeFilterMenus}>
+        <table className="coordinator-table">
+          <thead>
+            <tr>
+              <th>Mã yêu cầu</th>
+              <th>Mã công dân</th>
+              <th>Số điện thoại</th>
+              <th>Mô tả</th>
+              <th>Vị trí</th>
+              <th>Địa chỉ</th>
+              <th>
+                <div className="header-filter-wrap">
+                  <span>Mức ưu tiên</span>
+                  <div className="table-filter-wrap" ref={priorityFilterRef}>
+                    <button
+                      type="button"
+                      className={`table-filter-button ${priorityFilter ? 'active' : ''}`}
+                      onClick={() => {
+                        setIsPriorityFilterOpen((prev) => !prev)
+                        setIsStatusFilterOpen(false)
+                      }}
+                      disabled={isListLoading}
+                      aria-label="Lọc theo mức ưu tiên"
+                    >
+                      ▾
+                    </button>
+                    {isPriorityFilterOpen && (
+                      <div className="table-filter-dropdown">
+                        {PRIORITY_OPTIONS.map((option) => (
+                          <button
+                            key={option.value || 'ALL'}
+                            type="button"
+                            className={`table-filter-option ${priorityFilter === option.value ? 'selected' : ''}`}
+                            onClick={() => handleSelectPriorityFilter(option.value)}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </th>
+              <th>
+                <div className="header-filter-wrap">
+                  <span>Trạng thái</span>
+                  <div className="table-filter-wrap" ref={statusFilterRef}>
+                    <button
+                      type="button"
+                      className={`table-filter-button ${statusFilter ? 'active' : ''}`}
+                      onClick={() => {
+                        setIsStatusFilterOpen((prev) => !prev)
+                        setIsPriorityFilterOpen(false)
+                      }}
+                      disabled={isListLoading}
+                      aria-label="Lọc theo trạng thái"
+                    >
+                      ▾
+                    </button>
+                    {isStatusFilterOpen && (
+                      <div className="table-filter-dropdown">
+                        {STATUS_OPTIONS.map((option) => (
+                          <button
+                            key={option.value || 'ALL'}
+                            type="button"
+                            className={`table-filter-option ${statusFilter === option.value ? 'selected' : ''}`}
+                            onClick={() => handleSelectStatusFilter(option.value)}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </th>
+              <th>Tạo lúc</th>
+              <th>Cập nhật lúc</th>
+              <th>Cập nhật bởi</th>
+              <th>Đội cứu hộ</th>
+              <th>Phương tiện</th>
+              <th>Xác thực</th>
+              <th>Phân công</th>
+            </tr>
+          </thead>
+          <tbody>
+            {isListLoading && (
+              <tr>
+                <td colSpan="15" className="table-placeholder">
+                  Đang tải danh sách yêu cầu cứu hộ...
+                </td>
+              </tr>
+            )}
+
+            {!isListLoading && displayedRequests.length === 0 && (
+              <tr>
+                <td colSpan="15" className="table-placeholder">
+                  Không có yêu cầu phù hợp với bộ lọc hiện tại.
+                </td>
+              </tr>
+            )}
+
+            {!isListLoading &&
+              displayedRequests.map((request, rowIndex) => {
+                const requestId = request.request_id
+                const requestKey = requestId ?? `row-${rowIndex}`
+                const hasValidRequestId = requestId !== null && requestId !== undefined && requestId !== ''
+                const isPending = request.status === 'PENDING'
+                const isVerified = request.status === 'VERIFIED'
+                const isVerifyEditing = Boolean(verifyEditMap[requestId])
+                const hasPriority = Boolean(
+                  (request.priority_level_id !== null &&
+                    request.priority_level_id !== undefined &&
+                    request.priority_level_id !== '') ||
+                    request.priority_key,
+                )
+
+                const verifyLoading = hasValidRequestId ? isActionLoading(requestId, 'verify') : false
+                const assignLoading = hasValidRequestId ? isActionLoading(requestId, 'assign') : false
+                const selectedPriority = selectedPriorityByRequest[requestId] || ''
+                const selectedTeam = selectedTeamByRequest[requestId] || ''
+                const selectedVehicle = selectedVehicleByRequest[requestId] || ''
+
+                return (
+                  <tr key={requestKey}>
+                    <td>{request.request_id ?? '-'}</td>
+                    <td>{request.citizen_id ?? '-'}</td>
+                    <td>{request.phone || '-'}</td>
+                    <td className="description-cell">{request.description || '-'}</td>
+                    <td>{formatLocation(request.latitude, request.longitude)}</td>
+                    <td>{request.address || '-'}</td>
+                    <td>
+                      {isPending && isVerifyEditing ? (
+                        <select
+                          value={selectedPriority}
+                          onChange={(event) => handlePriorityChange(requestId, event.target.value)}
+                          disabled={verifyLoading || assignLoading}
+                        >
+                          <option value="">Chọn mức ưu tiên</option>
+                          {priorityLevels.map((priority) => (
+                            <option key={priority.id} value={toNumberIfPossible(priority.id)}>
+                              {priority.label}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span
+                          className={`coordinator-priority-badge coordinator-priority-${
+                            request.priority_key ? request.priority_key.toLowerCase() : 'unknown'
+                          }`}
+                        >
+                          {request.priority_label}
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      <span className={`coordinator-status-badge coordinator-status-${request.status.toLowerCase()}`}>
+                        {getStatusLabel(request.status)}
+                      </span>
+                    </td>
+                    <td>{formatDateTime(request.created_at)}</td>
+                    <td>{formatDateTime(request.updated_at)}</td>
+                    <td>{request.updated_by ?? '-'}</td>
+                    <td>
+                      <select
+                        value={selectedTeam}
+                        onChange={(event) => handleTeamChange(requestId, event.target.value)}
+                        disabled={!isVerified || !hasPriority || assignLoading || verifyLoading}
+                      >
+                        <option value="">Chọn đội AVAILABLE</option>
+                        {teams.map((team) => (
+                          <option key={team.id} value={toNumberIfPossible(team.id)}>
+                            {team.name}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td>
+                      <select
+                        value={selectedVehicle}
+                        onChange={(event) => handleVehicleChange(requestId, event.target.value)}
+                        disabled={!isVerified || !hasPriority || assignLoading || verifyLoading}
+                      >
+                        <option value="">Chọn xe AVAILABLE</option>
+                        {vehicles.map((vehicle) => (
+                          <option key={vehicle.id} value={toNumberIfPossible(vehicle.id)}>
+                            {vehicle.name}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        className="action-button verify-button"
+                        onClick={() => handleVerify(request)}
+                        disabled={
+                          !hasValidRequestId ||
+                          !isPending ||
+                          verifyLoading ||
+                          assignLoading ||
+                          (isVerifyEditing && !selectedPriority)
+                        }
+                      >
+                        {verifyLoading ? 'Đang xác thực...' : isVerifyEditing ? 'Xác nhận' : 'Xác thực'}
+                      </button>
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        className="action-button assign-button"
+                        onClick={() => handleAssign(requestId)}
+                        disabled={
+                          !hasValidRequestId ||
+                          !isVerified ||
+                          !hasPriority ||
+                          !selectedTeam ||
+                          !selectedVehicle ||
+                          assignLoading ||
+                          verifyLoading
+                        }
+                      >
+                        {assignLoading ? 'Đang phân công...' : 'Phân công'}
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  )
+
+  if (embedded) {
+    return (
+      <section className="coordinator-embedded-section">
+        {errorMessage && <div className="feedback-message feedback-error">{errorMessage}</div>}
+        {successMessage && <div className="feedback-message feedback-success">{successMessage}</div>}
+        {requestTableSection}
+      </section>
+    )
+  }
 
   return (
     <div className="coordinator-page">
       <header className="coordinator-dashboard-header">
         <h1>Hệ Thống Quản Lí Cứu Hộ Cứu Trợ Lũ Lụt</h1>
         <div className="coordinator-header-buttons">
+          <button type="button" className="coordinator-nav-btn" onClick={() => navigate('/rescue-coordinator')}>
+            Tổng quan
+          </button>
           <button type="button" className="coordinator-btn-login" onClick={handleLogout}>
             Đăng xuất
           </button>
@@ -679,288 +801,7 @@ function CoordinatorRequestsPage() {
       <div className="coordinator-content">
         {errorMessage && <div className="feedback-message feedback-error">{errorMessage}</div>}
         {successMessage && <div className="feedback-message feedback-success">{successMessage}</div>}
-
-        <section className="coordinator-summary-grid">
-          <article className="summary-card">
-            <h2>Thống kê yêu cầu theo trạng thái</h2>
-            <div className="summary-list">
-              {REQUEST_STATUS_DASHBOARD_ITEMS.map((item) => (
-                <div key={item.key} className="summary-row">
-                  <span>{item.label}</span>
-                  <strong>{isSummaryLoading ? '...' : requestStatusSummary[item.key] ?? 0}</strong>
-                </div>
-              ))}
-            </div>
-          </article>
-
-          <article className="summary-card">
-            <h2>Thống kê nhóm cứu hộ</h2>
-            <div className="summary-list">
-              <div className="summary-row">
-                <span>Tổng số nhóm</span>
-                <strong>{isSummaryLoading ? '...' : teamSummary.total}</strong>
-              </div>
-              <div className="summary-row">
-                <span>Nhóm đang hoạt động</span>
-                <strong>{isSummaryLoading ? '...' : teamSummary.active}</strong>
-              </div>
-            </div>
-          </article>
-
-          <article className="summary-card">
-            <h2>Thống kê phương tiện</h2>
-            <div className="summary-list">
-              <div className="summary-row">
-                <span>Có sẵn</span>
-                <strong>{isSummaryLoading ? '...' : vehicleSummary.available}</strong>
-              </div>
-              <div className="summary-row">
-                <span>Đang sử dụng</span>
-                <strong>{isSummaryLoading ? '...' : vehicleSummary.inUse}</strong>
-              </div>
-              <div className="summary-row">
-                <span>Bảo trì</span>
-                <strong>{isSummaryLoading ? '...' : vehicleSummary.maintenance}</strong>
-              </div>
-            </div>
-          </article>
-        </section>
-
-        <section className="coordinator-table-container">
-          <div className="coordinator-table-scroll" onScroll={closeFilterMenus}>
-            <table className="coordinator-table">
-              <thead>
-                <tr>
-                  <th>Mã yêu cầu</th>
-                  <th>Mã công dân</th>
-                  <th>Tiêu đề</th>
-                  <th>Số điện thoại</th>
-                  <th>Mô tả</th>
-                  <th>Vị trí</th>
-                  <th>Địa chỉ</th>
-                  <th>
-                    <div className="header-filter-wrap">
-                      <span>Mức ưu tiên</span>
-                      <div className="table-filter-wrap" ref={priorityFilterRef}>
-                        <button
-                          type="button"
-                          className={`table-filter-button ${priorityFilter ? 'active' : ''}`}
-                          onClick={() => {
-                            setIsPriorityFilterOpen((prev) => !prev)
-                            setIsStatusFilterOpen(false)
-                          }}
-                          disabled={isListLoading}
-                          aria-label="Lọc theo mức ưu tiên"
-                        >
-                          ▾
-                        </button>
-                        {isPriorityFilterOpen && (
-                          <div className="table-filter-dropdown">
-                            {PRIORITY_OPTIONS.map((option) => (
-                              <button
-                                key={option.value || 'ALL'}
-                                type="button"
-                                className={`table-filter-option ${priorityFilter === option.value ? 'selected' : ''}`}
-                                onClick={() => handleSelectPriorityFilter(option.value)}
-                              >
-                                {option.label}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </th>
-                  <th>
-                    <div className="header-filter-wrap">
-                      <span>Trạng thái</span>
-                      <div className="table-filter-wrap" ref={statusFilterRef}>
-                        <button
-                          type="button"
-                          className={`table-filter-button ${statusFilter ? 'active' : ''}`}
-                          onClick={() => {
-                            setIsStatusFilterOpen((prev) => !prev)
-                            setIsPriorityFilterOpen(false)
-                          }}
-                          disabled={isListLoading}
-                          aria-label="Lọc theo trạng thái"
-                        >
-                          ▾
-                        </button>
-                        {isStatusFilterOpen && (
-                          <div className="table-filter-dropdown">
-                            {STATUS_OPTIONS.map((option) => (
-                              <button
-                                key={option.value || 'ALL'}
-                                type="button"
-                                className={`table-filter-option ${statusFilter === option.value ? 'selected' : ''}`}
-                                onClick={() => handleSelectStatusFilter(option.value)}
-                              >
-                                {option.label}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </th>
-                  <th>Tạo lúc</th>
-                  <th>Cập nhật lúc</th>
-                  <th>Cập nhật bởi</th>
-                  <th>Chọn mức duyệt</th>
-                  <th>Duyệt</th>
-                  <th>Đội cứu hộ</th>
-                  <th>Phương tiện</th>
-                  <th>Phân công</th>
-                </tr>
-              </thead>
-              <tbody>
-                {isListLoading && (
-                  <tr>
-                    <td colSpan="17" className="table-placeholder">
-                      Đang tải danh sách rescue request...
-                    </td>
-                  </tr>
-                )}
-
-                {!isListLoading && displayedRequests.length === 0 && (
-                  <tr>
-                    <td colSpan="17" className="table-placeholder">
-                      Không có rescue request phù hợp bộ lọc hiện tại.
-                    </td>
-                  </tr>
-                )}
-
-                {!isListLoading &&
-                  displayedRequests.map((request, rowIndex) => {
-                    const requestId = request.request_id
-                    const requestKey = requestId ?? `row-${rowIndex}`
-                    const hasValidRequestId = requestId !== null && requestId !== undefined && requestId !== ''
-                    const isPending = request.status === 'PENDING'
-                    const isVerified = request.status === 'VERIFIED'
-                    const isVerifyEditing = Boolean(verifyEditMap[requestId])
-                    const hasPriority = Boolean(
-                      (request.priority_level_id !== null &&
-                        request.priority_level_id !== undefined &&
-                        request.priority_level_id !== '') ||
-                        request.priority_key,
-                    )
-
-                    const verifyLoading = hasValidRequestId ? isActionLoading(requestId, 'verify') : false
-                    const assignLoading = hasValidRequestId ? isActionLoading(requestId, 'assign') : false
-                    const selectedPriority = selectedPriorityByRequest[requestId] || ''
-                    const selectedTeam = selectedTeamByRequest[requestId] || ''
-                    const selectedVehicle = selectedVehicleByRequest[requestId] || ''
-
-                    return (
-                      <tr key={requestKey}>
-                        <td>{request.request_id ?? '-'}</td>
-                        <td>{request.citizen_id ?? '-'}</td>
-                        <td>{request.title || '-'}</td>
-                        <td>{request.phone || '-'}</td>
-                        <td className="description-cell">{request.description || '-'}</td>
-                        <td>{formatLocation(request.latitude, request.longitude)}</td>
-                        <td>{request.address || '-'}</td>
-                        <td>
-                          <span className={`priority-badge priority-${request.priority_key ? request.priority_key.toLowerCase() : 'unknown'}`}>
-                            {request.priority_label}
-                          </span>
-                        </td>
-                        <td>
-                          <span className={`status-badge status-${request.status.toLowerCase()}`}>{getStatusLabel(request.status)}</span>
-                        </td>
-                        <td>{formatDateTime(request.created_at)}</td>
-                        <td>{formatDateTime(request.updated_at)}</td>
-                        <td>{request.updated_by ?? '-'}</td>
-                        <td>
-                          {isPending && isVerifyEditing ? (
-                            <select
-                              value={selectedPriority}
-                              onChange={(event) => handlePriorityChange(requestId, event.target.value)}
-                              disabled={verifyLoading || assignLoading}
-                            >
-                              <option value="">Chọn mức ưu tiên</option>
-                              {priorityLevels.map((priority) => (
-                                <option key={priority.id} value={toNumberIfPossible(priority.id)}>
-                                  {priority.label}
-                                </option>
-                              ))}
-                            </select>
-                          ) : (
-                            <span className={`priority-badge priority-${request.priority_key ? request.priority_key.toLowerCase() : 'unknown'}`}>
-                              {request.priority_label}
-                            </span>
-                          )}
-                        </td>
-                        <td>
-                          <button
-                            type="button"
-                            className="action-button verify-button"
-                            onClick={() => handleVerify(request)}
-                            disabled={
-                              !hasValidRequestId ||
-                              !isPending ||
-                              verifyLoading ||
-                              assignLoading ||
-                              (isVerifyEditing && !selectedPriority)
-                            }
-                          >
-                            {verifyLoading ? 'Đang duyệt...' : isVerifyEditing ? 'Xác nhận' : 'Duyệt'}
-                          </button>
-                        </td>
-                        <td>
-                          <select
-                            value={selectedTeam}
-                            onChange={(event) => handleTeamChange(requestId, event.target.value)}
-                            disabled={!isVerified || !hasPriority || assignLoading || verifyLoading}
-                          >
-                            <option value="">Chọn đội AVAILABLE</option>
-                            {teams.map((team) => (
-                              <option key={team.id} value={toNumberIfPossible(team.id)}>
-                                {team.name}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                        <td>
-                          <select
-                            value={selectedVehicle}
-                            onChange={(event) => handleVehicleChange(requestId, event.target.value)}
-                            disabled={!isVerified || !hasPriority || assignLoading || verifyLoading}
-                          >
-                            <option value="">Chọn xe AVAILABLE</option>
-                            {vehicles.map((vehicle) => (
-                              <option key={vehicle.id} value={toNumberIfPossible(vehicle.id)}>
-                                {vehicle.name}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                        <td>
-                          <button
-                            type="button"
-                            className="action-button assign-button"
-                            onClick={() => handleAssign(requestId)}
-                            disabled={
-                              !hasValidRequestId ||
-                              !isVerified ||
-                              !hasPriority ||
-                              !selectedTeam ||
-                              !selectedVehicle ||
-                              assignLoading ||
-                              verifyLoading
-                            }
-                          >
-                            {assignLoading ? 'Đang phân công...' : 'Phân công'}
-                          </button>
-                        </td>
-                      </tr>
-                    )
-                  })}
-              </tbody>
-            </table>
-          </div>
-        </section>
+        {requestTableSection}
       </div>
     </div>
   )

@@ -4,7 +4,7 @@ import Login from '../components/Login'
 
 const ROLE_ROUTE_MAP = {
   CITIZEN: '/',
-  COORDINATOR: '/rescue-coordinator/requests',
+  COORDINATOR: '/rescue-coordinator',
   RESCUE_TEAM: '/rescue-team',
   MANAGER: '/',
   ADMIN: '/',
