@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import authService from '../services/authService'
 import rescueRequestService from '../services/rescueRequestService'
@@ -31,6 +31,17 @@ function RequestForm({ onClose }) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
+
+  // Auto-fill phone from localStorage when component mounts
+  useEffect(() => {
+    const user = authService.getUserInfo()
+    if (user?.userId) {
+      const savedPhone = localStorage.getItem(`user_phone_${user.userId}`)
+      if (savedPhone) {
+        setFormData((prev) => ({ ...prev, phone: savedPhone }))
+      }
+    }
+  }, [])
 
   const handleConditionChange = (condition) => {
     setFormData((prev) => ({
@@ -109,6 +120,12 @@ function RequestForm({ onClose }) {
       }
 
       setSuccessMessage(data?.message || 'Gửi yêu cầu cứu hộ thành công.')
+
+      // Save phone to localStorage for future use
+      const user = authService.getUserInfo()
+      if (user?.userId && formData.phone) {
+        localStorage.setItem(`user_phone_${user.userId}`, formData.phone)
+      }
 
       const submittedRequest = {
         ...formData,
