@@ -451,7 +451,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
     setErrorMessage('')
     const [priorityResult, teamResult, vehicleResult] = await Promise.allSettled([
       coordinatorService.getPriorityLevels(),
-      coordinatorService.getAvailableRescueTeams(),
+      coordinatorService.getAvailableRescueTeams('AVAILABLE'),
       coordinatorService.getAvailableVehicles(),
     ])
 

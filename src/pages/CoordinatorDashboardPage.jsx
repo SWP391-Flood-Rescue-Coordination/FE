@@ -1,5 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+﻿import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import {
+  ArrowLeftOnRectangleIcon,
+  ArrowPathIcon,
+  CheckCircleIcon,
+  ClockIcon,
+  TruckIcon,
+  UserGroupIcon,
+  WrenchScrewdriverIcon,
+} from '@heroicons/react/24/outline'
 import coordinatorService from '../services/coordinatorService'
 import CoordinatorRequestsPage from './CoordinatorRequestsPage'
 import './CoordinatorDashboardPage.css'
@@ -15,7 +24,7 @@ const REQUEST_STATUS_ITEMS = [
 
 const TEAM_IN_PROGRESS_STATUSES = new Set(['ACTIVE', 'IN_PROGRESS', 'BUSY', 'WORKING', 'ON_DUTY'])
 const TEAM_AVAILABLE_STATUSES = new Set(['AVAILABLE', 'READY', 'IDLE'])
-const TEAM_UNDERSTAFFED_STATUSES = new Set(['UNDERSTAFFED', 'LACK_MEMBER', 'INSUFFICIENT_MEMBER'])
+// const TEAM_UNDERSTAFFED_STATUSES = new Set(['UNDERSTAFFED', 'LACK_MEMBER', 'INSUFFICIENT_MEMBER'])
 
 const IN_USE_VEHICLE_STATUSES = new Set(['IN_USE', 'INUSE', 'BUSY', 'ASSIGNED', 'ACTIVE'])
 const MAINTENANCE_VEHICLE_STATUSES = new Set(['MAINTENANCE', 'IN_MAINTENANCE', 'REPAIR'])
@@ -29,25 +38,12 @@ const MOCK_REQUESTS = [
   { request_id: 1006, status: 'DUPLICATE' },
 ]
 
-const MOCK_TEAMS = [
-  { id: 1, status: 'AVAILABLE' },
-  { id: 2, status: 'ACTIVE' },
-  { id: 3, status: 'IN_PROGRESS' },
-  { id: 4, status: 'UNDERSTAFFED' },
-]
-
-const MOCK_VEHICLES = [
-  { id: 1, status: 'AVAILABLE' },
-  { id: 2, status: 'IN_USE' },
-  { id: 3, status: 'MAINTENANCE' },
-  { id: 4, status: 'AVAILABLE' },
-]
-
 const normalizeStatus = (value) =>
   String(value ?? '')
     .trim()
     .toUpperCase()
     .replace(/[\s-]+/g, '_')
+
 const normalizeCancelledStatus = (status) => (status === 'CANCELED' ? 'CANCELLED' : status)
 
 const createInitialStatusSummary = () =>
@@ -74,8 +70,7 @@ const buildTeamSummary = (teamItems) => {
   const total = teamItems.length
   const inProgress = teamItems.filter((item) => TEAM_IN_PROGRESS_STATUSES.has(normalizeStatus(item.status))).length
   const available = teamItems.filter((item) => TEAM_AVAILABLE_STATUSES.has(normalizeStatus(item.status))).length
-  const understaffed = teamItems.filter((item) => TEAM_UNDERSTAFFED_STATUSES.has(normalizeStatus(item.status))).length
-  return { total, inProgress, available, understaffed }
+  return { total, inProgress, available }
 }
 
 const buildVehicleSummary = (vehicleItems) => {
@@ -92,40 +87,60 @@ function CoordinatorDashboardPage() {
   const [errorMessage, setErrorMessage] = useState('')
   const [requestsStatusFilter, setRequestsStatusFilter] = useState('')
   const [requestStatusSummary, setRequestStatusSummary] = useState(createInitialStatusSummary())
-  const [teamSummary, setTeamSummary] = useState({ total: 0, inProgress: 0, available: 0, understaffed: 0 })
+  const [teamSummary, setTeamSummary] = useState({ total: 0, inProgress: 0, available: 0 })
   const [vehicleSummary, setVehicleSummary] = useState({ available: 0, inUse: 0, maintenance: 0 })
 
   const fetchDashboardStats = useCallback(async () => {
     setIsLoading(true)
     setErrorMessage('')
 
-    try {
-      const [allRequests, allTeams, allVehicles] = await Promise.all([
-        coordinatorService.getRescueRequests(''),
-        coordinatorService.getRescueTeams(),
-        coordinatorService.getVehicles(),
-      ])
+    const [requestsResult, teamsResult, vehiclesResult] = await Promise.allSettled([
+      coordinatorService.getRescueRequests(''),
+      coordinatorService.getRescueTeams(),
+      coordinatorService.getVehicles(),
+    ])
 
-      const requestSource = Array.isArray(allRequests) ? allRequests : []
-      const teamSource = Array.isArray(allTeams) ? allTeams : []
-      const vehicleSource = Array.isArray(allVehicles) ? allVehicles : []
-
-      setRequestStatusSummary(buildRequestStatusSummary(requestSource))
-      setTeamSummary(buildTeamSummary(teamSource))
-      setVehicleSummary(buildVehicleSummary(vehicleSource))
-    } catch (error) {
-      if (error?.response?.status === 401) {
+    if (requestsResult.status === 'rejected') {
+      if (requestsResult.reason?.response?.status === 401) {
+        setIsLoading(false)
         navigate('/login', { replace: true })
         return
       }
 
-      setErrorMessage('Không thể tải dữ liệu tổng quan. Đang hiển thị dữ liệu mẫu.')
       setRequestStatusSummary(buildRequestStatusSummary(MOCK_REQUESTS))
-      setTeamSummary(buildTeamSummary(MOCK_TEAMS))
-      setVehicleSummary(buildVehicleSummary(MOCK_VEHICLES))
-    } finally {
-      setIsLoading(false)
+      setErrorMessage('Không thể tải danh sách yêu cầu. Đang hiển thị tạm dữ liệu mẫu cho thanh trạng thái.')
+    } else {
+      setRequestStatusSummary(buildRequestStatusSummary(Array.isArray(requestsResult.value) ? requestsResult.value : []))
+      setErrorMessage('')
     }
+
+    let teamSource = []
+    if (teamsResult.status === 'fulfilled') {
+      teamSource = Array.isArray(teamsResult.value) ? teamsResult.value : []
+    } else {
+      try {
+        const fallbackTeams = await coordinatorService.getAvailableRescueTeams()
+        teamSource = Array.isArray(fallbackTeams) ? fallbackTeams : []
+      } catch {
+        teamSource = []
+      }
+    }
+
+    let vehicleSource = []
+    if (vehiclesResult.status === 'fulfilled') {
+      vehicleSource = Array.isArray(vehiclesResult.value) ? vehiclesResult.value : []
+    } else {
+      try {
+        const fallbackVehicles = await coordinatorService.getAvailableVehicles()
+        vehicleSource = Array.isArray(fallbackVehicles) ? fallbackVehicles : []
+      } catch {
+        vehicleSource = []
+      }
+    }
+
+    setTeamSummary(buildTeamSummary(teamSource))
+    setVehicleSummary(buildVehicleSummary(vehicleSource))
+    setIsLoading(false)
   }, [navigate])
 
   useEffect(() => {
@@ -186,21 +201,24 @@ function CoordinatorDashboardPage() {
     return stops.join(', ')
   }, [statusSegments])
 
-  const metricCards = useMemo(
+  const topMetricCards = useMemo(
     () => [
-      { key: 'team-total', icon: '👥', label: 'Tổng số đội', value: teamSummary.total },
-      { key: 'team-progress', icon: '🚨', label: 'Đội đang xử lý', value: teamSummary.inProgress },
-      { key: 'team-ready', icon: '✅', label: 'Đội rảnh', value: teamSummary.available },
-      { key: 'team-understaffed', icon: '⚠️', label: 'Đội thiếu thành viên', value: teamSummary.understaffed },
-      { key: 'vehicle-available', icon: '🚑', label: 'Xe sẵn sàng', value: vehicleSummary.available },
-      { key: 'vehicle-inuse', icon: '🚛', label: 'Xe đang sử dụng', value: vehicleSummary.inUse },
-      { key: 'vehicle-maintenance', icon: '🛠️', label: 'Xe bảo trì', value: vehicleSummary.maintenance },
+      { key: 'team-total', icon: UserGroupIcon, label: 'Tổng số đội', value: teamSummary.total },
+      { key: 'team-progress', icon: ArrowPathIcon, label: 'Đội đang xử lý', value: teamSummary.inProgress },
+      { key: 'team-ready', icon: CheckCircleIcon, label: 'Đội rảnh', value: teamSummary.available },
+      // { key: 'team-understaffed', icon: ExclamationTriangleIcon, label: 'Đội thiếu thành viên', value: teamSummary.understaffed },
     ],
-    [teamSummary, vehicleSummary],
+    [teamSummary],
   )
 
-  const topMetricCards = metricCards.slice(0, 4)
-  const bottomMetricCards = metricCards.slice(4)
+  const bottomMetricCards = useMemo(
+    () => [
+      { key: 'vehicle-available', icon: TruckIcon, label: 'Xe sẵn sàng', value: vehicleSummary.available },
+      { key: 'vehicle-inuse', icon: ClockIcon, label: 'Xe đang sử dụng', value: vehicleSummary.inUse },
+      { key: 'vehicle-maintenance', icon: WrenchScrewdriverIcon, label: 'Xe bảo trì', value: vehicleSummary.maintenance },
+    ],
+    [vehicleSummary],
+  )
 
   const scrollToRequestTable = () => {
     const section = document.getElementById('coordinator-request-table')
@@ -226,11 +244,8 @@ function CoordinatorDashboardPage() {
       <header className="coordinator-home-header">
         <h1>Hệ Thống Quản Lí Cứu Hộ Cứu Trợ Lũ Lụt</h1>
         <div className="coordinator-home-actions">
-          <button type="button" className="coordinator-home-secondary" onClick={scrollToRequestTable}>
-            Danh sách yêu cầu
-          </button>
-          <button type="button" className="coordinator-home-primary" onClick={handleLogout}>
-            Đăng xuất
+          <button type="button" className="coordinator-home-logout" onClick={handleLogout} aria-label="Đăng xuất">
+            <ArrowLeftOnRectangleIcon className="coordinator-header-icon" />
           </button>
         </div>
       </header>
@@ -273,7 +288,7 @@ function CoordinatorDashboardPage() {
             {topMetricCards.map((card) => (
               <article key={card.key} className="coordinator-stat-item">
                 <div className="coordinator-stat-icon" aria-hidden="true">
-                  {card.icon}
+                  <card.icon className="coordinator-stat-svg" />
                 </div>
                 <div className="coordinator-stat-number">{isLoading ? '--' : card.value}</div>
                 <div className="coordinator-stat-label">{card.label}</div>
@@ -285,7 +300,7 @@ function CoordinatorDashboardPage() {
             {bottomMetricCards.map((card) => (
               <article key={card.key} className="coordinator-stat-item">
                 <div className="coordinator-stat-icon" aria-hidden="true">
-                  {card.icon}
+                  <card.icon className="coordinator-stat-svg" />
                 </div>
                 <div className="coordinator-stat-number">{isLoading ? '--' : card.value}</div>
                 <div className="coordinator-stat-label">{card.label}</div>
