@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import authService from '../services/authService'
 import rescueRequestService from '../services/rescueRequestService'
-import './ReportForm.css'
+import './RequestForm.css'
 
 const INITIAL_FORM_DATA = {
   requestId: null,
@@ -25,7 +25,7 @@ const CITIZEN_ROLE = 'CITIZEN'
 
 const sanitizeNumberText = (value) => String(value ?? '').replace(/[^0-9]/g, '')
 
-function ReportForm({ onClose }) {
+function RequestForm({ onClose }) {
   const navigate = useNavigate()
   const [formData, setFormData] = useState(INITIAL_FORM_DATA)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -110,7 +110,7 @@ function ReportForm({ onClose }) {
 
       setSuccessMessage(data?.message || 'Gửi yêu cầu cứu hộ thành công.')
 
-      const submittedReport = {
+      const submittedRequest = {
         ...formData,
         mode: 'create',
         submittedDate: new Date().toISOString(),
@@ -120,7 +120,7 @@ function ReportForm({ onClose }) {
 
       window.setTimeout(() => {
         if (onClose) {
-          onClose(submittedReport)
+          onClose(submittedRequest)
         }
       }, 700)
     } catch (error) {
@@ -138,12 +138,12 @@ function ReportForm({ onClose }) {
   }
 
   return (
-    <div className="report-overlay">
-      <div className="report-modal">
-        <h2>Báo Cáo Cứu Hộ</h2>
+    <div className="request-overlay">
+      <div className="request-modal">
+        <h2>Yêu Cầu Cứu Hộ</h2>
 
-        {errorMessage && <div className="report-feedback report-feedback-error">{errorMessage}</div>}
-        {successMessage && <div className="report-feedback report-feedback-success">{successMessage}</div>}
+        {errorMessage && <div className="request-feedback request-feedback-error">{errorMessage}</div>}
+        {successMessage && <div className="request-feedback request-feedback-success">{successMessage}</div>}
 
         <form onSubmit={handleSubmit}>
           <div className="form-row">
@@ -179,7 +179,7 @@ function ReportForm({ onClose }) {
                     Chọn vị trí
                   </button>
                 </div>
-                <small className="report-input-hint">Nhập theo cấu trúc sau: "vĩ độ", "kinh độ"</small>
+                <small className="request-input-hint">Nhập theo cấu trúc sau: "vĩ độ", "kinh độ"</small>
               </div>
 
               <div className="form-field">
@@ -263,12 +263,13 @@ function ReportForm({ onClose }) {
               </div>
 
               <div className="form-field">
-                <label>Ghi chú</label>
+                <label>Ghi chú (tùy chọn)</label>
                 <textarea
                   rows="4"
                   value={formData.notes}
                   onChange={(event) => setFormData((prev) => ({ ...prev, notes: event.target.value }))}
                   disabled={isSubmitting}
+                  placeholder="Nhập thêm thông tin chi tiết nếu cần..."
                 />
               </div>
             </div>
@@ -276,7 +277,7 @@ function ReportForm({ onClose }) {
 
           <div className="form-actions">
             <button type="submit" className="submit-btn" disabled={isSubmitting}>
-              {isSubmitting ? 'Đang gửi...' : 'Gửi báo cáo'}
+              {isSubmitting ? 'Đang gửi...' : 'Gửi yêu cầu'}
             </button>
             <button type="button" className="cancel-btn" onClick={handleClose} disabled={isSubmitting}>
               Hủy
@@ -288,4 +289,4 @@ function ReportForm({ onClose }) {
   )
 }
 
-export default ReportForm
+export default RequestForm

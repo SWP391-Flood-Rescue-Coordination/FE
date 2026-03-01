@@ -100,7 +100,7 @@ const inferConditionsFromDescription = (description) => {
   }
 }
 
-const toReportFormData = (requestItem) => {
+const toRequestFormData = (requestItem) => {
   const latitude = requestItem?.latitude
   const longitude = requestItem?.longitude
   const hasCoordinates = latitude !== null && latitude !== undefined && longitude !== null && longitude !== undefined
@@ -204,10 +204,20 @@ const rescueRequestService = {
     return normalizeArray(unwrapApiData(response))
   },
 
+  getMyLatestRequest: async () => {
+    const response = await api.get('/RescueRequest/my-latest-request')
+    return unwrapApiData(response)
+  },
+
+  getRequestById: async (requestId) => {
+    const response = await api.get(`/RescueRequest/${requestId}`)
+    return unwrapApiData(response)
+  },
+
   parseCoordinates,
   normalizeStatus,
   isTerminalStatus,
-  toReportFormData,
+  toRequestFormData,
   buildCreatePayload,
   validateCreatePayloadInput,
   getCreateRequestErrorMessage,

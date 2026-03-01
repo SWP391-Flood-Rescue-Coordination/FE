@@ -1,4 +1,4 @@
-.report-overlay {
+.request-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -11,7 +11,7 @@
   z-index: 2000;
 }
 
-.report-modal {
+.request-modal {
   background: white;
   border-radius: 12px;
   padding: 30px;
@@ -22,7 +22,7 @@
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
 }
 
-.report-modal h2 {
+.request-modal h2 {
   color: #2c3e50;
   font-size: 24px;
   font-weight: bold;
@@ -30,7 +30,7 @@
   text-align: center;
 }
 
-.report-feedback {
+.request-feedback {
   margin-bottom: 16px;
   border-radius: 8px;
   padding: 10px 12px;
@@ -38,13 +38,13 @@
   line-height: 1.4;
 }
 
-.report-feedback-error {
+.request-feedback-error {
   background-color: #fef2f2;
   border: 1px solid #fecaca;
   color: #991b1b;
 }
 
-.report-feedback-success {
+.request-feedback-success {
   background-color: #f0fdf4;
   border: 1px solid #86efac;
   color: #166534;
@@ -105,7 +105,7 @@
   border-color: #dc2626;
 }
 
-.report-input-hint {
+.request-input-hint {
   display: inline-block;
   margin-top: 6px;
   color: #6b7280;
@@ -261,7 +261,7 @@
 }
 
 @media (max-width: 768px) {
-  .report-modal {
+  .request-modal {
     padding: 20px;
     width: 95%;
   }
