@@ -1,8 +1,3 @@
-<<<<<<< Updated upstream
-import api from './api';
-
-// Auth Service - Quản lý authentication
-=======
 import api from './api'
 
 const PHONE_REGEX = /^(?:\+84|84|0)\d{9}$/
@@ -58,12 +53,8 @@ const getRegisterErrorMessage = (error) => {
     return data?.message || data?.title || 'Dữ liệu đăng ký không hợp lệ'
   }
 
-  if (status === 401) {
-    return data?.message || 'Không thể đăng ký tài khoản'
-  }
-
-  if (status === 403) {
-    return 'Bạn không có quyền đăng ký. Vui lòng liên hệ quản trị viên.'
+  if (status === 409) {
+    return data?.message || 'Thông tin đã được sử dụng'
   }
 
   if (status >= 500) {
@@ -73,64 +64,36 @@ const getRegisterErrorMessage = (error) => {
   return data?.message || data?.title || 'Không thể đăng ký. Vui lòng thử lại.'
 }
 
->>>>>>> Stashed changes
 const authService = {
-  /**
-   * Đăng nhập
-   * @param {string} username - Tên đăng nhập (hoặc phone number)
-   * @param {string} password - Mật khẩu
-   * @returns {Promise} Response từ API
-   */
-  login: async (username, password) => {
-    try {
-      const response = await api.post('/Auth/login', {
-        Username: username,
-        Password: password
-      });
+  validateLoginInput: (phone, password) => {
+    const trimmedPhone = String(phone ?? '').trim()
+    const passwordValue = String(password ?? '')
 
-      if (response.data.Success) {
-        // Lưu token và thông tin user vào localStorage
-        localStorage.setItem('accessToken', response.data.AccessToken);
-        localStorage.setItem('user', JSON.stringify(response.data.User));
-      }
-
-      return response.data;
-    } catch (error) {
-      throw error;
+    if (!PHONE_REGEX.test(trimmedPhone)) {
+      return { valid: false, message: 'Số điện thoại không đúng định dạng.' }
     }
+
+    if (passwordValue.length < 5 || passwordValue.length > 20) {
+      return { valid: false, message: 'Mật khẩu phải từ 5 đến 20 ký tự.' }
+    }
+
+    return { valid: true, message: '' }
   },
 
-<<<<<<< Updated upstream
-  /**
-   * Đăng ký tài khoản mới
-   * @param {object} userData - Thông tin đăng ký
-   * @returns {Promise} Response từ API
-   */
-  register: async (userData) => {
-    try {
-      const response = await api.post('/Auth/register', {
-        Username: userData.username,
-        Password: userData.password,
-        FullName: userData.fullName,
-        Phone: userData.phone,
-        Email: userData.email,
-        Role: userData.role || 'CITIZEN'
-      });
-=======
-  validateRegisterInput: (username, email, phone, password, confirmPassword, fullName) => {
+  validateRegisterInput: (username, phone, email, password, confirmPassword, fullName) => {
     const trimmedUsername = String(username ?? '').trim()
-    const trimmedEmail = String(email ?? '').trim()
     const trimmedPhone = String(phone ?? '').trim()
+    const trimmedEmail = String(email ?? '').trim()
     const passwordValue = String(password ?? '')
     const confirmPasswordValue = String(confirmPassword ?? '')
     const trimmedFullName = String(fullName ?? '').trim()
 
-    if (trimmedUsername.length < 3) {
+    if (!trimmedUsername || trimmedUsername.length < 3) {
       return { valid: false, message: 'Tên đăng nhập phải có ít nhất 3 ký tự.' }
     }
 
-    if (trimmedFullName.length < 2) {
-      return { valid: false, message: 'Họ và tên phải có ít nhất 2 ký tự.' }
+    if (!trimmedFullName) {
+      return { valid: false, message: 'Họ và tên là bắt buộc.' }
     }
 
     if (!PHONE_REGEX.test(trimmedPhone)) {
@@ -152,22 +115,19 @@ const authService = {
     return { valid: true, message: '' }
   },
 
-  register: async (username, email, phone, password, fullName) => {
+  login: async (phone, password) => {
     const payload = {
-      username: String(username ?? '').trim(),
-      email: String(email ?? '').trim(),
       phone: String(phone ?? '').trim(),
       password: String(password ?? ''),
-      fullName: String(fullName ?? '').trim(),
     }
 
-    const response = await api.post('/Auth/register', payload)
+    const response = await api.post('/Auth/login', payload)
     const data = response?.data ?? {}
 
     if (!data?.success || !data?.accessToken || !data?.user) {
-      const authError = new Error(data?.message || 'Đăng ký thất bại.')
+      const authError = new Error(data?.message || 'Dang nhap that bai.')
       authError.response = {
-        status: 400,
+        status: 401,
         data,
       }
       throw authError
@@ -180,57 +140,54 @@ const authService = {
     return data
   },
 
+  register: async (username, phone, email, password, fullName) => {
+    const payload = {
+      username: String(username ?? '').trim(),
+      phone: String(phone ?? '').trim(),
+      email: String(email ?? '').trim(),
+      password: String(password ?? ''),
+      fullName: String(fullName ?? '').trim(),
+    }
+
+    const response = await api.post('/Auth/register', payload)
+    const data = response?.data ?? {}
+
+    if (!data?.success) {
+      const authError = new Error(data?.message || 'Đăng ký thất bại.')
+      authError.response = {
+        status: 400,
+        data,
+      }
+      throw authError
+    }
+
+    // Không tự động lưu token - user cần đăng nhập sau khi đăng ký
+    return data
+  },
+
+  logout: () => {
+    localStorage.removeItem('accessToken')
+    localStorage.removeItem('refreshToken')
+    localStorage.removeItem('user')
+  },
+
+  isAuthenticated: () => Boolean(localStorage.getItem('accessToken')),
+
+  getUserInfo: () => {
+    const raw = localStorage.getItem('user')
+    if (!raw) {
+      return null
+    }
+
+    try {
+      return JSON.parse(raw)
+    } catch {
+      return null
+    }
+  },
+
   getLoginErrorMessage,
   getRegisterErrorMessage,
 }
->>>>>>> Stashed changes
 
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  /**
-   * Đăng xuất
-   */
-  logout: () => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('user');
-    window.location.href = '/login';
-  },
-
-  /**
-   * Lấy thông tin user hiện tại từ localStorage
-   * @returns {object|null} User object hoặc null
-   */
-  getCurrentUser: () => {
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
-      try {
-        return JSON.parse(userStr);
-      } catch (error) {
-        return null;
-      }
-    }
-    return null;
-  },
-
-  /**
-   * Kiểm tra user đã đăng nhập chưa
-   * @returns {boolean}
-   */
-  isAuthenticated: () => {
-    return !!localStorage.getItem('accessToken');
-  },
-
-  /**
-   * Lấy access token
-   * @returns {string|null}
-   */
-  getToken: () => {
-    return localStorage.getItem('accessToken');
-  }
-};
-
-export default authService;
+export default authService

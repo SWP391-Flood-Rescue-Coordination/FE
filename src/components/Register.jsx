@@ -4,8 +4,8 @@ import './Register.css';
 
 const Register = ({ onClose, onShowLogin }) => {
   const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -20,8 +20,8 @@ const Register = ({ onClose, onShowLogin }) => {
     // Validate input
     const validation = authService.validateRegisterInput(
       username,
-      email,
       phone,
+      email,
       password,
       confirmPassword,
       fullName
@@ -32,10 +32,9 @@ const Register = ({ onClose, onShowLogin }) => {
       return;
     }
 
-    setLoading(true);
-
     try {
-      await authService.register(username, email, phone, password, fullName);
+      setLoading(true);
+      await authService.register(username, phone, email, password, fullName);
       setShowSuccessPopup(true);
     } catch (err) {
       const errorMessage = authService.getRegisterErrorMessage(err);
@@ -45,15 +44,16 @@ const Register = ({ onClose, onShowLogin }) => {
     }
   };
 
-  const handleLoginClick = (e) => {
-    e.preventDefault();
+  const handleSuccessConfirm = () => {
+    setShowSuccessPopup(false);
+    // Chuyển về trang đăng nhập
     if (onShowLogin) {
       onShowLogin();
     }
   };
 
-  const handleSuccessConfirm = () => {
-    setShowSuccessPopup(false);
+  const handleLoginClick = (e) => {
+    e.preventDefault();
     if (onShowLogin) {
       onShowLogin();
     }
@@ -81,6 +81,17 @@ const Register = ({ onClose, onShowLogin }) => {
             {error}
           </div>
         )}
+
+        {showSuccessPopup && (
+          <div className="success-overlay">
+            <div className="success-box">
+              <h2 className="success-title">Đăng Ký Thành Công!</h2>
+              <button onClick={handleSuccessConfirm} className="success-button">
+                Xác nhận
+              </button>
+            </div>
+          </div>
+        )}
         
         <form onSubmit={handleSubmit}>
           <div className="form-group">
@@ -91,8 +102,8 @@ const Register = ({ onClose, onShowLogin }) => {
               placeholder="Nhập tên đăng nhập (tối thiểu 3 ký tự)"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              disabled={loading}
               required
+              disabled={loading}
             />
           </div>
 
@@ -104,21 +115,8 @@ const Register = ({ onClose, onShowLogin }) => {
               placeholder="Nhập họ và tên của bạn"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              disabled={loading}
               required
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="email">Email *</label>
-            <input
-              type="email"
-              id="email"
-              placeholder="Nhập email của bạn"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
               disabled={loading}
-              required
             />
           </div>
 
@@ -130,8 +128,21 @@ const Register = ({ onClose, onShowLogin }) => {
               placeholder="Nhập số điện thoại (VD: 0912345678)"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              disabled={loading}
               required
+              disabled={loading}
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="email">Email *</label>
+            <input
+              type="email"
+              id="email"
+              placeholder="Nhập địa chỉ email của bạn"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              disabled={loading}
             />
           </div>
           
@@ -143,8 +154,8 @@ const Register = ({ onClose, onShowLogin }) => {
               placeholder="Nhập mật khẩu (6-20 ký tự)"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              disabled={loading}
               required
+              disabled={loading}
             />
           </div>
 
@@ -156,8 +167,8 @@ const Register = ({ onClose, onShowLogin }) => {
               placeholder="Nhập lại mật khẩu của bạn"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              disabled={loading}
               required
+              disabled={loading}
             />
           </div>
           
@@ -170,17 +181,6 @@ const Register = ({ onClose, onShowLogin }) => {
           <p>Bạn đã có tài khoản? <a href="#" className="login-link" onClick={handleLoginClick}>Đăng nhập tại đây</a></p>
         </div>
       </div>
-
-      {showSuccessPopup && (
-        <div className="success-overlay">
-          <div className="success-box">
-            <h2 className="success-title">Đăng Ký Thành Công!</h2>
-            <button onClick={handleSuccessConfirm} className="success-button">
-              Xác nhận
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

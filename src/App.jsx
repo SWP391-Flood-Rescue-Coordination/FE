@@ -5,6 +5,7 @@ import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import RescueTeamDashboard from './components/RescueTeamDashboard'
+import CoordinatorRequestsPage from './pages/CoordinatorRequestsPage'
 import './App.css'
 
 function App() {
@@ -17,6 +18,7 @@ function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/rescue-team" element={<RescueTeamDashboard />} />
+          <Route path="/rescue-coordinator/requests" element={<CoordinatorRequestsPage />} />
         </Routes>
       </div>
     </Router>

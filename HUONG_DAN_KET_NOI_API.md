@@ -158,6 +158,107 @@ File `src/components/Login.jsx`:
 
 ------------------------------------------------------------------------
 
+## 5A. Nối API Register (contract BE hiện tại)
+
+### 5A.1 Contract
+
+-   Endpoint: `POST /api/Auth/register`
+-   Body:
+
+``` json
+{
+  "username": "user123",
+  "password": "123456",
+  "fullName": "Nguyen Van A",
+  "phone": "0912345678",
+  "email": "a@example.com"
+}
+```
+
+-   Thành công (tự động login):
+
+``` json
+{
+  "success": true,
+  "message": "Đăng ký thành công",
+  "accessToken": "<JWT>",
+  "accessTokenExpiration": "2026-03-01T10:30:00Z",
+  "user": {
+    "userId": 123,
+    "username": "user123",
+    "fullName": "Nguyen Van A",
+    "email": "a@example.com",
+    "role": "CITIZEN"
+  }
+}
+```
+
+-   Lỗi 400 Bad Request:
+
+``` json
+{
+  "success": false,
+  "message": "Tên đăng nhập đã được sử dụng"
+}
+```
+
+hoặc `"Email đã được sử dụng"` hoặc `"Số điện thoại đã được sử dụng"`
+
+**Lưu ý:** BE tự động login sau khi đăng ký thành công, FE nhận luôn token.
+
+------------------------------------------------------------------------
+
+### 5A.2 Service register
+
+File `src/services/authService.js`:
+
+1.  Validate input (`validateRegisterInput`):
+    -   username ≥ 3 ký tự
+    -   fullName không rỗng
+    -   phone đúng regex `PHONE_REGEX`
+    -   email đúng regex `EMAIL_REGEX`
+    -   password 6-20 ký tự
+    -   confirmPassword khớp với password
+2.  Gọi API:
+    -   `api.post('/Auth/register', payload)`
+3.  Kiểm tra kết quả:
+    -   `success === true`
+4.  **KHÔNG tự động lưu token**:
+    -   User cần đăng nhập lại sau khi đăng ký
+    -   Điều hướng về trang login
+5.  Parse lỗi (`getRegisterErrorMessage`):
+    -   400: validation hoặc duplicate
+    -   409: conflict (duplicate data)
+    -   500: server error
+
+------------------------------------------------------------------------
+
+### 5A.3 Component register
+
+File `src/components/Register.jsx`:
+
+1.  Form có 6 fields:
+    -   `username` (min 3 chars)
+    -   `fullName`
+    -   `phone` (Vietnam format)
+    -   `email` (valid email)
+    -   `password` (6-20 chars)
+    -   `confirmPassword`
+2.  Form submit → `authService.validateRegisterInput()`
+3.  Nếu hợp lệ → `await authService.register(...)`
+4.  Thành công:
+    -   hiển thị success popup (giống style của login)
+    -   popup có nút "Xác nhận"
+    -   khi click "Xác nhận" → chuyển về trang login
+5.  Thất bại → hiển thị error message từ
+    `authService.getRegisterErrorMessage(error)`
+6.  Loading state:
+    -   disable form và button khi đang xử lý
+
+**Lưu ý:** Sau khi đăng ký thành công, user cần đăng nhập lại bằng tài khoản vừa tạo.
+
+------------------------------------------------------------------------
+
 ## 6. Nối API tạo Rescue Request cho Citizen
 
 ### 6.1 Contract

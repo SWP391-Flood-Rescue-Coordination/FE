@@ -1,49 +1,153 @@
-import React, { useState } from 'react';
-import './ReportForm.css';
+import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import authService from '../services/authService'
+import rescueRequestService from '../services/rescueRequestService'
+import './ReportForm.css'
+
+const INITIAL_FORM_DATA = {
+  requestId: null,
+  phone: '',
+  location: '',
+  address: '',
+  totalPeople: '',
+  conditions: {
+    needSupplies: false,
+    houseCollapsed: false,
+    needMedical: false,
+    floodUnder1m: false,
+    floodOver1m: false,
+  },
+  notes: '',
+  status: 'Pending',
+}
+
+const CITIZEN_ROLE = 'CITIZEN'
+
+const sanitizeNumberText = (value) => String(value ?? '').replace(/[^0-9]/g, '')
 
 function ReportForm({ onClose }) {
-  const [formData, setFormData] = useState({
-    phone: '',
-    location: '',
-    address: '',
-    totalPeople: 0,
-    conditions: {
-      needSupplies: false,
-      houseCollapsed: false,
-      needMedical: false,
-      floodUnder1m: false,
-      floodOver1m: false
-    },
-    notes: '',
-    status: 'pending'
-  });
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log('Report submitted:', formData);
-    // Xử lý submit form
-    onClose(formData);
-  };
+  const navigate = useNavigate()
+  const [formData, setFormData] = useState(INITIAL_FORM_DATA)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
+  const [successMessage, setSuccessMessage] = useState('')
 
   const handleConditionChange = (condition) => {
-    setFormData({
-      ...formData,
+    setFormData((prev) => ({
+      ...prev,
       conditions: {
-        ...formData.conditions,
-        [condition]: !formData.conditions[condition]
+        ...prev.conditions,
+        [condition]: !prev.conditions[condition],
+      },
+    }))
+  }
+
+  const handleClose = () => {
+    if (isSubmitting) {
+      return
+    }
+
+    if (onClose) {
+      onClose(null)
+    }
+  }
+
+  const handleOpenMap = () => {
+    const coordinates = rescueRequestService.parseCoordinates(formData.location)
+    let query = ''
+
+    if (coordinates.latitude !== null && coordinates.longitude !== null) {
+      query = `${coordinates.latitude},${coordinates.longitude}`
+    } else {
+      const address = String(formData.address ?? '').trim()
+      if (address) {
+        query = address
       }
-    });
-  };
+    }
+
+    if (!query) {
+      query = '10.762622,106.660172'
+    }
+
+    window.open(`https://www.google.com/maps?q=${encodeURIComponent(query)}`, '_blank')
+  }
+
+  const handleSubmit = async (event) => {
+    event.preventDefault()
+    setErrorMessage('')
+    setSuccessMessage('')
+
+    if (!authService.isAuthenticated()) {
+      setErrorMessage('Bạn cần đăng nhập để gửi yêu cầu cứu hộ.')
+      window.setTimeout(() => {
+        navigate('/login')
+      }, 800)
+      return
+    }
+
+    const user = authService.getUserInfo()
+    const role = String(user?.role ?? '').toUpperCase()
+    if (role !== CITIZEN_ROLE) {
+      setErrorMessage('Chỉ tài khoản Công dân mới được gửi yêu cầu cứu hộ.')
+      return
+    }
+
+    const validation = rescueRequestService.validateCreatePayloadInput(formData)
+    if (!validation.valid) {
+      setErrorMessage(validation.message)
+      return
+    }
+
+    setIsSubmitting(true)
+
+    try {
+      const data = await rescueRequestService.createRescueRequest(formData)
+
+      if (!data?.success) {
+        setErrorMessage(data?.message || 'Không thể gửi yêu cầu cứu hộ. Vui lòng thử lại.')
+        return
+      }
+
+      setSuccessMessage(data?.message || 'Gửi yêu cầu cứu hộ thành công.')
+
+      const submittedReport = {
+        ...formData,
+        mode: 'create',
+        submittedDate: new Date().toISOString(),
+        requestId: data?.requestId ?? null,
+        status: 'Pending',
+      }
+
+      window.setTimeout(() => {
+        if (onClose) {
+          onClose(submittedReport)
+        }
+      }, 700)
+    } catch (error) {
+      const status = error?.response?.status
+      setErrorMessage(rescueRequestService.getCreateRequestErrorMessage(error))
+
+      if (status === 401) {
+        window.setTimeout(() => {
+          navigate('/login')
+        }, 900)
+      }
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   return (
     <div className="report-overlay">
       <div className="report-modal">
         <h2>Báo Cáo Cứu Hộ</h2>
-        
+
+        {errorMessage && <div className="report-feedback report-feedback-error">{errorMessage}</div>}
+        {successMessage && <div className="report-feedback report-feedback-success">{successMessage}</div>}
+
         <form onSubmit={handleSubmit}>
           <div className="form-row">
             <div className="form-left">
-              {/* Số điện thoại */}
               <div className="form-field">
                 <label>Số điện thoại</label>
                 <input
@@ -51,106 +155,62 @@ function ReportForm({ onClose }) {
                   inputMode="numeric"
                   pattern="[0-9]*"
                   value={formData.phone}
-                  onChange={(e) => {
-                    // Lọc bỏ tất cả ký tự không phải số
-                    const numericValue = e.target.value.replace(/[^0-9]/g, '');
-                    setFormData({...formData, phone: numericValue});
+                  onChange={(event) => {
+                    const numericValue = sanitizeNumberText(event.target.value)
+                    setFormData((prev) => ({ ...prev, phone: numericValue }))
                   }}
-                  onKeyDown={(e) => {
-                    // Cho phép: backspace, delete, tab, escape, enter, arrow keys, ctrl+a, ctrl+c, ctrl+v, ctrl+x
-                    const allowedKeys = ['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'];
-                    if (allowedKeys.includes(e.key) || (e.ctrlKey && ['a', 'c', 'v', 'x'].includes(e.key.toLowerCase()))) {
-                      return;
-                    }
-                    // Chặn tất cả ngoại trừ số
-                    if (!/^[0-9]$/.test(e.key)) {
-                      e.preventDefault();
-                    }
-                  }}
-                  onPaste={(e) => {
-                    e.preventDefault();
-                    // Lấy text từ clipboard và chỉ giữ lại số
-                    const pasteData = e.clipboardData.getData('text');
-                    const numericData = pasteData.replace(/[^0-9]/g, '');
-                    if (numericData) {
-                      const currentValue = formData.phone;
-                      const newValue = currentValue + numericData;
-                      setFormData({...formData, phone: newValue});
-                    }
-                  }}
+                  disabled={isSubmitting}
                   required
                 />
               </div>
 
-              {/* Vị trí */}
               <div className="form-field">
                 <label>Vị trí</label>
                 <div className="location-group">
                   <input
                     type="text"
                     value={formData.location}
-                    onChange={(e) => setFormData({...formData, location: e.target.value})}
+                    onChange={(event) => setFormData((prev) => ({ ...prev, location: event.target.value }))}
+                    placeholder="Ví dụ: 10.762622,106.660172"
+                    disabled={isSubmitting}
                     required
                   />
-                  <button type="button" className="location-btn">
-                    📍 Chọn vị trí trên bản đồ
+                  <button type="button" className="location-btn" disabled={isSubmitting} onClick={handleOpenMap}>
+                    Chọn vị trí
                   </button>
                 </div>
+                <small className="report-input-hint">Nhập theo cấu trúc sau: "vĩ độ", "kinh độ"</small>
               </div>
 
-              {/* Địa chỉ */}
               <div className="form-field">
                 <label>Địa chỉ</label>
                 <input
                   type="text"
                   value={formData.address}
-                  onChange={(e) => setFormData({...formData, address: e.target.value})}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, address: event.target.value }))}
+                  disabled={isSubmitting}
                   required
                 />
               </div>
 
-              {/* Số lượng đầu người */}
               <div className="form-field people-count-field">
-                <label>Số lượng đầu người</label>
+                <label>Số lượng người ảnh hưởng</label>
                 <input
                   type="text"
                   inputMode="numeric"
                   pattern="[0-9]*"
                   min="0"
                   value={formData.totalPeople}
-                  onChange={(e) => {
-                    // Lọc bỏ tất cả ký tự không phải số
-                    const numericValue = e.target.value.replace(/[^0-9]/g, '');
-                    setFormData({...formData, totalPeople: numericValue});
+                  onChange={(event) => {
+                    const numericValue = sanitizeNumberText(event.target.value)
+                    setFormData((prev) => ({ ...prev, totalPeople: numericValue }))
                   }}
-                  onKeyDown={(e) => {
-                    // Cho phép: backspace, delete, tab, escape, enter, arrow keys, ctrl+a, ctrl+c, ctrl+v, ctrl+x
-                    const allowedKeys = ['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'];
-                    if (allowedKeys.includes(e.key) || (e.ctrlKey && ['a', 'c', 'v', 'x'].includes(e.key.toLowerCase()))) {
-                      return;
-                    }
-                    // Chặn tất cả ngoại trừ số
-                    if (!/^[0-9]$/.test(e.key)) {
-                      e.preventDefault();
-                    }
-                  }}
-                  onPaste={(e) => {
-                    e.preventDefault();
-                    // Lấy text từ clipboard và chỉ giữ lại số
-                    const pasteData = e.clipboardData.getData('text');
-                    const numericData = pasteData.replace(/[^0-9]/g, '');
-                    if (numericData) {
-                      const currentValue = formData.totalPeople;
-                      const newValue = currentValue + numericData;
-                      setFormData({...formData, totalPeople: newValue});
-                    }
-                  }}
+                  disabled={isSubmitting}
                 />
               </div>
             </div>
 
             <div className="form-right">
-              {/* Tình trạng */}
               <div className="form-field">
                 <label>Tình trạng</label>
                 <div className="checkbox-group">
@@ -159,6 +219,7 @@ function ReportForm({ onClose }) {
                       type="checkbox"
                       checked={formData.conditions.needSupplies}
                       onChange={() => handleConditionChange('needSupplies')}
+                      disabled={isSubmitting}
                     />
                     Hết nhu yếu phẩm
                   </label>
@@ -167,6 +228,7 @@ function ReportForm({ onClose }) {
                       type="checkbox"
                       checked={formData.conditions.houseCollapsed}
                       onChange={() => handleConditionChange('houseCollapsed')}
+                      disabled={isSubmitting}
                     />
                     Sập nhà
                   </label>
@@ -175,6 +237,7 @@ function ReportForm({ onClose }) {
                       type="checkbox"
                       checked={formData.conditions.needMedical}
                       onChange={() => handleConditionChange('needMedical')}
+                      disabled={isSubmitting}
                     />
                     Cần điều trị y tế
                   </label>
@@ -183,41 +246,46 @@ function ReportForm({ onClose }) {
                       type="checkbox"
                       checked={formData.conditions.floodUnder1m}
                       onChange={() => handleConditionChange('floodUnder1m')}
+                      disabled={isSubmitting}
                     />
-                    Ngập {'<'} 1m
+                    Ngập dưới 1 mét
                   </label>
                   <label className="checkbox-label">
                     <input
                       type="checkbox"
                       checked={formData.conditions.floodOver1m}
                       onChange={() => handleConditionChange('floodOver1m')}
+                      disabled={isSubmitting}
                     />
-                    Ngập {'>'} 1m
+                    Ngập trên 1 mét
                   </label>
                 </div>
               </div>
 
-              {/* Ghi chú */}
               <div className="form-field">
-                <label>Ghi chú:</label>
+                <label>Ghi chú</label>
                 <textarea
                   rows="4"
                   value={formData.notes}
-                  onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, notes: event.target.value }))}
+                  disabled={isSubmitting}
                 />
               </div>
             </div>
           </div>
 
-          {/* Actions */}
           <div className="form-actions">
-            <button type="submit" className="submit-btn">Nộp báo cáo</button>
-            <button type="button" className="cancel-btn" onClick={() => onClose(null)}>Hủy</button>
+            <button type="submit" className="submit-btn" disabled={isSubmitting}>
+              {isSubmitting ? 'Đang gửi...' : 'Gửi báo cáo'}
+            </button>
+            <button type="button" className="cancel-btn" onClick={handleClose} disabled={isSubmitting}>
+              Hủy
+            </button>
           </div>
         </form>
       </div>
     </div>
-  );
+  )
 }
 
-export default ReportForm;
+export default ReportForm
