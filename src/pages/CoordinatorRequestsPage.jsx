@@ -365,6 +365,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
   const [assignTeamId, setAssignTeamId] = useState('')
   const [assignVehicleIds, setAssignVehicleIds] = useState([])
   const [assignEstimatedTime, setAssignEstimatedTime] = useState(90)
+  const [assignModalError, setAssignModalError] = useState('')
   const [assignmentByRequestId, setAssignmentByRequestId] = useState(() => loadAssignmentCache())
 
   const [errorMessage, setErrorMessage] = useState('')
@@ -615,6 +616,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
     setAssignTeamId('')
     setAssignVehicleIds([])
     setAssignEstimatedTime(90)
+    setAssignModalError('')
     setIsAssignModalOpen(true)
   }
 
@@ -624,6 +626,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
     setAssignTeamId('')
     setAssignVehicleIds([])
     setAssignEstimatedTime(90)
+    setAssignModalError('')
   }
 
   const handleToggleAssignVehicle = (vehicleId) => {
@@ -631,13 +634,14 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
     const alreadySelected = assignVehicleIds.includes(normalizedVehicleId)
 
     if (!alreadySelected && assignVehicleIds.length >= ASSIGN_MAX_VEHICLES) {
-      setErrorMessage('Chỉ có thể chọn tối đa 100 phương tiện cho mỗi yêu cầu.')
+      setAssignModalError('Chỉ có thể chọn tối đa 100 phương tiện cho mỗi yêu cầu.')
       return
     }
 
     setAssignVehicleIds((prev) =>
       alreadySelected ? prev.filter((item) => item !== normalizedVehicleId) : [...prev, normalizedVehicleId],
     )
+    setAssignModalError('')
   }
 
   const handleAssign = async () => {
@@ -648,21 +652,22 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
     }
 
     if (!assignTeamId) {
-      setErrorMessage('Vui long chon doi cuu ho truoc khi phan cong.')
+      setAssignModalError('Vui lòng chọn đội cứu hộ trước khi phân công.')
       return
     }
 
     if (assignVehicleIds.length === 0) {
-      setErrorMessage('Vui long chon it nhat mot phuong tien.')
+      setAssignModalError('Vui lòng chọn ít nhất một phương tiện.')
       return
     }
 
     const parsedEstimatedTime = Number(assignEstimatedTime)
     if (!Number.isFinite(parsedEstimatedTime) || parsedEstimatedTime <= 0) {
-      setErrorMessage('Vui long nhap thoi gian du kien hop le.')
+      setAssignModalError('Vui lòng nhập thời gian dự kiến hợp lệ.')
       return
     }
 
+    setAssignModalError('')
     setErrorMessage('')
     setSuccessMessage('')
     setActionLoading(requestId, 'assign', true)
@@ -751,7 +756,10 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
             <select
               id="assign-team"
               value={assignTeamId}
-              onChange={(event) => setAssignTeamId(event.target.value)}
+              onChange={(event) => {
+                setAssignTeamId(event.target.value)
+                setAssignModalError('')
+              }}
               disabled={isAssignModalSubmitting}
             >
               <option value="">Chọn đội</option>
@@ -771,7 +779,10 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
               min="1"
               step="1"
               value={assignEstimatedTime}
-              onChange={(event) => setAssignEstimatedTime(event.target.value)}
+              onChange={(event) => {
+                setAssignEstimatedTime(event.target.value)
+                setAssignModalError('')
+              }}
               disabled={isAssignModalSubmitting}
             />
           </div>
@@ -833,6 +844,8 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
             </tbody>
           </table>
         </div>
+
+        {assignModalError && <div className="assign-modal-feedback">{assignModalError}</div>}
 
         <div className="assign-modal-actions">
           <button type="button" className="assign-modal-cancel" onClick={closeAssignModal} disabled={isAssignModalSubmitting}>
@@ -1017,8 +1030,8 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
                     <td>{formatDateTime(request.created_at)}</td>
                     <td>{formatDateTime(request.updated_at)}</td>
                     <td>{request.updated_by ?? '-'}</td>
-                    <td>{assignedTeamText || (isVerified ? 'Chon trong popup' : '-')}</td>
-                    <td>{assignedVehicleText || (isVerified ? 'Chon nhieu xe trong popup' : '-')}</td>
+                    <td>{assignedTeamText || '-'}</td>
+                    <td>{assignedVehicleText || '-'}</td>
                     <td>
                       <button
                         type="button"

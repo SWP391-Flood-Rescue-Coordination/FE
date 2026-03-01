@@ -77,7 +77,7 @@ const coordinatorService = {
 
   getAvailableRescueTeams: async (status = '') => {
     const params = status ? { status: String(status).trim().toUpperCase() } : undefined
-    const response = await api.get(`${COORDINATOR_BASE}/available-teams`, { params })
+    const response = await api.get(`${COORDINATOR_BASE}/status-with-teams`, { params })
     return normalizeArray(unwrapApiData(response))
   },
 

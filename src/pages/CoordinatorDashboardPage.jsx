@@ -22,22 +22,6 @@ const REQUEST_STATUS_ITEMS = [
   { key: 'DUPLICATE', label: 'Trùng lặp', statusText: 'Duplicate', color: '#1e3a8a', textColor: '#ffffff' },
 ]
 
-const TEAM_IN_PROGRESS_STATUSES = new Set(['ACTIVE', 'IN_PROGRESS', 'BUSY', 'WORKING', 'ON_DUTY'])
-const TEAM_AVAILABLE_STATUSES = new Set(['AVAILABLE', 'READY', 'IDLE'])
-// const TEAM_UNDERSTAFFED_STATUSES = new Set(['UNDERSTAFFED', 'LACK_MEMBER', 'INSUFFICIENT_MEMBER'])
-
-const IN_USE_VEHICLE_STATUSES = new Set(['IN_USE', 'INUSE', 'BUSY', 'ASSIGNED', 'ACTIVE'])
-const MAINTENANCE_VEHICLE_STATUSES = new Set(['MAINTENANCE', 'IN_MAINTENANCE', 'REPAIR'])
-
-const MOCK_REQUESTS = [
-  { request_id: 1001, status: 'PENDING' },
-  { request_id: 1002, status: 'VERIFIED' },
-  { request_id: 1003, status: 'IN_PROGRESS' },
-  { request_id: 1004, status: 'COMPLETED' },
-  { request_id: 1005, status: 'CANCELLED' },
-  { request_id: 1006, status: 'DUPLICATE' },
-]
-
 const normalizeStatus = (value) =>
   String(value ?? '')
     .trim()
@@ -66,20 +50,6 @@ const buildRequestStatusSummary = (requestItems) => {
   return summary
 }
 
-const buildTeamSummary = (teamItems) => {
-  const total = teamItems.length
-  const inProgress = teamItems.filter((item) => TEAM_IN_PROGRESS_STATUSES.has(normalizeStatus(item.status))).length
-  const available = teamItems.filter((item) => TEAM_AVAILABLE_STATUSES.has(normalizeStatus(item.status))).length
-  return { total, inProgress, available }
-}
-
-const buildVehicleSummary = (vehicleItems) => {
-  const available = vehicleItems.filter((item) => normalizeStatus(item.status) === 'AVAILABLE').length
-  const inUse = vehicleItems.filter((item) => IN_USE_VEHICLE_STATUSES.has(normalizeStatus(item.status))).length
-  const maintenance = vehicleItems.filter((item) => MAINTENANCE_VEHICLE_STATUSES.has(normalizeStatus(item.status))).length
-  return { available, inUse, maintenance }
-}
-
 function CoordinatorDashboardPage() {
   const navigate = useNavigate()
 
@@ -94,52 +64,57 @@ function CoordinatorDashboardPage() {
     setIsLoading(true)
     setErrorMessage('')
 
-    const [requestsResult, teamsResult, vehiclesResult] = await Promise.allSettled([
+    const results = await Promise.allSettled([
       coordinatorService.getRescueRequests(''),
-      coordinatorService.getRescueTeams(),
-      coordinatorService.getVehicles(),
+      coordinatorService.getAvailableRescueTeams(),
+      coordinatorService.getAvailableRescueTeams('AVAILABLE'),
+      coordinatorService.getAvailableRescueTeams('BUSY'),
+      coordinatorService.getVehicles('Available'),
+      coordinatorService.getVehicles('InUse'),
+      coordinatorService.getVehicles('Maintenance'),
     ])
 
-    if (requestsResult.status === 'rejected') {
-      if (requestsResult.reason?.response?.status === 401) {
-        setIsLoading(false)
-        navigate('/login', { replace: true })
-        return
-      }
-
-      setRequestStatusSummary(buildRequestStatusSummary(MOCK_REQUESTS))
-      setErrorMessage('Không thể tải danh sách yêu cầu. Đang hiển thị tạm dữ liệu mẫu cho thanh trạng thái.')
-    } else {
-      setRequestStatusSummary(buildRequestStatusSummary(Array.isArray(requestsResult.value) ? requestsResult.value : []))
-      setErrorMessage('')
+    const hasUnauthorized = results.some(
+      (result) => result.status === 'rejected' && result.reason?.response?.status === 401,
+    )
+    if (hasUnauthorized) {
+      setIsLoading(false)
+      navigate('/login', { replace: true })
+      return
     }
 
-    let teamSource = []
-    if (teamsResult.status === 'fulfilled') {
-      teamSource = Array.isArray(teamsResult.value) ? teamsResult.value : []
-    } else {
-      try {
-        const fallbackTeams = await coordinatorService.getAvailableRescueTeams()
-        teamSource = Array.isArray(fallbackTeams) ? fallbackTeams : []
-      } catch {
-        teamSource = []
-      }
+    const toArray = (result) => (result.status === 'fulfilled' && Array.isArray(result.value) ? result.value : [])
+
+    const requests = toArray(results[0])
+    const allTeams = toArray(results[1])
+    const availableTeams = toArray(results[2])
+    const busyTeams = toArray(results[3])
+    const availableVehicles = toArray(results[4])
+    const inUseVehicles = toArray(results[5])
+    const maintenanceVehicles = toArray(results[6])
+
+    setRequestStatusSummary(buildRequestStatusSummary(requests))
+
+    const totalTeamCount = results[1].status === 'fulfilled' ? allTeams.length : availableTeams.length + busyTeams.length
+    setTeamSummary({
+      total: totalTeamCount,
+      inProgress: busyTeams.length,
+      available: availableTeams.length,
+    })
+
+    setVehicleSummary({
+      available: availableVehicles.length,
+      inUse: inUseVehicles.length,
+      maintenance: maintenanceVehicles.length,
+    })
+
+    const hasNonAuthError = results.some(
+      (result) => result.status === 'rejected' && result.reason?.response?.status !== 401,
+    )
+    if (hasNonAuthError) {
+      setErrorMessage('Một số số liệu chưa tải được. Vui lòng thử tải lại.')
     }
 
-    let vehicleSource = []
-    if (vehiclesResult.status === 'fulfilled') {
-      vehicleSource = Array.isArray(vehiclesResult.value) ? vehiclesResult.value : []
-    } else {
-      try {
-        const fallbackVehicles = await coordinatorService.getAvailableVehicles()
-        vehicleSource = Array.isArray(fallbackVehicles) ? fallbackVehicles : []
-      } catch {
-        vehicleSource = []
-      }
-    }
-
-    setTeamSummary(buildTeamSummary(teamSource))
-    setVehicleSummary(buildVehicleSummary(vehicleSource))
     setIsLoading(false)
   }, [navigate])
 

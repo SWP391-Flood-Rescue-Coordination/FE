@@ -497,6 +497,17 @@
   gap: 10px;
 }
 
+.assign-modal-feedback {
+  margin: 10px 16px 0;
+  border: 1px solid #fecdd3;
+  background: #ffe4eb;
+  color: #9f1239;
+  border-radius: 8px;
+  padding: 9px 10px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
 .assign-modal-cancel,
 .assign-modal-submit {
   border: none;
