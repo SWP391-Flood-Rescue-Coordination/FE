@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import coordinatorService from '../services/coordinatorService'
 import './CoordinatorRequestsPage.css'
@@ -108,6 +108,93 @@ const MOCK_REQUESTS = [
   },
 ]
 
+const ASSIGN_MAX_VEHICLES = 100
+const ASSIGNMENT_CACHE_KEY = 'coordinatorRequestAssignments'
+
+const normalizeIdText = (value) => {
+  if (value === null || value === undefined || value === '') {
+    return ''
+  }
+  return String(value).trim()
+}
+
+const normalizeVehicleIdList = (value) => {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => normalizeIdText(item))
+      .filter(Boolean)
+  }
+
+  if (typeof value === 'string') {
+    return value
+      .split(',')
+      .map((item) => normalizeIdText(item))
+      .filter(Boolean)
+  }
+
+  const singleValue = normalizeIdText(value)
+  return singleValue ? [singleValue] : []
+}
+
+const loadAssignmentCache = () => {
+  try {
+    const raw = localStorage.getItem(ASSIGNMENT_CACHE_KEY)
+    if (!raw) {
+      return {}
+    }
+    const parsed = JSON.parse(raw)
+    return parsed && typeof parsed === 'object' ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+const extractAssignmentFromRequest = (item) => {
+  const teamId = normalizeIdText(
+    item.assigned_team_id ?? item.assignedTeamId ?? item.team_id ?? item.teamId ?? item.rescue_team_id ?? item.rescueTeamId,
+  )
+  const teamName = String(item.assigned_team_name ?? item.assignedTeamName ?? item.team_name ?? item.teamName ?? '').trim()
+
+  const vehicleIdsFromRaw = normalizeVehicleIdList(
+    item.assigned_vehicle_ids ?? item.assignedVehicleIds ?? item.vehicle_ids ?? item.vehicleIds,
+  )
+
+  const vehicleIdsFromObjects = []
+  const vehicleLabelsFromObjects = []
+  const vehicleSource = Array.isArray(item.assignedVehicles)
+    ? item.assignedVehicles
+    : Array.isArray(item.vehicles)
+      ? item.vehicles
+      : []
+
+  vehicleSource.forEach((vehicle) => {
+    const vehicleId = normalizeIdText(vehicle?.vehicleId ?? vehicle?.vehicle_id ?? vehicle?.id)
+    if (vehicleId) {
+      vehicleIdsFromObjects.push(vehicleId)
+    }
+    const vehicleLabel = String(
+      vehicle?.vehicleName ?? vehicle?.vehicle_name ?? vehicle?.vehicleCode ?? vehicle?.vehicle_code ?? vehicle?.licensePlate ?? '',
+    ).trim()
+    if (vehicleLabel) {
+      vehicleLabelsFromObjects.push(vehicleLabel)
+    }
+  })
+
+  const vehicleIds = vehicleIdsFromRaw.length > 0 ? vehicleIdsFromRaw : vehicleIdsFromObjects
+  const vehicleLabels = vehicleLabelsFromObjects.length > 0 ? vehicleLabelsFromObjects : []
+
+  if (!teamId && !teamName && vehicleIds.length === 0 && vehicleLabels.length === 0) {
+    return null
+  }
+
+  return {
+    teamId,
+    teamName,
+    vehicleIds,
+    vehicleLabels,
+  }
+}
+
 const normalizeText = (value) =>
   String(value).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 
@@ -115,7 +202,10 @@ const getStatusText = (status) => {
   if (!status) {
     return '-'
   }
-  return String(status).toUpperCase()
+  return String(status)
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, '_')
 }
 
 const normalizeCancelledStatus = (status) => {
@@ -192,11 +282,12 @@ const normalizeRequest = (item) => {
   const priorityRaw =
     item.priority_name ?? item.priorityName ?? item.priority_level_name ?? item.priorityLevelName ?? item.priority ?? null
   const priorityInfo = getPriorityInfo(priorityLevelId, priorityRaw)
+  const assignment = extractAssignmentFromRequest(item)
 
   return {
     request_id: item.request_id ?? item.requestId ?? item.id ?? null,
     citizen_id: item.citizen_id ?? item.citizenId ?? null,
-    phone: item.phone ?? item.contact_phone ?? item.contactPhone ?? '',
+    phone: item.phone ?? item.citizenPhone ?? item.contact_phone ?? item.contactPhone ?? '',
     description: item.description ?? '',
     latitude: item.latitude ?? null,
     longitude: item.longitude ?? null,
@@ -208,6 +299,7 @@ const normalizeRequest = (item) => {
     created_at: item.created_at ?? item.createdAt ?? null,
     updated_at: item.updated_at ?? item.updatedAt ?? null,
     updated_by: item.updated_by ?? item.updatedBy ?? null,
+    assignment,
   }
 }
 
@@ -218,13 +310,22 @@ const normalizePriority = (item) => ({
 
 const normalizeTeam = (item) => ({
   id: item.rescue_team_id ?? item.rescueTeamId ?? item.team_id ?? item.teamId ?? item.id ?? null,
+  teamId: item.teamId ?? item.team_id ?? item.rescueTeamId ?? item.rescue_team_id ?? item.id ?? null,
   name: item.team_name ?? item.teamName ?? item.name ?? `Team ${item.id ?? ''}`.trim(),
   status: getStatusText(item.status),
+  createdAt: item.created_at ?? item.createdAt ?? null,
 })
 
 const normalizeVehicle = (item) => ({
   id: item.vehicle_id ?? item.vehicleId ?? item.id ?? null,
-  name: item.plate_number ?? item.plateNumber ?? item.vehicle_name ?? item.vehicleName ?? item.name ?? `Vehicle ${item.id ?? ''}`.trim(),
+  vehicleId: item.vehicleId ?? item.vehicle_id ?? item.id ?? null,
+  name: item.vehicle_name ?? item.vehicleName ?? item.vehicleName ?? item.name ?? '',
+  vehicleCode: item.vehicle_code ?? item.vehicleCode ?? '',
+  vehicleTypeName: item.vehicle_type_name ?? item.vehicleTypeName ?? '',
+  licensePlate: item.plate_number ?? item.licensePlate ?? item.plateNumber ?? '',
+  capacity: item.capacity ?? null,
+  currentLocation: item.current_location ?? item.currentLocation ?? '',
+  updatedAt: item.updated_at ?? item.updatedAt ?? null,
   status: getStatusText(item.status),
 })
 
@@ -259,8 +360,12 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
   const [verifyEditMap, setVerifyEditMap] = useState({})
 
   const [selectedPriorityByRequest, setSelectedPriorityByRequest] = useState({})
-  const [selectedTeamByRequest, setSelectedTeamByRequest] = useState({})
-  const [selectedVehicleByRequest, setSelectedVehicleByRequest] = useState({})
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false)
+  const [assignTargetRequest, setAssignTargetRequest] = useState(null)
+  const [assignTeamId, setAssignTeamId] = useState('')
+  const [assignVehicleIds, setAssignVehicleIds] = useState([])
+  const [assignEstimatedTime, setAssignEstimatedTime] = useState(90)
+  const [assignmentByRequestId, setAssignmentByRequestId] = useState(() => loadAssignmentCache())
 
   const [errorMessage, setErrorMessage] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
@@ -318,11 +423,17 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
     setErrorMessage('')
     try {
       const data = await coordinatorService.getRescueRequests(statusFilter)
-      const fallbackRequests = statusFilter
-        ? MOCK_REQUESTS.filter((item) => normalizeCancelledStatus(getStatusText(item.status)) === statusFilter)
-        : MOCK_REQUESTS
-      const sourceRequests = data.length > 0 ? data : fallbackRequests
-      setRequests(sourceRequests.map(normalizeRequest))
+      const normalizedRequests = data.map(normalizeRequest)
+      setRequests(normalizedRequests)
+      setAssignmentByRequestId((prev) => {
+        const next = { ...prev }
+        normalizedRequests.forEach((requestItem) => {
+          if (requestItem.request_id && requestItem.assignment) {
+            next[String(requestItem.request_id)] = requestItem.assignment
+          }
+        })
+        return next
+      })
       setVerifyEditMap({})
     } catch (error) {
       handleApiError(error, '', { silent: true })
@@ -338,34 +449,44 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
 
   const fetchOptionData = useCallback(async () => {
     setErrorMessage('')
-    try {
-      const [priorityData, teamData, vehicleData] = await Promise.all([
-        coordinatorService.getPriorityLevels(),
-        coordinatorService.getAvailableRescueTeams(),
-        coordinatorService.getAvailableVehicles(),
-      ])
+    const [priorityResult, teamResult, vehicleResult] = await Promise.allSettled([
+      coordinatorService.getPriorityLevels(),
+      coordinatorService.getAvailableRescueTeams(),
+      coordinatorService.getAvailableVehicles(),
+    ])
 
-      const prioritySource = priorityData.length > 0 ? priorityData : MOCK_PRIORITY_LEVELS
-      const teamSource = teamData.length > 0 ? teamData : MOCK_TEAMS
-      const vehicleSource = vehicleData.length > 0 ? vehicleData : MOCK_VEHICLES
-
+    if (priorityResult.status === 'fulfilled') {
+      const prioritySource =
+        Array.isArray(priorityResult.value) && priorityResult.value.length > 0 ? priorityResult.value : MOCK_PRIORITY_LEVELS
       setPriorityLevels(prioritySource.map(normalizePriority).filter((item) => item.id !== null))
+    } else {
+      handleApiError(priorityResult.reason, '', { silent: true })
+      setPriorityLevels(MOCK_PRIORITY_LEVELS.map(normalizePriority))
+    }
+
+    if (teamResult.status === 'fulfilled') {
+      const teamSource = Array.isArray(teamResult.value) ? teamResult.value : []
       setTeams(
         teamSource
           .map(normalizeTeam)
           .filter((item) => item.id !== null)
           .filter((item) => !item.status || item.status === 'AVAILABLE'),
       )
+    } else {
+      handleApiError(teamResult.reason, '', { silent: true })
+      setTeams(MOCK_TEAMS.map(normalizeTeam).filter((item) => item.status === 'AVAILABLE'))
+    }
+
+    if (vehicleResult.status === 'fulfilled') {
+      const vehicleSource = Array.isArray(vehicleResult.value) ? vehicleResult.value : []
       setVehicles(
         vehicleSource
           .map(normalizeVehicle)
           .filter((item) => item.id !== null)
           .filter((item) => !item.status || item.status === 'AVAILABLE'),
       )
-    } catch (error) {
-      handleApiError(error, '', { silent: true })
-      setPriorityLevels(MOCK_PRIORITY_LEVELS.map(normalizePriority))
-      setTeams(MOCK_TEAMS.map(normalizeTeam).filter((item) => item.status === 'AVAILABLE'))
+    } else {
+      handleApiError(vehicleResult.reason, '', { silent: true })
       setVehicles(MOCK_VEHICLES.map(normalizeVehicle).filter((item) => item.status === 'AVAILABLE'))
     }
   }, [handleApiError])
@@ -407,6 +528,14 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
     }
   }, [])
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(ASSIGNMENT_CACHE_KEY, JSON.stringify(assignmentByRequestId))
+    } catch {
+      // Ignore localStorage write errors
+    }
+  }, [assignmentByRequestId])
+
   const displayedRequests = useMemo(() => {
     const filtered = priorityFilter ? requests.filter((item) => item.priority_key === priorityFilter) : requests
 
@@ -421,20 +550,6 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
 
   const handlePriorityChange = (requestId, value) => {
     setSelectedPriorityByRequest((prev) => ({
-      ...prev,
-      [requestId]: value,
-    }))
-  }
-
-  const handleTeamChange = (requestId, value) => {
-    setSelectedTeamByRequest((prev) => ({
-      ...prev,
-      [requestId]: value,
-    }))
-  }
-
-  const handleVehicleChange = (requestId, value) => {
-    setSelectedVehicleByRequest((prev) => ({
       ...prev,
       [requestId]: value,
     }))
@@ -489,12 +604,62 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
     }
   }
 
-  const handleAssign = async (requestId) => {
-    const selectedTeam = selectedTeamByRequest[requestId]
-    const selectedVehicle = selectedVehicleByRequest[requestId]
+  const openAssignModal = (request) => {
+    if (!request?.request_id || request.status !== 'VERIFIED') {
+      return
+    }
 
-    if (!selectedTeam || !selectedVehicle) {
-      setErrorMessage('Vui lòng chọn đội cứu hộ và phương tiện trước khi phân công.')
+    setErrorMessage('')
+    setSuccessMessage('')
+    setAssignTargetRequest(request)
+    setAssignTeamId('')
+    setAssignVehicleIds([])
+    setAssignEstimatedTime(90)
+    setIsAssignModalOpen(true)
+  }
+
+  const closeAssignModal = () => {
+    setIsAssignModalOpen(false)
+    setAssignTargetRequest(null)
+    setAssignTeamId('')
+    setAssignVehicleIds([])
+    setAssignEstimatedTime(90)
+  }
+
+  const handleToggleAssignVehicle = (vehicleId) => {
+    const normalizedVehicleId = String(vehicleId)
+    const alreadySelected = assignVehicleIds.includes(normalizedVehicleId)
+
+    if (!alreadySelected && assignVehicleIds.length >= ASSIGN_MAX_VEHICLES) {
+      setErrorMessage('Chỉ có thể chọn tối đa 100 phương tiện cho mỗi yêu cầu.')
+      return
+    }
+
+    setAssignVehicleIds((prev) =>
+      alreadySelected ? prev.filter((item) => item !== normalizedVehicleId) : [...prev, normalizedVehicleId],
+    )
+  }
+
+  const handleAssign = async () => {
+    const requestId = assignTargetRequest?.request_id
+
+    if (!requestId) {
+      return
+    }
+
+    if (!assignTeamId) {
+      setErrorMessage('Vui long chon doi cuu ho truoc khi phan cong.')
+      return
+    }
+
+    if (assignVehicleIds.length === 0) {
+      setErrorMessage('Vui long chon it nhat mot phuong tien.')
+      return
+    }
+
+    const parsedEstimatedTime = Number(assignEstimatedTime)
+    if (!Number.isFinite(parsedEstimatedTime) || parsedEstimatedTime <= 0) {
+      setErrorMessage('Vui long nhap thoi gian du kien hop le.')
       return
     }
 
@@ -503,11 +668,38 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
     setActionLoading(requestId, 'assign', true)
 
     try {
-      await coordinatorService.assignRequest(requestId, selectedTeam, selectedVehicle)
-      setSuccessMessage(`Phân công yêu cầu #${requestId} thành công.`)
+      const assignResult = await coordinatorService.assignRequest(requestId, assignTeamId, assignVehicleIds, parsedEstimatedTime)
+      const selectedTeam = teams.find((team) => String(team.id) === String(assignTeamId))
+      const selectedVehicles = vehicles.filter((vehicle) => assignVehicleIds.includes(String(vehicle.id)))
+      const responseVehicleIds = normalizeVehicleIdList(assignResult?.assignedVehicleIds)
+      const finalVehicleIds = responseVehicleIds.length > 0 ? responseVehicleIds : normalizeVehicleIdList(assignVehicleIds)
+
+      const assignment = {
+        teamId: normalizeIdText(assignResult?.teamId ?? assignTeamId),
+        teamName: selectedTeam?.name || '',
+        vehicleIds: finalVehicleIds,
+        vehicleLabels:
+          selectedVehicles
+            .map((vehicle) => vehicle.name || vehicle.vehicleCode || vehicle.licensePlate || '')
+            .filter(Boolean) || [],
+      }
+
+      setAssignmentByRequestId((prev) => ({
+        ...prev,
+        [String(requestId)]: assignment,
+      }))
+
+      setRequests((prev) =>
+        prev.map((requestItem) =>
+          requestItem.request_id === requestId ? { ...requestItem, status: 'ASSIGNED', assignment } : requestItem,
+        ),
+      )
+
+      setSuccessMessage(`Phan cong yeu cau #${requestId} thanh cong.`)
+      closeAssignModal()
       await reloadAll()
     } catch (error) {
-      const result = handleApiError(error, 'Yêu cầu bị xung đột dữ liệu, vui lòng tải lại.')
+      const result = handleApiError(error, 'Phan cong that bai, vui long kiem tra lai request/team/xe kha dung.')
       if (result.shouldReload) {
         await reloadAll()
       }
@@ -517,6 +709,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
   }
 
   const handleSelectStatusFilter = (value) => {
+
     setStatusFilter(value)
     setIsStatusFilterOpen(false)
   }
@@ -537,6 +730,126 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
     setIsStatusFilterOpen(false)
     setIsPriorityFilterOpen(false)
   }
+
+  const assignModalRequestId = assignTargetRequest?.request_id ?? null
+  const isAssignModalSubmitting = assignModalRequestId ? isActionLoading(assignModalRequestId, 'assign') : false
+  const selectedAssignVehicleIdSet = new Set(assignVehicleIds)
+
+  const assignModal = isAssignModalOpen ? (
+    <div className="assign-modal-overlay" onClick={closeAssignModal}>
+      <div className="assign-modal" onClick={(event) => event.stopPropagation()}>
+        <div className="assign-modal-header">
+          <h3>Phân công yêu cầu #{assignTargetRequest?.request_id ?? '-'}</h3>
+          <button type="button" className="assign-modal-close" onClick={closeAssignModal} disabled={isAssignModalSubmitting}>
+            ×
+          </button>
+        </div>
+
+        <div className="assign-modal-top-grid">
+          <div className="assign-modal-field">
+            <label htmlFor="assign-team">Đội cứu hộ rảnh (chọn 1)</label>
+            <select
+              id="assign-team"
+              value={assignTeamId}
+              onChange={(event) => setAssignTeamId(event.target.value)}
+              disabled={isAssignModalSubmitting}
+            >
+              <option value="">Chọn đội</option>
+              {teams.map((team) => (
+                <option key={team.id} value={toNumberIfPossible(team.id)}>
+                  {team.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="assign-modal-field">
+            <label htmlFor="assign-estimated-time">Thời gian dự kiến (phút)</label>
+            <input
+              id="assign-estimated-time"
+              type="number"
+              min="1"
+              step="1"
+              value={assignEstimatedTime}
+              onChange={(event) => setAssignEstimatedTime(event.target.value)}
+              disabled={isAssignModalSubmitting}
+            />
+          </div>
+        </div>
+
+        <div className="assign-vehicle-toolbar">
+          <strong>Danh sách xe sẵn sàng (tối đa {ASSIGN_MAX_VEHICLES})</strong>
+          <span>
+            Đã chọn: {assignVehicleIds.length}/{ASSIGN_MAX_VEHICLES}
+          </span>
+        </div>
+
+        <div className="assign-vehicle-table-wrap">
+          <table className="assign-vehicle-table">
+            <thead>
+              <tr>
+                <th>Chọn</th>
+                <th>Mã xe</th>
+                <th>Tên xe</th>
+                <th>Biển số</th>
+                <th>Loại xe</th>
+                <th>Sức chứa</th>
+                <th>Trạng thái</th>
+              </tr>
+            </thead>
+            <tbody>
+              {vehicles.length === 0 && (
+                <tr>
+                  <td colSpan="7" className="assign-empty">
+                    Không có xe sẵn sàng để phân công.
+                  </td>
+                </tr>
+              )}
+
+              {vehicles.map((vehicle) => {
+                const vehicleIdText = String(vehicle.id)
+                const isChecked = selectedAssignVehicleIdSet.has(vehicleIdText)
+                const disableCheckbox = !isChecked && assignVehicleIds.length >= ASSIGN_MAX_VEHICLES
+
+                return (
+                  <tr key={vehicle.id}>
+                    <td>
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => handleToggleAssignVehicle(vehicle.id)}
+                        disabled={disableCheckbox || isAssignModalSubmitting}
+                      />
+                    </td>
+                    <td>{vehicle.vehicleCode || '-'}</td>
+                    <td>{vehicle.name || '-'}</td>
+                    <td>{vehicle.licensePlate || '-'}</td>
+                    <td>{vehicle.vehicleTypeName || '-'}</td>
+                    <td>{vehicle.capacity ?? '-'}</td>
+                    <td>{vehicle.status || '-'}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="assign-modal-actions">
+          <button type="button" className="assign-modal-cancel" onClick={closeAssignModal} disabled={isAssignModalSubmitting}>
+            Hủy
+          </button>
+          <button
+            type="button"
+            className="assign-modal-submit"
+            onClick={handleAssign}
+            disabled={isAssignModalSubmitting}
+          >
+            {isAssignModalSubmitting ? 'Đang phân công...' : 'Xác nhận phân công'}
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : null
 
   const requestTableSection = (
     <section className="coordinator-table-container">
@@ -650,18 +963,19 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
                 const isPending = request.status === 'PENDING'
                 const isVerified = request.status === 'VERIFIED'
                 const isVerifyEditing = Boolean(verifyEditMap[requestId])
-                const hasPriority = Boolean(
-                  (request.priority_level_id !== null &&
-                    request.priority_level_id !== undefined &&
-                    request.priority_level_id !== '') ||
-                    request.priority_key,
-                )
 
                 const verifyLoading = hasValidRequestId ? isActionLoading(requestId, 'verify') : false
                 const assignLoading = hasValidRequestId ? isActionLoading(requestId, 'assign') : false
                 const selectedPriority = selectedPriorityByRequest[requestId] || ''
-                const selectedTeam = selectedTeamByRequest[requestId] || ''
-                const selectedVehicle = selectedVehicleByRequest[requestId] || ''
+                const assignmentFromCache = assignmentByRequestId[String(requestId)]
+                const assignment = assignmentFromCache || request.assignment || null
+                const assignedTeamText = assignment?.teamName || (assignment?.teamId ? `Đội #${assignment.teamId}` : null)
+                const assignedVehicleText =
+                  assignment?.vehicleLabels?.length > 0
+                    ? assignment.vehicleLabels.join(', ')
+                    : assignment?.vehicleIds?.length > 0
+                      ? assignment.vehicleIds.map((id) => `Xe #${id}`).join(', ')
+                      : null
 
                 return (
                   <tr key={requestKey}>
@@ -703,34 +1017,8 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
                     <td>{formatDateTime(request.created_at)}</td>
                     <td>{formatDateTime(request.updated_at)}</td>
                     <td>{request.updated_by ?? '-'}</td>
-                    <td>
-                      <select
-                        value={selectedTeam}
-                        onChange={(event) => handleTeamChange(requestId, event.target.value)}
-                        disabled={!isVerified || !hasPriority || assignLoading || verifyLoading}
-                      >
-                        <option value="">Chọn đội AVAILABLE</option>
-                        {teams.map((team) => (
-                          <option key={team.id} value={toNumberIfPossible(team.id)}>
-                            {team.name}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td>
-                      <select
-                        value={selectedVehicle}
-                        onChange={(event) => handleVehicleChange(requestId, event.target.value)}
-                        disabled={!isVerified || !hasPriority || assignLoading || verifyLoading}
-                      >
-                        <option value="">Chọn xe AVAILABLE</option>
-                        {vehicles.map((vehicle) => (
-                          <option key={vehicle.id} value={toNumberIfPossible(vehicle.id)}>
-                            {vehicle.name}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
+                    <td>{assignedTeamText || (isVerified ? 'Chon trong popup' : '-')}</td>
+                    <td>{assignedVehicleText || (isVerified ? 'Chon nhieu xe trong popup' : '-')}</td>
                     <td>
                       <button
                         type="button"
@@ -751,13 +1039,10 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
                       <button
                         type="button"
                         className="action-button assign-button"
-                        onClick={() => handleAssign(requestId)}
+                        onClick={() => openAssignModal(request)}
                         disabled={
                           !hasValidRequestId ||
                           !isVerified ||
-                          !hasPriority ||
-                          !selectedTeam ||
-                          !selectedVehicle ||
                           assignLoading ||
                           verifyLoading
                         }
@@ -776,11 +1061,14 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
 
   if (embedded) {
     return (
-      <section className="coordinator-embedded-section">
-        {errorMessage && <div className="feedback-message feedback-error">{errorMessage}</div>}
-        {successMessage && <div className="feedback-message feedback-success">{successMessage}</div>}
-        {requestTableSection}
-      </section>
+      <>
+        <section className="coordinator-embedded-section">
+          {errorMessage && <div className="feedback-message feedback-error">{errorMessage}</div>}
+          {successMessage && <div className="feedback-message feedback-success">{successMessage}</div>}
+          {requestTableSection}
+        </section>
+        {assignModal}
+      </>
     )
   }
 
@@ -803,6 +1091,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
         {successMessage && <div className="feedback-message feedback-success">{successMessage}</div>}
         {requestTableSection}
       </div>
+      {assignModal}
     </div>
   )
 }

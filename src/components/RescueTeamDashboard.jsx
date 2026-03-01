@@ -181,9 +181,9 @@ function RescueTeamDashboard() {
   const handleCopyCoordinates = (lat, lng) => {
     const coordinates = `${lat}, ${lng}`;
     navigator.clipboard.writeText(coordinates).then(() => {
-      alert('Đã copy tọa độ: ' + coordinates);
+      alert('Đã sao chép tọa độ: ' + coordinates);
     }).catch(err => {
-      console.error('Không thể copy:', err);
+      console.error('Không thể sao chép:', err);
     });
   };
 
@@ -305,7 +305,7 @@ function RescueTeamDashboard() {
                 </div>
 
                 <div className="mission-card">
-                  <label>SDT</label>
+                  <label>Số điện thoại</label>
                   <div className="info-value">{selectedMission.phone}</div>
                 </div>
 
@@ -328,7 +328,7 @@ function RescueTeamDashboard() {
                       className="btn-copy-coordinates"
                       onClick={() => handleCopyCoordinates(selectedMission.location.lat, selectedMission.location.lng)}
                     >
-                      📋 Copy
+                      📋 Sao chép
                     </button>
                   </div>
                 </div>

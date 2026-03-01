@@ -43,7 +43,11 @@ const MOCK_VEHICLES = [
   { id: 4, status: 'AVAILABLE' },
 ]
 
-const normalizeStatus = (value) => String(value ?? '').trim().toUpperCase()
+const normalizeStatus = (value) =>
+  String(value ?? '')
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, '_')
 const normalizeCancelledStatus = (status) => (status === 'CANCELED' ? 'CANCELLED' : status)
 
 const createInitialStatusSummary = () =>
@@ -102,9 +106,9 @@ function CoordinatorDashboardPage() {
         coordinatorService.getVehicles(),
       ])
 
-      const requestSource = allRequests.length > 0 ? allRequests : MOCK_REQUESTS
-      const teamSource = allTeams.length > 0 ? allTeams : MOCK_TEAMS
-      const vehicleSource = allVehicles.length > 0 ? allVehicles : MOCK_VEHICLES
+      const requestSource = Array.isArray(allRequests) ? allRequests : []
+      const teamSource = Array.isArray(allTeams) ? allTeams : []
+      const vehicleSource = Array.isArray(allVehicles) ? allVehicles : []
 
       setRequestStatusSummary(buildRequestStatusSummary(requestSource))
       setTeamSummary(buildTeamSummary(teamSource))
