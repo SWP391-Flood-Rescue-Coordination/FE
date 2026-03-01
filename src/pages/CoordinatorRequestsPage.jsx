@@ -276,7 +276,6 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
 
   const [statusFilter, setStatusFilter] = useState(normalizedExternalStatus)
   const [priorityFilter, setPriorityFilter] = useState('')
-  const [isStatusFilterOpen, setIsStatusFilterOpen] = useState(false)
   const [isPriorityFilterOpen, setIsPriorityFilterOpen] = useState(false)
   const [isListLoading, setIsListLoading] = useState(false)
   const [actionLoadingMap, setActionLoadingMap] = useState({})
@@ -294,7 +293,6 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
   const [errorMessage, setErrorMessage] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
 
-  const statusFilterRef = useRef(null)
   const priorityFilterRef = useRef(null)
 
   const setActionLoading = (requestId, actionName, value) => {
@@ -432,12 +430,8 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
 
   useEffect(() => {
     const handleOutsideClick = (event) => {
-      const clickedStatusFilter = statusFilterRef.current?.contains(event.target)
       const clickedPriorityFilter = priorityFilterRef.current?.contains(event.target)
 
-      if (!clickedStatusFilter) {
-        setIsStatusFilterOpen(false)
-      }
       if (!clickedPriorityFilter) {
         setIsPriorityFilterOpen(false)
       }
@@ -633,12 +627,6 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
     }
   }
 
-  const handleSelectStatusFilter = (value) => {
-
-    setStatusFilter(value)
-    setIsStatusFilterOpen(false)
-  }
-
   const handleSelectPriorityFilter = (value) => {
     setPriorityFilter(value)
     setIsPriorityFilterOpen(false)
@@ -652,7 +640,6 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
   }
 
   const closeFilterMenus = () => {
-    setIsStatusFilterOpen(false)
     setIsPriorityFilterOpen(false)
   }
 
@@ -805,7 +792,6 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
                       className={`table-filter-button ${priorityFilter ? 'active' : ''}`}
                       onClick={() => {
                         setIsPriorityFilterOpen((prev) => !prev)
-                        setIsStatusFilterOpen(false)
                       }}
                       disabled={isListLoading}
                       aria-label="Lọc theo mức ưu tiên"
@@ -829,38 +815,8 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
                   </div>
                 </div>
               </th>
-              <th>
-                <div className="header-filter-wrap">
-                  <span>Trạng thái</span>
-                  <div className="table-filter-wrap" ref={statusFilterRef}>
-                    <button
-                      type="button"
-                      className={`table-filter-button ${statusFilter ? 'active' : ''}`}
-                      onClick={() => {
-                        setIsStatusFilterOpen((prev) => !prev)
-                        setIsPriorityFilterOpen(false)
-                      }}
-                      disabled={isListLoading}
-                      aria-label="Lọc theo trạng thái"
-                    >
-                      ▾
-                    </button>
-                    {isStatusFilterOpen && (
-                      <div className="table-filter-dropdown">
-                        {STATUS_OPTIONS.map((option) => (
-                          <button
-                            key={option.value || 'ALL'}
-                            type="button"
-                            className={`table-filter-option ${statusFilter === option.value ? 'selected' : ''}`}
-                            onClick={() => handleSelectStatusFilter(option.value)}
-                          >
-                            {option.label}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
+              <th className="status-header-cell">
+                Trạng thái
               </th>
               <th>Tạo lúc</th>
               <th>Cập nhật lúc</th>

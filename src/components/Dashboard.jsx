@@ -7,8 +7,12 @@ import RequestForm from './RequestForm';
 import ViewRequest from './ViewRequest';
 import './Dashboard.css';
 
-
-
+const MOCK_STATS = {
+  receivedRequests: 12,
+  rescuedPeople: 34,
+  supportedCount: 26,
+  safeCount: 18,
+};
 function Dashboard() {
   const navigate = useNavigate();
   const [showStats, setShowStats] = useState(true);
@@ -344,22 +348,22 @@ function Dashboard() {
         <div className="stats-bar">
           <div className="stat-item">
             <div className="stat-icon">🕐</div>
-            <div className="stat-number">--</div>
+            <div className="stat-number">{MOCK_STATS.receivedRequests}</div>
             <div className="stat-label">Các yêu cầu đã nhận</div>
           </div>
           <div className="stat-item">
             <div className="stat-icon">👥</div>
-            <div className="stat-number">--</div>
+            <div className="stat-number">{MOCK_STATS.rescuedPeople}</div>
             <div className="stat-label">Người được cứu trợ</div>
           </div>
           <div className="stat-item">
             <div className="stat-icon">❤️</div>
-            <div className="stat-number">--</div>
+            <div className="stat-number">{MOCK_STATS.supportedCount}</div>
             <div className="stat-label">Đã hỗ trợ</div>
           </div>
           <div className="stat-item">
             <div className="stat-icon">😊</div>
-            <div className="stat-number">--</div>
+            <div className="stat-number">{MOCK_STATS.safeCount}</div>
             <div className="stat-label">Báo an toàn</div>
           </div>
         </div>
@@ -435,4 +439,5 @@ function Dashboard() {
 }
 
 export default Dashboard;
+
 
