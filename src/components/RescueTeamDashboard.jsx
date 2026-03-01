@@ -1,35 +1,52 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './RescueTeamDashboard.css';
+import rescueTeamService from '../services/rescueTeamService';
+import authService from '../services/authService';
 
 function RescueTeamDashboard() {
   // State: danh sách nhiệm vụ và nhiệm vụ được chọn
-  // Ban đầu để empty array, khi coordinator giao nhiệm vụ sẽ cập nhật qua API
-  const [missions, setMissions] = useState([
-    // Mock data để test - trong thực tế sẽ fetch từ API
-    {
-      id: 1,
-      address: '123 Nguyễn Huệ, Quận 1, TP.HCM',
-      phone: '0123456789',
-      location: { lat: 10.7626, lng: 106.6825 },
-      description: 'Gia đình 5 người bị mắc kẹt, nước ngập cao 1.5m, có trẻ em và người già',
-      estimatedTime: '30 phút',
-      priority: 'Cao',
-      status: 'Chờ xử lý'
-    },
-    {
-      id: 2,
-      address: '456 Lê Lợi, Quận 3, TP.HCM',
-      phone: '0987654321',
-      location: { lat: 10.7769, lng: 106.7009 },
-      description: 'Người dân kêu cứu, nước đang dâng cao, cần hỗ trợ khẩn cấp',
-      estimatedTime: '45 phút',
-      priority: 'Trung bình',
-      status: 'Chờ xử lý'
-    }
-  ]);
-
+  const [missions, setMissions] = useState([]);
   const [selectedMission, setSelectedMission] = useState(null);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [updating, setUpdating] = useState(false);
+
+  // ============================================
+  // Fetch missions từ API
+  // ============================================
+  const fetchMissions = async () => {
+    try {
+      setError(null);
+      const data = await rescueTeamService.getMyOperations();
+      setMissions(data);
+    } catch (err) {
+      console.error('Error fetching missions:', err);
+      const errorMessage = rescueTeamService.getOperationsErrorMessage(err);
+      setError(errorMessage);
+      
+      // Nếu 401, redirect về login
+      if (err.response?.status === 401) {
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 2000);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load missions khi component mount
+  useEffect(() => {
+    fetchMissions();
+    
+    // Auto-refresh mỗi 30 giây (như Dashboard.jsx)
+    const interval = setInterval(() => {
+      fetchMissions();
+    }, 30000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   const handleSort = (key) => {
     let direction = 'asc';
@@ -92,12 +109,102 @@ function RescueTeamDashboard() {
     window.open(url, '_blank');
   };
 
-  const handleComplete = () => {
-    if (window.confirm('Xác nhận hoàn tất nhiệm vụ cứu hộ này?')) {
-      // Xóa nhiệm vụ khỏi danh sách
-      setMissions(missions.filter(m => m.id !== selectedMission.id));
-      setSelectedMission(null);
-      alert('Đã hoàn tất nhiệm vụ!');
+  const handleComplete = async () => {
+    // Logic thông minh: tự động xử lý dựa vào status hiện tại
+    const currentStatus = selectedMission.rawStatus;
+    
+    if (currentStatus === 'Assigned') {
+      // Nếu chưa bắt đầu, phải bắt đầu trước
+      if (!window.confirm('Nhiệm vụ chưa bắt đầu. Bắt đầu thực hiện ngay bây giờ?')) {
+        return;
+      }
+      
+      await handleStartMission();
+      return;
+    }
+    
+    if (currentStatus === 'In Progress') {
+      if (!window.confirm('Xác nhận hoàn tất nhiệm vụ cứu hộ này?')) {
+        return;
+      }
+
+      setUpdating(true);
+      try {
+        // Gọi API update status sang "Completed"
+        await rescueTeamService.updateOperationStatus(
+          selectedMission.operationId,
+          'Completed'
+        );
+        
+        // Xóa nhiệm vụ khỏi danh sách local (vì đã completed)
+        setMissions(missions.filter(m => m.id !== selectedMission.id));
+        setSelectedMission(null);
+        alert('Đã hoàn tất nhiệm vụ thành công!');
+        
+        // Refresh lại danh sách
+        await fetchMissions();
+      } catch (err) {
+        console.error('Error completing mission:', err);
+        const errorMessage = rescueTeamService.getUpdateStatusErrorMessage(err);
+        alert(`Lỗi: ${errorMessage}`);
+        
+        // Nếu 401, redirect về login
+        if (err.response?.status === 401) {
+          setTimeout(() => {
+            window.location.href = '/login';
+          }, 2000);
+        }
+      } finally {
+        setUpdating(false);
+      }
+    }
+  };
+
+  const handleStartMission = async () => {
+    if (!window.confirm('Xác nhận bắt đầu thực hiện nhiệm vụ này?')) {
+      return;
+    }
+
+    setUpdating(true);
+    try {
+      // Gọi API update status sang "In Progress"
+      await rescueTeamService.updateOperationStatus(
+        selectedMission.operationId,
+        'In Progress'
+      );
+      
+      // Update status trong state
+      const updatedMissions = missions.map(m => 
+        m.id === selectedMission.id 
+          ? { ...m, status: 'Đang thực hiện', rawStatus: 'In Progress' }
+          : m
+      );
+      setMissions(updatedMissions);
+      
+      // Update selected mission
+      setSelectedMission({
+        ...selectedMission,
+        status: 'Đang thực hiện',
+        rawStatus: 'In Progress'
+      });
+      
+      alert('Đã bắt đầu thực hiện nhiệm vụ!');
+      
+      // Refresh lại danh sách
+      await fetchMissions();
+    } catch (err) {
+      console.error('Error starting mission:', err);
+      const errorMessage = rescueTeamService.getUpdateStatusErrorMessage(err);
+      alert(`Lỗi: ${errorMessage}`);
+      
+      // Nếu 401, redirect về login
+      if (err.response?.status === 401) {
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 2000);
+      }
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -119,7 +226,33 @@ function RescueTeamDashboard() {
 
       {/* Content */}
       <div className="rescue-content">
-        {missions.length === 0 ? (
+        {loading ? (
+          /* Trạng thái: Đang tải */
+          <div className="no-mission-container">
+            <div className="no-mission-box">
+              <div className="no-mission-icon">⏳</div>
+              <h2>Đang tải danh sách nhiệm vụ...</h2>
+            </div>
+          </div>
+        ) : error ? (
+          /* Trạng thái: Có lỗi */
+          <div className="no-mission-container">
+            <div className="no-mission-box">
+              <div className="no-mission-icon">⚠️</div>
+              <h2>Không thể tải danh sách nhiệm vụ</h2>
+              <p>{error}</p>
+              <button 
+                className="btn-retry"
+                onClick={() => {
+                  setLoading(true);
+                  fetchMissions();
+                }}
+              >
+                Thử lại
+              </button>
+            </div>
+          </div>
+        ) : missions.length === 0 ? (
           /* Trạng thái: Không có nhiệm vụ */
           <div className="no-mission-container">
             <div className="no-mission-box">
@@ -248,11 +381,20 @@ function RescueTeamDashboard() {
                 </div>
 
                 <div className="action-buttons">
-                  <button className="btn-back" onClick={handleBackToList}>
+                  <button 
+                    className="btn-back" 
+                    onClick={handleBackToList}
+                    disabled={updating}
+                  >
                     Quay lại
                   </button>
-                  <button className="btn-complete" onClick={handleComplete}>
-                    Hoàn tất
+                  
+                  <button 
+                    className="btn-complete" 
+                    onClick={handleComplete}
+                    disabled={updating}
+                  >
+                    {updating ? 'Đang xử lý...' : 'Hoàn tất'}
                   </button>
                 </div>
               </div>
