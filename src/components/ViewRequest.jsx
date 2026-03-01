@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
-import './ViewReport.css';
+import React, { useState, useEffect } from 'react';
+import rescueRequestService from '../services/rescueRequestService';
+import './ViewRequest.css';
 
-function ViewReport({ onClose, reportData }) {
+function ViewRequest({ onClose, requestData, requestId }) {
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState(reportData || {
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [formData, setFormData] = useState(requestData || {
     phone: '',
     location: '',
     address: '',
@@ -16,15 +19,52 @@ function ViewReport({ onClose, reportData }) {
       floodOver1m: false
     },
     notes: '',
-    status: 'pending'
+    status: 'Pending'
   });
 
-  const isApproved = formData.status === 'approved';
+  // Load data from API if only requestId is provided
+  useEffect(() => {
+    const loadRequestData = async () => {
+      if (requestId && !requestData) {
+        setIsLoading(true);
+        setErrorMessage('');
+        try {
+          const data = await rescueRequestService.getRequestById(requestId);
+          const formattedData = rescueRequestService.toRequestFormData(data);
+          setFormData(formattedData);
+        } catch (error) {
+          setErrorMessage('Không thể tải dữ liệu yêu cầu. Vui lòng thử lại.');
+          console.error('Error loading request:', error);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadRequestData();
+  }, [requestId, requestData]);
+
+  const normalizedStatus = rescueRequestService.normalizeStatus(formData.status);
+  const isApproved = normalizedStatus === 'COMPLETED' || normalizedStatus === 'CANCELLED' || normalizedStatus === 'DUPLICATE';
+  const isTerminal = rescueRequestService.isTerminalStatus(formData.status);
+
+  const getStatusLabel = (status) => {
+    const statusMap = {
+      'PENDING': 'Đang chờ xử lý',
+      'VERIFIED': 'Đã xác minh',
+      'ASSIGNED': 'Đã phân công',
+      'IN_PROGRESS': 'Đang cứu hộ',
+      'COMPLETED': 'Đã hoàn thành',
+      'CANCELLED': 'Đã hủy',
+      'DUPLICATE': 'Trùng lặp'
+    };
+    return statusMap[rescueRequestService.normalizeStatus(status)] || status;
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (isEditing) {
-      console.log('Report updated:', formData);
+      console.log('Request updated:', formData);
       setIsEditing(false);
       // Có thể gọi API để cập nhật ở đây
     }
@@ -51,9 +91,27 @@ function ViewReport({ onClose, reportData }) {
   };
 
   return (
-    <div className="report-overlay">
-      <div className="report-modal">
-        <h2>Trạng Thái Báo Cáo Cứu Hộ</h2>
+    <div className="request-overlay">
+      <div className="request-modal">
+        <h2>Trạng Thái Yêu Cầu Cứu Hộ</h2>
+
+        {isLoading && (
+          <div className="request-feedback request-feedback-info">
+            Đang tải dữ liệu...
+          </div>
+        )}
+
+        {errorMessage && (
+          <div className="request-feedback request-feedback-error">
+            {errorMessage}
+          </div>
+        )}
+
+        {!isLoading && formData.status && (
+          <div className={`status-banner status-${normalizedStatus.toLowerCase()}`}>
+            <strong>Trạng thái:</strong> {getStatusLabel(formData.status)}
+          </div>
+        )}
         
         <form onSubmit={handleSubmit}>
           <div className="form-row">
@@ -186,13 +244,13 @@ function ViewReport({ onClose, reportData }) {
           <div className="form-actions">
             <button 
               type={isEditing ? "submit" : "button"}
-              className={`submit-btn ${isApproved ? 'disabled' : ''}`}
+              className={`submit-btn ${isTerminal || isLoading ? 'disabled' : ''}`}
               onClick={handleEditClick}
-              disabled={isApproved}
+              disabled={isTerminal || isLoading}
             >
               {isEditing ? 'Lưu thay đổi' : 'Chỉnh sửa'}
             </button>
-            <button type="button" className="cancel-btn" onClick={onClose}>
+            <button type="button" className="cancel-btn" onClick={onClose} disabled={isLoading}>
               Đóng
             </button>
           </div>
@@ -202,4 +260,4 @@ function ViewReport({ onClose, reportData }) {
   );
 }
 
-export default ViewReport;
+export default ViewRequest;

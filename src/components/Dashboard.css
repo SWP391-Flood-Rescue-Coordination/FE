@@ -87,7 +87,7 @@
   box-shadow: none;
 }
 
-.view-report-wrapper {
+.view-request-wrapper {
   position: relative;
   display: inline-block;
 }
@@ -385,7 +385,7 @@
 }
 
 .detail-item:hover {
-  background-color: #f9fafb;
+  background-color: #e5e7eb;
 }
 
 .detail-item:last-child {
@@ -403,10 +403,14 @@
 }
 
 .detail-status.pending {
-  color: #dc2626;
+  color: #ea580c;
 }
 
 .detail-status.approved {
+  color: #16a34a;
+}
+
+.detail-status.completed {
   color: #16a34a;
 }
 
