@@ -31,83 +31,6 @@ const STATUS_LABEL_MAP = {
   DUPLICATE: 'Trùng lặp',
 }
 
-const MOCK_PRIORITY_LEVELS = [
-  { id: 1, name: 'Thấp' },
-  { id: 2, name: 'Trung bình' },
-  { id: 3, name: 'Cao' },
-]
-
-const MOCK_TEAMS = [
-  { id: 1, team_name: 'Đội Cứu hộ Quận 1', status: 'AVAILABLE' },
-  { id: 2, team_name: 'Đội Cứu hộ Quận 3', status: 'AVAILABLE' },
-  { id: 3, team_name: 'Đội Cứu hộ Quận 7', status: 'ACTIVE' },
-]
-
-const MOCK_VEHICLES = [
-  { id: 1, plate_number: '51A-123.45', status: 'AVAILABLE' },
-  { id: 2, plate_number: '51B-222.22', status: 'IN_USE' },
-  { id: 3, plate_number: '51C-333.33', status: 'AVAILABLE' },
-]
-
-const MOCK_REQUESTS = [
-  {
-    request_id: 1001,
-    citizen_id: 501,
-    phone: '0901234567',
-    description: 'Nhà ngập sâu 1.2m, có người già cần hỗ trợ khẩn cấp.',
-    latitude: 10.7756,
-    longitude: 106.7019,
-    address: '12 Nguyễn Huệ, Quận 1, TP.HCM',
-    priority_level_id: null,
-    status: 'PENDING',
-    created_at: '2026-02-25T08:30:00Z',
-    updated_at: '2026-02-25T08:30:00Z',
-    updated_by: 'system',
-  },
-  {
-    request_id: 1002,
-    citizen_id: 502,
-    phone: '0912345678',
-    description: 'Khu vực nước dâng nhanh, cần di chuyển trẻ em đến nơi an toàn.',
-    latitude: 10.7812,
-    longitude: 106.6953,
-    address: '88 Võ Văn Tần, Quận 3, TP.HCM',
-    priority_level_id: 3,
-    status: 'VERIFIED',
-    created_at: '2026-02-25T07:45:00Z',
-    updated_at: '2026-02-25T08:20:00Z',
-    updated_by: 'coordinator_01',
-  },
-  {
-    request_id: 1003,
-    citizen_id: 503,
-    phone: '0922333444',
-    description: 'Khu dân cư bị cô lập, cần nước uống và thực phẩm.',
-    latitude: 10.7433,
-    longitude: 106.6831,
-    address: '45 Tôn Đản, Quận 4, TP.HCM',
-    priority_level_id: 2,
-    status: 'IN_PROGRESS',
-    created_at: '2026-02-24T15:20:00Z',
-    updated_at: '2026-02-25T06:10:00Z',
-    updated_by: 'team_lead_02',
-  },
-  {
-    request_id: 1004,
-    citizen_id: 504,
-    phone: '0934555666',
-    description: 'Đã được cứu hộ thành công, đang theo dõi sau cứu trợ.',
-    latitude: 10.7611,
-    longitude: 106.6705,
-    address: '101 Trần Hưng Đạo, Quận 5, TP.HCM',
-    priority_level_id: 3,
-    status: 'COMPLETED',
-    created_at: '2026-02-24T10:05:00Z',
-    updated_at: '2026-02-24T13:40:00Z',
-    updated_by: 'coordinator_02',
-  },
-]
-
 const ASSIGN_MAX_VEHICLES = 100
 const ASSIGNMENT_CACHE_KEY = 'coordinatorRequestAssignments'
 
@@ -438,11 +361,9 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
       setVerifyEditMap({})
     } catch (error) {
       handleApiError(error, '', { silent: true })
-      const fallbackRequests = statusFilter
-        ? MOCK_REQUESTS.filter((item) => normalizeCancelledStatus(getStatusText(item.status)) === statusFilter)
-        : MOCK_REQUESTS
-      setRequests(fallbackRequests.map(normalizeRequest))
+      setRequests([])
       setVerifyEditMap({})
+      setErrorMessage('Không thể tải danh sách yêu cầu cứu hộ.')
     } finally {
       setIsListLoading(false)
     }
@@ -457,12 +378,11 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
     ])
 
     if (priorityResult.status === 'fulfilled') {
-      const prioritySource =
-        Array.isArray(priorityResult.value) && priorityResult.value.length > 0 ? priorityResult.value : MOCK_PRIORITY_LEVELS
+      const prioritySource = Array.isArray(priorityResult.value) ? priorityResult.value : []
       setPriorityLevels(prioritySource.map(normalizePriority).filter((item) => item.id !== null))
     } else {
       handleApiError(priorityResult.reason, '', { silent: true })
-      setPriorityLevels(MOCK_PRIORITY_LEVELS.map(normalizePriority))
+      setPriorityLevels([])
     }
 
     if (teamResult.status === 'fulfilled') {
@@ -475,7 +395,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
       )
     } else {
       handleApiError(teamResult.reason, '', { silent: true })
-      setTeams(MOCK_TEAMS.map(normalizeTeam).filter((item) => item.status === 'AVAILABLE'))
+      setTeams([])
     }
 
     if (vehicleResult.status === 'fulfilled') {
@@ -488,7 +408,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
       )
     } else {
       handleApiError(vehicleResult.reason, '', { silent: true })
-      setVehicles(MOCK_VEHICLES.map(normalizeVehicle).filter((item) => item.status === 'AVAILABLE'))
+      setVehicles([])
     }
   }, [handleApiError])
 

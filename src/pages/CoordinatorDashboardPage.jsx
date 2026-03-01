@@ -179,8 +179,8 @@ function CoordinatorDashboardPage() {
   const topMetricCards = useMemo(
     () => [
       { key: 'team-total', icon: UserGroupIcon, label: 'Tổng số đội', value: teamSummary.total },
-      { key: 'team-progress', icon: ArrowPathIcon, label: 'Đội đang xử lý', value: teamSummary.inProgress },
-      { key: 'team-ready', icon: CheckCircleIcon, label: 'Đội rảnh', value: teamSummary.available },
+      { key: 'team-progress', icon: ArrowPathIcon, label: 'Đội trong nhiệm vụ', value: teamSummary.inProgress },
+      { key: 'team-ready', icon: CheckCircleIcon, label: 'Đội sẵn sàng', value: teamSummary.available },
       // { key: 'team-understaffed', icon: ExclamationTriangleIcon, label: 'Đội thiếu thành viên', value: teamSummary.understaffed },
     ],
     [teamSummary],
@@ -188,9 +188,9 @@ function CoordinatorDashboardPage() {
 
   const bottomMetricCards = useMemo(
     () => [
-      { key: 'vehicle-available', icon: TruckIcon, label: 'Xe sẵn sàng', value: vehicleSummary.available },
-      { key: 'vehicle-inuse', icon: ClockIcon, label: 'Xe đang sử dụng', value: vehicleSummary.inUse },
-      { key: 'vehicle-maintenance', icon: WrenchScrewdriverIcon, label: 'Xe bảo trì', value: vehicleSummary.maintenance },
+      { key: 'vehicle-available', icon: TruckIcon, label: 'Phương tiện khả dụng', value: vehicleSummary.available },
+      { key: 'vehicle-inuse', icon: ClockIcon, label: 'Phương tiện đang sử dụng', value: vehicleSummary.inUse },
+      { key: 'vehicle-maintenance', icon: WrenchScrewdriverIcon, label: 'Phương tiện bảo trì', value: vehicleSummary.maintenance },
     ],
     [vehicleSummary],
   )
@@ -230,7 +230,7 @@ function CoordinatorDashboardPage() {
 
         <section className="coordinator-status-panel">
           <div className="coordinator-status-title-row">
-            <h2>Thanh tiến độ trạng thái yêu cầu cứu hộ</h2>
+            <h2>Danh sách yêu cầu cứu hộ</h2>
             <strong>Tổng: {isLoading ? '...' : totalRequests}</strong>
           </div>
 
