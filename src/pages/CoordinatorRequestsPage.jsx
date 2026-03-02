@@ -21,6 +21,12 @@ const PRIORITY_OPTIONS = [
   { value: 'LOW', label: 'Thấp' },
 ]
 
+const DEFAULT_PRIORITY_LEVELS = [
+  { id: 3, label: 'Cao' },
+  { id: 2, label: 'Trung bình' },
+  { id: 1, label: 'Thấp' },
+]
+
 const STATUS_LABEL_MAP = {
   PENDING: 'Chờ tiếp nhận',
   VERIFIED: 'Đã xác minh',
@@ -226,9 +232,59 @@ const normalizeRequest = (item) => {
   }
 }
 
+const normalizePriorityLabel = (rawLabel, id) => {
+  const labelText = String(rawLabel ?? '').trim()
+  if (labelText) {
+    const normalized = normalizeText(labelText)
+    if (normalized.includes('high') || normalized.includes('cao')) {
+      return 'Cao'
+    }
+    if (normalized.includes('medium') || normalized.includes('trung')) {
+      return 'Trung bình'
+    }
+    if (normalized.includes('low') || normalized.includes('thap')) {
+      return 'Thấp'
+    }
+    return labelText
+  }
+
+  const numericId = Number(id)
+  if (!Number.isNaN(numericId)) {
+    if (numericId === 3) {
+      return 'Cao'
+    }
+    if (numericId === 2) {
+      return 'Trung bình'
+    }
+    if (numericId === 1) {
+      return 'Thấp'
+    }
+    return `Mức ${numericId}`
+  }
+
+  return '-'
+}
+
 const normalizePriority = (item) => ({
-  id: item.priority_level_id ?? item.priorityLevelId ?? item.id ?? item.value ?? null,
-  label: item.name ?? item.priority_name ?? item.priorityName ?? item.label ?? `Priority ${item.id ?? ''}`.trim(),
+  id:
+    item.priority_id ??
+    item.priorityId ??
+    item.priority_level_id ??
+    item.priorityLevelId ??
+    item.level_id ??
+    item.levelId ??
+    item.id ??
+    item.value ??
+    null,
+  label: normalizePriorityLabel(
+    item.level_name ??
+      item.levelName ??
+      item.name ??
+      item.priority_name ??
+      item.priorityName ??
+      item.label,
+    item.priority_id ?? item.priorityId ?? item.priority_level_id ?? item.priorityLevelId ?? item.id ?? item.value,
+  ),
 })
 
 const normalizeTeam = (item) => ({
@@ -377,10 +433,15 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
 
     if (priorityResult.status === 'fulfilled') {
       const prioritySource = Array.isArray(priorityResult.value) ? priorityResult.value : []
-      setPriorityLevels(prioritySource.map(normalizePriority).filter((item) => item.id !== null))
+      const normalizedPriorityLevels = prioritySource
+        .map(normalizePriority)
+        .filter((item) => item.id !== null)
+        .sort((a, b) => Number(b.id) - Number(a.id))
+
+      setPriorityLevels(normalizedPriorityLevels.length > 0 ? normalizedPriorityLevels : DEFAULT_PRIORITY_LEVELS)
     } else {
       handleApiError(priorityResult.reason, '', { silent: true })
-      setPriorityLevels([])
+      setPriorityLevels(DEFAULT_PRIORITY_LEVELS)
     }
 
     if (teamResult.status === 'fulfilled') {
