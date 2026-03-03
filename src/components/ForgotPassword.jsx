@@ -1,59 +1,89 @@
 import React, { useState } from 'react';
-import './Login.css';
+import './ForgotPassword.css';
 
 const ForgotPassword = ({ onClose, onShowLogin }) => {
-  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+
+  const handleSendOTP = () => {
+    console.log('Sending OTP to:', phone);
+    // Xử lý logic gửi OTP
+    setOtpSent(true);
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log('Password reset request for:', email);
-    // Xử lý logic quên mật khẩu ở đây
+    console.log('Reset password with OTP:', { phone, otp });
+    // Xử lý logic xác thực OTP và reset mật khẩu
+  };
+
+  const handleLoginClick = (e) => {
+    e.preventDefault();
+    if (onShowLogin) {
+      onShowLogin();
+    }
   };
 
   return (
-    <div className="login-container">
-      <div className="login-header">
-        <h1>Hệ Thống Quản Lí Cứu Hộ Cứu Trợ Lũ Lụt</h1>
+    <div className="forgot-password-container">
+      <div className="forgot-password-header">
         {onClose && (
           <button className="close-button" onClick={onClose}>
-            Back
+            <span className="arrow-icon">←</span>
+            Về trang chủ
           </button>
         )}
       </div>
       
-      <div className="login-box">
+      <div className="forgot-password-box">
         <h2>Quên Mật Khẩu</h2>
-        <p className="login-subtitle">
-          Nhập email của bạn để nhận liên kết đặt lại mật khẩu
+        <p className="forgot-password-subtitle">
+          Nhập đúng số điện thoại để lấy mã OTP
         </p>
         
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label htmlFor="email">Email</label>
+            <label htmlFor="phone">Số điện thoại</label>
             <input
-              type="email"
-              id="email"
-              placeholder="Nhập email của bạn"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              type="tel"
+              id="phone"
+              placeholder="Nhập số điện thoại của bạn"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
               required
             />
           </div>
           
-          <button type="submit" className="login-button">
-            Gửi yêu cầu
+          <div className="form-group">
+            <label htmlFor="otp">Mã OTP</label>
+            <div className="otp-input-group">
+              <input
+                type="text"
+                id="otp"
+                placeholder="Nhập OTP nhận từ tin nhắn"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value)}
+                required
+              />
+              <button 
+                type="button" 
+                className="send-otp-button"
+                onClick={handleSendOTP}
+              >
+                {otpSent ? 'Gửi lại OTP' : 'Nhận mã OTP'}
+              </button>
+            </div>
+          </div>
+          
+          <button type="submit" className="forgot-password-button">
+            Đăng nhập
           </button>
         </form>
         
-        <div className="login-footer">
-          <p>Nhớ mật khẩu?</p>
+        <div className="forgot-password-footer">
+          <p>Bạn đã có tài khoản? <a href="#" className="login-link" onClick={handleLoginClick}>Đăng nhập tại đây</a></p>
         </div>
-        
-        {onShowLogin && (
-          <button className="register-button" onClick={onShowLogin}>
-            Đăng nhập
-          </button>
-        )}
       </div>
     </div>
   );

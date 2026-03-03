@@ -1,59 +1,189 @@
-import React, { useState } from 'react';
-import Login from './Login';
-import ForgotPassword from './ForgotPassword';
-import Register from './Register';
-import ReportForm from './ReportForm';
-import ViewReport from './ViewReport';
+import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeftOnRectangleIcon, ArrowRightOnRectangleIcon, UserCircleIcon } from '@heroicons/react/24/outline';
+import authService from '../services/authService';
+import rescueRequestService from '../services/rescueRequestService';
+import RequestForm from './RequestForm';
+import ViewRequest from './ViewRequest';
 import './Dashboard.css';
 
 
 
 function Dashboard() {
-  const [showLogin, setShowLogin] = useState(false);
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [showRegister, setShowRegister] = useState(false);
+  const navigate = useNavigate();
   const [showStats, setShowStats] = useState(true);
-  const [showReport, setShowReport] = useState(false);
-  const [showViewReport, setShowViewReport] = useState(false);
-  const [reportHistory, setReportHistory] = useState([]);
-  const [selectedReport, setSelectedReport] = useState(null);
+  const [showRequestForm, setShowRequestForm] = useState(false);
+  const [showViewRequest, setShowViewRequest] = useState(false);
+  const [requestHistory, setRequestHistory] = useState([]);
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [selectedRequestId, setSelectedRequestId] = useState(null);
   const [showLevelDropdown, setShowLevelDropdown] = useState(false);
   const [selectedLevel, setSelectedLevel] = useState('Mức 1 - Mức 5');
   const [showStatusDetail, setShowStatusDetail] = useState(false);
+  const [isPreparingRequestForm, setIsPreparingRequestForm] = useState(false);
+  const [hasActiveRequest, setHasActiveRequest] = useState(false);
+  const [currentUser, setCurrentUser] = useState(() => authService.getUserInfo());
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const userMenuRef = useRef(null);
 
-  if (showLogin) {
-    return <Login 
-      onClose={() => setShowLogin(false)} 
-      onShowForgotPassword={() => {
-        setShowLogin(false);
-        setShowForgotPassword(true);
-      }}
-      onShowRegister={() => {
-        setShowLogin(false);
-        setShowRegister(true);
-      }}
-    />;
-  }
+  const isAuthenticated = authService.isAuthenticated() && Boolean(currentUser);
+  const roleKey = String(currentUser?.role ?? '').toUpperCase();
+  const roleLabelMap = {
+    CITIZEN: 'Công dân',
+    COORDINATOR: 'Điều phối viên',
+    RESCUE_COORDINATOR: 'Điều phối viên',
+    RESCUE_TEAM: 'Đội cứu hộ',
+    MANAGER: 'Quản lý',
+    ADMIN: 'Quản trị viên',
+  };
+  const roleLabel = roleLabelMap[roleKey] || currentUser?.role || '-';
 
-  if (showForgotPassword) {
-    return <ForgotPassword 
-      onClose={() => setShowForgotPassword(false)} 
-      onShowLogin={() => {
-        setShowForgotPassword(false);
-        setShowLogin(true);
-      }}
-    />;
-  }
+  // Load request history from backend
+  useEffect(() => {
+    const loadRequestHistory = async () => {
+      const isCitizen = isAuthenticated && roleKey === 'CITIZEN';
+      if (!isCitizen) {
+        setRequestHistory([]);
+        return;
+      }
 
-  if (showRegister) {
-    return <Register 
-      onClose={() => setShowRegister(false)} 
-      onShowLogin={() => {
-        setShowRegister(false);
-        setShowLogin(true);
-      }}
-    />;
-  }
+      setIsLoadingHistory(true);
+      try {
+        const requests = await rescueRequestService.getMyRequests();
+        // Convert to request format with submittedDate
+        const history = requests.map(req => ({
+          ...rescueRequestService.toRequestFormData(req),
+          submittedDate: req.createdAt || new Date().toISOString(),
+          requestId: req.requestId,
+          status: req.status || 'Pending'
+        }));
+        setRequestHistory(history);
+      } catch (error) {
+        console.error('Error loading request history:', error);
+        setRequestHistory([]);
+      } finally {
+        setIsLoadingHistory(false);
+      }
+    };
+
+    loadRequestHistory();
+  }, [isAuthenticated, roleKey]);
+
+  useEffect(() => {
+    const handleOutsideClick = (event) => {
+      if (!userMenuRef.current?.contains(event.target)) {
+        setShowUserMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, []);
+
+  const handleToggleUserMenu = () => {
+    setShowUserMenu((prev) => !prev);
+  };
+
+  const handleLogout = () => {
+    authService.logout();
+    setCurrentUser(null);
+    setShowUserMenu(false);
+    navigate('/login');
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+    let intervalId = null;
+
+    const syncActiveRequestStatus = async () => {
+      const isCitizen = isAuthenticated && roleKey === 'CITIZEN';
+      if (!isCitizen) {
+        if (isMounted) {
+          setHasActiveRequest(false);
+          setIsPreparingReportForm(false);
+        }
+        return;
+      }
+
+      if (isMounted) {
+        setIsPreparingRequestForm(true);
+      }
+
+      try {
+        const myRequests = await rescueRequestService.getMyRequests();
+        const hasOpenRequest = myRequests.some((item) => !rescueRequestService.isTerminalStatus(item?.status));
+
+        if (isMounted) {
+          setHasActiveRequest(hasOpenRequest);
+        }
+      } catch {
+        if (isMounted) {
+          setHasActiveRequest(false);
+        }
+      } finally {
+        if (isMounted) {
+          setIsPreparingRequestForm(false);
+        }
+      }
+    };
+
+    syncActiveRequestStatus();
+
+    if (isAuthenticated && roleKey === 'CITIZEN') {
+      intervalId = window.setInterval(syncActiveRequestStatus, 30000);
+    }
+
+    return () => {
+      isMounted = false;
+      if (intervalId) {
+        window.clearInterval(intervalId);
+      }
+    };
+  }, [isAuthenticated, roleKey]);
+
+  const handleOpenRequestForm = () => {
+    if (hasActiveRequest || isPreparingRequestForm) {
+      return;
+    }
+    setShowRequestForm(true);
+  };
+
+  const handleCloseRequestForm = async (requestData) => {
+    setShowRequestForm(false);
+    
+    if (requestData) {
+      // Reload request history from backend after creating new request
+      try {
+        const requests = await rescueRequestService.getMyRequests();
+        const history = requests.map(req => ({
+          ...rescueRequestService.toRequestFormData(req),
+          submittedDate: req.createdAt || new Date().toISOString(),
+          requestId: req.requestId,
+          status: req.status || 'Pending'
+        }));
+        setRequestHistory(history);
+
+        // Check if there's any active request
+        const hasOpenRequest = requests.some((item) => !rescueRequestService.isTerminalStatus(item?.status));
+        setHasActiveRequest(hasOpenRequest);
+      } catch (error) {
+        console.error('Error reloading request history:', error);
+        // Fallback: add the new request to existing history
+        const newRequest = {
+          ...requestData,
+          submittedDate: requestData.submittedDate || new Date().toISOString(),
+        };
+        setRequestHistory((prev) => [newRequest, ...prev]);
+        
+        if (!rescueRequestService.isTerminalStatus(requestData?.status)) {
+          setHasActiveRequest(true);
+        }
+      }
+    }
+  };
 
   return (
     <div className="dashboard">
@@ -61,45 +191,83 @@ function Dashboard() {
       <header className="dashboard-header">
         <h1>Hệ Thống Quản Lí Cứu Hộ Cứu Trợ Lũ Lụt</h1>
         <div className="header-buttons">
-          <button className="btn-primary" onClick={() => setShowReport(true)}>
-            📄  Tạo báo cáo
+          <button className="btn-primary" onClick={handleOpenRequestForm} disabled={isPreparingRequestForm || hasActiveRequest}>
+            {isPreparingRequestForm ? 'Dang tai...' : hasActiveRequest ? 'Đang chờ xử lý' : 'Tạo yêu cầu'}
           </button>
-          <div className="view-report-wrapper">
+          <div className="view-request-wrapper">
             <button 
               className="btn-secondary" 
               onClick={() => setShowStatusDetail(true)}
             >
-              Xem báo cáo
+              Xem yêu cầu
             </button>
-            {reportHistory.length > 0 && (
+            {requestHistory.length > 0 && (
               <div className="status-popup">
-                <div className={`status-icon ${reportHistory[0].status === 'approved' ? 'approved' : 'pending'}`}></div>
-                <span className="status-title">{reportHistory[0].status === 'approved' ? 'Đã duyệt' : 'Đang chờ duyệt'}</span>
+                <div className={`status-icon ${requestHistory[0].status === 'approved' ? 'approved' : 'pending'}`}></div>
+                <span className="status-title">{requestHistory[0].status === 'approved' ? 'Đã duyệt' : 'Đang chờ duyệt'}</span>
               </div>
             )}
           </div>
-          <button className="btn-login" onClick={() => setShowLogin(true)}>Đăng nhập</button>
+          {isAuthenticated ? (
+            <div className="auth-user-group" ref={userMenuRef}>
+              <button
+                type="button"
+                className="icon-circle-button user-icon-button"
+                onClick={handleToggleUserMenu}
+                aria-label="Thông tin người dùng"
+              >
+                <UserCircleIcon className="header-icon" />
+              </button>
+              <button
+                type="button"
+                className="icon-circle-button logout-icon-button"
+                onClick={handleLogout}
+                aria-label="Đăng xuất"
+              >
+                <ArrowLeftOnRectangleIcon className="header-icon" />
+              </button>
+
+              {showUserMenu && (
+                <div className="user-menu-card">
+                  <h3>Thông tin tài khoản</h3>
+                  <div className="user-info-row">
+                    <span>Tên tài khoản</span>
+                    <strong>{currentUser?.username || '-'}</strong>
+                  </div>
+                  <div className="user-info-row">
+                    <span>Họ Tên</span>
+                    <strong>{currentUser?.fullName || '-'}</strong>
+                  </div>
+                  <div className="user-info-row">
+                    <span>Email</span>
+                    <strong>{currentUser?.email || '-'}</strong>
+                  </div>
+                  <div className="user-info-row">
+                    <span>Vai trò</span>
+                    <strong>{roleLabel}</strong>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <button className="btn-login" onClick={() => navigate('/login')}>
+              <ArrowRightOnRectangleIcon className="header-icon" />
+              Đăng nhập
+            </button>
+          )}
         </div>
       </header>
 
-      {/* Report Form Popup */}
-      {showReport && <ReportForm onClose={(reportData) => {
-        if (reportData) {
-          const newReport = {
-            ...reportData,
-            submittedDate: new Date().toISOString()
-          };
-          setReportHistory([newReport, ...reportHistory]);
-        }
-        setShowReport(false);
-      }} />}
+      {/* Request Form Popup */}
+      {showRequestForm && <RequestForm onClose={handleCloseRequestForm} />}
 
-      {/* View Report Popup */}
-      {showViewReport && selectedReport && <ViewReport 
-        reportData={selectedReport} 
+      {/* View Request Popup */}
+      {showViewRequest && selectedRequestId && <ViewRequest 
+        requestId={selectedRequestId} 
         onClose={() => {
-          setShowViewReport(false);
+          setShowViewRequest(false);
           setShowStatusDetail(false);
+          setSelectedRequestId(null);
         }} 
       />}
 
@@ -108,33 +276,49 @@ function Dashboard() {
         <div className="detail-overlay" onClick={() => setShowStatusDetail(false)}>
           <div className="detail-popup" onClick={(e) => e.stopPropagation()}>
             <div className="detail-header">
-              <h3>Lịch sử báo cáo</h3>
+              <h3>Lịch sử yêu cầu</h3>
               <button className="close-btn" onClick={() => setShowStatusDetail(false)}>×</button>
             </div>
             <div className="detail-list">
               <div className="detail-list-header">
-                <span className="detail-col-date">Ngày sửa đổi</span>
+                <span className="detail-col-date">Thời gian gửi</span>
                 <span className="detail-col-status">Trạng thái</span>
               </div>
-              {reportHistory.length === 0 ? (
+              {isLoadingHistory ? (
                 <div className="empty-message">
-                  Chưa có đơn nào được gửi
+                  Đang tải...
+                </div>
+              ) : requestHistory.length === 0 ? (
+                <div className="empty-message">
+                  Chưa có yêu cầu nào được gửi
                 </div>
               ) : (
-                reportHistory.map((report, index) => {
-                  const reportDate = new Date(report.submittedDate);
+                requestHistory.map((request, index) => {
+                  const requestDate = new Date(request.submittedDate);
+                  const statusNormalized = rescueRequestService.normalizeStatus(request.status);
+                  const statusClass = rescueRequestService.isTerminalStatus(request.status) ? 'completed' : 'pending';
+                  const statusLabel = {
+                    'PENDING': 'Đang chờ xử lý',
+                    'VERIFIED': 'Đã xác minh',
+                    'ASSIGNED': 'Đã phân công',
+                    'IN_PROGRESS': 'Đang cứu hộ',
+                    'COMPLETED': 'Đã hoàn thành',
+                    'CANCELLED': 'Đã hủy',
+                    'DUPLICATE': 'Trùng lặp'
+                  }[statusNormalized] || request.status;
+                  
                   return (
                     <div 
-                      key={index} 
+                      key={request.requestId || index} 
                       className="detail-item" 
                       onClick={() => {
-                        setSelectedReport(report);
+                        setSelectedRequestId(request.requestId);
                         setShowStatusDetail(false);
-                        setShowViewReport(true);
+                        setShowViewRequest(true);
                       }}
                     >
                       <span className="detail-date">
-                        {reportDate.toLocaleString('vi-VN', {
+                        {requestDate.toLocaleString('vi-VN', {
                           day: '2-digit', 
                           month: '2-digit', 
                           year: 'numeric', 
@@ -143,8 +327,8 @@ function Dashboard() {
                           hour12: false
                         })} CH
                       </span>
-                      <span className={`detail-status ${report.status === 'approved' ? 'approved' : 'pending'}`}>
-                        {report.status === 'approved' ? 'Đã duyệt' : 'Đang chờ duyệt'}
+                      <span className={`detail-status ${statusClass}`}>
+                        {statusLabel}
                       </span>
                     </div>
                   );
@@ -166,7 +350,7 @@ function Dashboard() {
           <div className="stat-item">
             <div className="stat-icon">👥</div>
             <div className="stat-number">--</div>
-            <div className="stat-label">Được cứu trợ</div>
+            <div className="stat-label">Người được cứu trợ</div>
           </div>
           <div className="stat-item">
             <div className="stat-icon">❤️</div>
@@ -243,7 +427,7 @@ function Dashboard() {
       {/* Bottom Navigation */}
       <nav className="bottom-nav">
         <button className="nav-item">Thông Tin</button>
-        <button className="nav-item">Hướng Dẫn</button>
+        <button className="nav-item">Khảo Sát</button>
         <button className="nav-item">Liên Hệ</button>
       </nav>
     </div>
@@ -251,3 +435,4 @@ function Dashboard() {
 }
 
 export default Dashboard;
+
