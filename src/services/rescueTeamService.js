@@ -22,8 +22,9 @@ const normalizeStatus = (status) => {
  */
 const mapStatusDisplay = (status) => {
   const statusMap = {
-    'Assigned': 'Chờ xử lý',
-    'In Progress': 'Đang thực hiện',
+    'Assigned': 'Đang thực hiện',
+    // 'In Progress': 'Đang thực hiện',
+    'Confirmed': 'Đã xác nhận',
     'Completed': 'Hoàn thành'
   }
   return statusMap[status] || status

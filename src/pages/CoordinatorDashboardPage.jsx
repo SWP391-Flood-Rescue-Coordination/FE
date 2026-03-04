@@ -16,10 +16,10 @@ import './CoordinatorDashboardPage.css'
 const REQUEST_STATUS_ITEMS = [
   { key: 'PENDING', label: 'Chờ tiếp nhận', statusText: 'Pending', color: '#dc2626', textColor: '#ffffff' },
   { key: 'VERIFIED', label: 'Đã xác minh', statusText: 'Verified', color: '#ef4444', textColor: '#ffffff' },
-  { key: 'ASSIGNED', label: 'Đang xử lý', statusText: 'In Progress', color: '#fca5a5', textColor: '#111827' },
+  { key: 'ASSIGNED', label: 'Đang xử lý', statusText: 'Assigned', color: '#fca5a5', textColor: '#111827' },
   { key: 'COMPLETED', label: 'Hoàn tất', statusText: 'Completed', color: '#ffffff', textColor: '#111827' },
   { key: 'CANCELLED', label: 'Đã hủy', statusText: 'Cancelled', color: '#93c5fd', textColor: '#0f172a' },
-  { key: 'DUPLICATE', label: 'Trùng lặp', statusText: 'Duplicate', color: '#1e3a8a', textColor: '#ffffff' },
+  { key: 'DUPLICATED', label: 'Trùng lặp', statusText: 'Duplicated', color: '#1e3a8a', textColor: '#ffffff' },
 ]
 
 const normalizeStatus = (value) =>
