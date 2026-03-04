@@ -6,8 +6,8 @@ const ROLE_ROUTE_MAP = {
   CITIZEN: '/',
   COORDINATOR: '/rescue-coordinator',
   RESCUE_TEAM: '/rescue-team',
-  MANAGER: '/',
-  ADMIN: '/',
+  MANAGER: '/manager',
+  ADMIN: '/manager',
 }
 
 const LoginPage = () => {
