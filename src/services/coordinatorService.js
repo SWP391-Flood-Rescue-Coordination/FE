@@ -15,6 +15,7 @@ const STATUS_TO_API_VALUE = {
   PENDING: 'Pending',
   VERIFIED: 'Verified',
   ASSIGNED: 'Assigned',
+  CONFIRMED: 'Confirmed',
   IN_PROGRESS: 'In Progress',
   COMPLETED: 'Completed',
   CANCELLED: 'Cancelled',

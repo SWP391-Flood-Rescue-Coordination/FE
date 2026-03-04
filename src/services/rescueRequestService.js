@@ -290,6 +290,37 @@ const getCreateRequestErrorMessage = (error) => {
   return data?.message || data?.title || 'Khong the gui yeu cau cuu ho. Vui long thu lai.'
 }
 
+const getConfirmRescuedErrorMessage = (error) => {
+  const status = error?.response?.status
+  const data = error?.response?.data
+
+  if (status === 400) {
+    const validationMessages = flattenValidationErrors(data?.errors)
+    if (validationMessages.length > 0) {
+      return validationMessages.join(' ')
+    }
+    return data?.message || data?.Message || 'Khong the xac nhan yeu cau nay.'
+  }
+
+  if (status === 401) {
+    return 'Phien dang nhap da het han. Vui long dang nhap lai.'
+  }
+
+  if (status === 403) {
+    return data?.message || data?.Message || 'Ban khong co quyen xac nhan yeu cau nay.'
+  }
+
+  if (status === 404) {
+    return data?.message || data?.Message || 'Khong tim thay yeu cau can xac nhan.'
+  }
+
+  if (status >= 500) {
+    return 'He thong dang gap loi. Vui long thu lai sau.'
+  }
+
+  return data?.message || data?.Message || data?.title || 'Khong the xac nhan da duoc cuu ho.'
+}
+
 const buildCreatePayload = (formData) => {
   const { latitude, longitude } = parseCoordinates(formData?.location)
   const peopleRaw = Number.parseInt(String(formData?.totalPeople ?? '').trim(), 10)
@@ -523,6 +554,34 @@ const rescueRequestService = {
     return result
   },
 
+  confirmRescued: async (requestId) => {
+    const response = await api.put(`/RescueRequest/${requestId}/confirm-rescued`)
+    return response?.data ?? {}
+  },
+
+  confirmRescuedAsGuest: async (requestId, phone) => {
+    const payload = {
+      phone: String(phone ?? '').trim(),
+    }
+    const response = await api.put(`/RescueRequest/guest/${requestId}/confirm-rescued`, payload)
+    const result = response?.data ?? {}
+
+    const successRaw = pickFirstMeaningful(result?.success, result?.Success, false)
+    if (Boolean(successRaw)) {
+      const existingDetails = getGuestDetails()
+      const resolvedStatus = String(pickFirstMeaningful(result?.status, result?.Status, 'Completed'))
+      storeGuestDetails({
+        ...(existingDetails || {}),
+        requestId: toNullableInteger(requestId),
+        phone: payload.phone || existingDetails?.phone || '',
+        status: resolvedStatus,
+        updatedAt: new Date().toISOString(),
+      })
+    }
+
+    return result
+  },
+
   getRequestById: async (requestId) => {
     const response = await api.get(`/RescueRequest/${requestId}`)
     return unwrapApiData(response)
@@ -543,6 +602,7 @@ const rescueRequestService = {
   buildGuestUpdatePayload,
   validateCreatePayloadInput,
   getCreateRequestErrorMessage,
+  getConfirmRescuedErrorMessage,
 }
 
 export default rescueRequestService

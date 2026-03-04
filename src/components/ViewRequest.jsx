@@ -25,6 +25,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
   const isAuthenticated = authService.isAuthenticated();
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [formData, setFormData] = useState(EMPTY_FORM_DATA);
 
@@ -36,7 +37,8 @@ function ViewRequest({ onClose, requestData, requestId }) {
     [isAuthenticated, formData?.requestId, formData?.accessCode],
   );
 
-  const canStartEdit = !isTerminal && !isLoading;
+  const canStartEdit = !isTerminal && !isLoading && !isConfirming;
+  const canConfirmRescued = normalizedStatus === 'CONFIRMED' && !isLoading && !isConfirming && !isEditing;
 
   useEffect(() => {
     const loadRequestData = async () => {
@@ -103,6 +105,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
       VERIFIED: 'Đã xác minh',
       ASSIGNED: 'Đã phân công',
       IN_PROGRESS: 'Đang cứu hộ',
+      CONFIRMED: 'Đã xác nhận',
       COMPLETED: 'Đã hoàn thành',
       CANCELLED: 'Đã hủy',
       DUPLICATE: 'Trùng lặp',
@@ -208,6 +211,43 @@ function ViewRequest({ onClose, requestData, requestId }) {
     setIsEditing(true);
   };
 
+  const handleConfirmRescued = async () => {
+    const currentRequestId = formData?.requestId;
+    if (!currentRequestId) {
+      setErrorMessage('Không tìm thấy mã yêu cầu để xác nhận.');
+      return;
+    }
+
+    if (!window.confirm('Xác nhận bạn đã được cứu hộ an toàn?')) {
+      return;
+    }
+
+    setIsConfirming(true);
+    setErrorMessage('');
+
+    try {
+      if (isAuthenticated) {
+        await rescueRequestService.confirmRescued(currentRequestId);
+      } else {
+        const guestPhone = String(formData?.phone ?? '').trim();
+        if (!guestPhone) {
+          setErrorMessage('Số điện thoại là bắt buộc để xác nhận.');
+          return;
+        }
+        await rescueRequestService.confirmRescuedAsGuest(currentRequestId, guestPhone);
+      }
+
+      setFormData((prev) => ({
+        ...prev,
+        status: 'Completed',
+      }));
+    } catch (error) {
+      setErrorMessage(rescueRequestService.getConfirmRescuedErrorMessage(error));
+    } finally {
+      setIsConfirming(false);
+    }
+  };
+
   const handleConditionChange = (condition) => {
     setFormData({
       ...formData,
@@ -218,7 +258,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
     });
   };
 
-  const editButtonDisabled = isEditing ? isLoading : !canStartEdit;
+  const editButtonDisabled = isEditing ? isLoading || isConfirming : !canStartEdit;
 
   return (
     <div className="request-overlay">
@@ -370,7 +410,19 @@ function ViewRequest({ onClose, requestData, requestId }) {
             >
               {isEditing ? 'Lưu thay đổi' : 'Chỉnh sửa'}
             </button>
-            <button type="button" className="cancel-btn" onClick={onClose} disabled={isLoading}>
+
+            {canConfirmRescued && (
+              <button
+                type="button"
+                className={`submit-btn confirm-btn ${isConfirming ? 'disabled' : ''}`}
+                onClick={handleConfirmRescued}
+                disabled={isConfirming}
+              >
+                {isConfirming ? 'Đang xác nhận...' : 'Hoàn tất'}
+              </button>
+            )}
+
+            <button type="button" className="cancel-btn" onClick={onClose} disabled={isLoading || isConfirming}>
               Đóng
             </button>
           </div>
