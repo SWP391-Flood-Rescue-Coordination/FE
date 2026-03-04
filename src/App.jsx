@@ -6,6 +6,9 @@ import RegisterPage from './pages/RegisterPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import RescueTeamDashboard from './components/RescueTeamDashboard'
 import CoordinatorDashboardPage from './pages/CoordinatorDashboardPage'
+import ManagerDashboardPage from './pages/ManagerDashboardPage'
+import ManagerVehiclesPage from './pages/ManagerVehiclesPage'
+import ManagerSuppliesPage from './pages/ManagerSuppliesPage'
 import './App.css'
 
 function App() {
@@ -19,6 +22,9 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/rescue-team" element={<RescueTeamDashboard />} />
           <Route path="/rescue-coordinator" element={<CoordinatorDashboardPage />} />
+          <Route path="/manager" element={<ManagerDashboardPage />} />
+          <Route path="/manager/vehicles" element={<ManagerVehiclesPage />} />
+          <Route path="/manager/supplies" element={<ManagerSuppliesPage />} />
         </Routes>
       </div>
     </Router>
