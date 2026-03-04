@@ -5,7 +5,10 @@ import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import RescueTeamDashboard from './components/RescueTeamDashboard'
-import CoordinatorRequestsPage from './pages/CoordinatorRequestsPage'
+import CoordinatorDashboardPage from './pages/CoordinatorDashboardPage'
+import ManagerDashboardPage from './pages/ManagerDashboardPage'
+import ManagerVehiclesPage from './pages/ManagerVehiclesPage'
+import ManagerSuppliesPage from './pages/ManagerSuppliesPage'
 import './App.css'
 
 function App() {
@@ -18,7 +21,10 @@ function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/rescue-team" element={<RescueTeamDashboard />} />
-          <Route path="/rescue-coordinator/requests" element={<CoordinatorRequestsPage />} />
+          <Route path="/rescue-coordinator" element={<CoordinatorDashboardPage />} />
+          <Route path="/manager" element={<ManagerDashboardPage />} />
+          <Route path="/manager/vehicles" element={<ManagerVehiclesPage />} />
+          <Route path="/manager/supplies" element={<ManagerSuppliesPage />} />
         </Routes>
       </div>
     </Router>

@@ -1,7 +1,35 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import './RescueTeamDashboard.css';
 import rescueTeamService from '../services/rescueTeamService';
-import authService from '../services/authService';
+const normalizeVietnamese = (value) =>
+  String(value ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+const getPriorityClassName = (priority) => {
+  const normalized = normalizeVietnamese(priority);
+
+  if (normalized.includes('khan cap') || normalized.includes('urgent')) {
+    return 'priority-urgent';
+  }
+  if (normalized.includes('cao') || normalized.includes('high')) {
+    return 'priority-high';
+  }
+  if (normalized.includes('trung binh') || normalized.includes('medium')) {
+    return 'priority-medium';
+  }
+  if (normalized.includes('thap') || normalized.includes('low')) {
+    return 'priority-low';
+  }
+  return 'priority-default';
+};
+
+const normalizeOperationStatus = (status) =>
+  String(status ?? '')
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, '_');
 
 function RescueTeamDashboard() {
   // State: danh sách nhiệm vụ và nhiệm vụ được chọn
@@ -110,93 +138,35 @@ function RescueTeamDashboard() {
   };
 
   const handleComplete = async () => {
-    // Logic thông minh: tự động xử lý dựa vào status hiện tại
-    const currentStatus = selectedMission.rawStatus;
-    
-    if (currentStatus === 'Assigned') {
-      // Nếu chưa bắt đầu, phải bắt đầu trước
-      if (!window.confirm('Nhiệm vụ chưa bắt đầu. Bắt đầu thực hiện ngay bây giờ?')) {
-        return;
-      }
-      
-      await handleStartMission();
+    const normalizedStatus = normalizeOperationStatus(selectedMission?.rawStatus);
+    const canComplete = normalizedStatus === 'ASSIGNED' || normalizedStatus === 'IN_PROGRESS';
+
+    if (!canComplete) {
+      alert('Nhiệm vụ chưa ở trạng thái có thể hoàn tất.');
       return;
     }
-    
-    if (currentStatus === 'In Progress') {
-      if (!window.confirm('Xác nhận hoàn tất nhiệm vụ cứu hộ này?')) {
-        return;
-      }
 
-      setUpdating(true);
-      try {
-        // Gọi API update status sang "Completed"
-        await rescueTeamService.updateOperationStatus(
-          selectedMission.operationId,
-          'Completed'
-        );
-        
-        // Xóa nhiệm vụ khỏi danh sách local (vì đã completed)
-        setMissions(missions.filter(m => m.id !== selectedMission.id));
-        setSelectedMission(null);
-        alert('Đã hoàn tất nhiệm vụ thành công!');
-        
-        // Refresh lại danh sách
-        await fetchMissions();
-      } catch (err) {
-        console.error('Error completing mission:', err);
-        const errorMessage = rescueTeamService.getUpdateStatusErrorMessage(err);
-        alert(`Lỗi: ${errorMessage}`);
-        
-        // Nếu 401, redirect về login
-        if (err.response?.status === 401) {
-          setTimeout(() => {
-            window.location.href = '/login';
-          }, 2000);
-        }
-      } finally {
-        setUpdating(false);
-      }
-    }
-  };
-
-  const handleStartMission = async () => {
-    if (!window.confirm('Xác nhận bắt đầu thực hiện nhiệm vụ này?')) {
+    if (!window.confirm('Xác nhận hoàn tất nhiệm vụ cứu hộ này?')) {
       return;
     }
 
     setUpdating(true);
     try {
-      // Gọi API update status sang "In Progress"
-      await rescueTeamService.updateOperationStatus(
-        selectedMission.operationId,
-        'In Progress'
-      );
-      
-      // Update status trong state
-      const updatedMissions = missions.map(m => 
-        m.id === selectedMission.id 
-          ? { ...m, status: 'Đang thực hiện', rawStatus: 'In Progress' }
-          : m
-      );
-      setMissions(updatedMissions);
-      
-      // Update selected mission
-      setSelectedMission({
-        ...selectedMission,
-        status: 'Đang thực hiện',
-        rawStatus: 'In Progress'
-      });
-      
-      alert('Đã bắt đầu thực hiện nhiệm vụ!');
-      
+      // Nghiệp vụ: khi đội đã nhìn thấy nhiệm vụ (Assigned), bấm Hoàn tất chuyển thẳng Completed.
+      await rescueTeamService.updateOperationStatus(selectedMission.operationId, 'Completed');
+
+      // Xóa nhiệm vụ khỏi danh sách local (vì đã completed)
+      setMissions((prev) => prev.filter((m) => m.id !== selectedMission.id));
+      setSelectedMission(null);
+      alert('Đã hoàn tất nhiệm vụ thành công!');
+
       // Refresh lại danh sách
       await fetchMissions();
     } catch (err) {
-      console.error('Error starting mission:', err);
+      console.error('Error completing mission:', err);
       const errorMessage = rescueTeamService.getUpdateStatusErrorMessage(err);
       alert(`Lỗi: ${errorMessage}`);
-      
+
       // Nếu 401, redirect về login
       if (err.response?.status === 401) {
         setTimeout(() => {
@@ -211,9 +181,9 @@ function RescueTeamDashboard() {
   const handleCopyCoordinates = (lat, lng) => {
     const coordinates = `${lat}, ${lng}`;
     navigator.clipboard.writeText(coordinates).then(() => {
-      alert('Đã copy tọa độ: ' + coordinates);
+      alert('Đã sao chép tọa độ: ' + coordinates);
     }).catch(err => {
-      console.error('Không thể copy:', err);
+      console.error('Không thể sao chép:', err);
     });
   };
 
@@ -312,7 +282,7 @@ function RescueTeamDashboard() {
                       <td>{mission.address}</td>
                       <td>{mission.phone}</td>
                       <td>
-                        <span className={`priority-badge priority-${mission.priority.toLowerCase()}`}>
+                        <span className={`priority-badge ${getPriorityClassName(mission.priority)}`}>
                           {mission.priority}
                         </span>
                       </td>
@@ -335,7 +305,7 @@ function RescueTeamDashboard() {
                 </div>
 
                 <div className="mission-card">
-                  <label>SDT</label>
+                  <label>Số điện thoại</label>
                   <div className="info-value">{selectedMission.phone}</div>
                 </div>
 
@@ -358,7 +328,7 @@ function RescueTeamDashboard() {
                       className="btn-copy-coordinates"
                       onClick={() => handleCopyCoordinates(selectedMission.location.lat, selectedMission.location.lng)}
                     >
-                      📋 Copy
+                      📋 Sao chép
                     </button>
                   </div>
                 </div>
@@ -407,3 +377,4 @@ function RescueTeamDashboard() {
 }
 
 export default RescueTeamDashboard;
+

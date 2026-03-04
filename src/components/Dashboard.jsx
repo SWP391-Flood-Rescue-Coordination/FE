@@ -7,8 +7,12 @@ import RequestForm from './RequestForm';
 import ViewRequest from './ViewRequest';
 import './Dashboard.css';
 
-
-
+const MOCK_STATS = {
+  receivedRequests: 12,
+  rescuedPeople: 34,
+  supportedCount: 26,
+  safeCount: 18,
+};
 function Dashboard() {
   const navigate = useNavigate();
   const [showStats, setShowStats] = useState(true);
@@ -38,29 +42,48 @@ function Dashboard() {
     ADMIN: 'Quản trị viên',
   };
   const roleLabel = roleLabelMap[roleKey] || currentUser?.role || '-';
+  const buildHistoryItem = (requestItem, fallback = {}) => {
+    if (!requestItem) {
+      return null;
+    }
+
+    const formatted = rescueRequestService.toRequestFormData({
+      ...requestItem,
+      ...fallback,
+    });
+
+    return {
+      ...formatted,
+      submittedDate: requestItem?.createdAt || fallback?.submittedDate || new Date().toISOString(),
+      requestId: requestItem?.requestId ?? fallback?.requestId ?? formatted?.requestId ?? null,
+      accessCode: requestItem?.accessCode ?? fallback?.accessCode ?? formatted?.accessCode ?? null,
+      status: requestItem?.status || fallback?.status || formatted?.status || 'Pending',
+    };
+  };
 
   // Load request history from backend
   useEffect(() => {
     const loadRequestHistory = async () => {
-      const isCitizen = isAuthenticated && roleKey === 'CITIZEN';
-      if (!isCitizen) {
-        setRequestHistory([]);
-        return;
-      }
-
       setIsLoadingHistory(true);
       try {
-        const requests = await rescueRequestService.getMyRequests();
-        // Convert to request format with submittedDate
-        const history = requests.map(req => ({
-          ...rescueRequestService.toRequestFormData(req),
-          submittedDate: req.createdAt || new Date().toISOString(),
-          requestId: req.requestId,
-          status: req.status || 'Pending'
-        }));
-        setRequestHistory(history);
+        const isCitizen = isAuthenticated && roleKey === 'CITIZEN';
+
+        if (isCitizen) {
+          const requests = await rescueRequestService.getMyRequests();
+          const history = requests
+            .map((item) => buildHistoryItem(item))
+            .filter(Boolean);
+          setRequestHistory(history);
+          return;
+        }
+
+        const guestTrackedRequest = await rescueRequestService.getTrackedGuestRequestStatus();
+        const historyItem = buildHistoryItem(guestTrackedRequest);
+        setRequestHistory(historyItem ? [historyItem] : []);
       } catch (error) {
-        console.error('Error loading request history:', error);
+        if (error?.response?.status !== 404) {
+          console.error('Error loading request history:', error);
+        }
         setRequestHistory([]);
       } finally {
         setIsLoadingHistory(false);
@@ -100,10 +123,37 @@ function Dashboard() {
 
     const syncActiveRequestStatus = async () => {
       const isCitizen = isAuthenticated && roleKey === 'CITIZEN';
+
+      if (!isAuthenticated) {
+        if (isMounted) {
+          setIsPreparingRequestForm(true);
+        }
+
+        try {
+          const guestTrackedRequest = await rescueRequestService.getTrackedGuestRequestStatus();
+          const hasOpenGuestRequest = guestTrackedRequest
+            ? !rescueRequestService.isTerminalStatus(guestTrackedRequest?.status)
+            : false;
+
+          if (isMounted) {
+            setHasActiveRequest(hasOpenGuestRequest);
+          }
+        } catch {
+          if (isMounted) {
+            setHasActiveRequest(false);
+          }
+        } finally {
+          if (isMounted) {
+            setIsPreparingRequestForm(false);
+          }
+        }
+        return;
+      }
+
       if (!isCitizen) {
         if (isMounted) {
           setHasActiveRequest(false);
-          setIsPreparingReportForm(false);
+          setIsPreparingRequestForm(false);
         }
         return;
       }
@@ -155,32 +205,45 @@ function Dashboard() {
     setShowRequestForm(false);
     
     if (requestData) {
-      // Reload request history from backend after creating new request
+      setIsLoadingHistory(true);
       try {
-        const requests = await rescueRequestService.getMyRequests();
-        const history = requests.map(req => ({
-          ...rescueRequestService.toRequestFormData(req),
-          submittedDate: req.createdAt || new Date().toISOString(),
-          requestId: req.requestId,
-          status: req.status || 'Pending'
-        }));
-        setRequestHistory(history);
-
-        // Check if there's any active request
-        const hasOpenRequest = requests.some((item) => !rescueRequestService.isTerminalStatus(item?.status));
-        setHasActiveRequest(hasOpenRequest);
+        const isCitizen = authService.isAuthenticated() && roleKey === 'CITIZEN';
+        if (isCitizen) {
+          const requests = await rescueRequestService.getMyRequests();
+          const history = requests
+            .map((item) => buildHistoryItem(item))
+            .filter(Boolean);
+          setRequestHistory(history);
+          const hasOpenRequest = requests.some((item) => !rescueRequestService.isTerminalStatus(item?.status));
+          setHasActiveRequest(hasOpenRequest);
+        } else {
+          const latestRequest = await rescueRequestService.getTrackedGuestRequestStatus();
+          const historyItem = buildHistoryItem(latestRequest, requestData);
+          if (historyItem) {
+            setRequestHistory([historyItem]);
+            setHasActiveRequest(!rescueRequestService.isTerminalStatus(historyItem?.status));
+          } else {
+            setRequestHistory([]);
+            setHasActiveRequest(false);
+          }
+        }
       } catch (error) {
         console.error('Error reloading request history:', error);
-        // Fallback: add the new request to existing history
-        const newRequest = {
-          ...requestData,
-          submittedDate: requestData.submittedDate || new Date().toISOString(),
-        };
-        setRequestHistory((prev) => [newRequest, ...prev]);
-        
-        if (!rescueRequestService.isTerminalStatus(requestData?.status)) {
-          setHasActiveRequest(true);
+        const fallbackHistoryItem = buildHistoryItem(requestData, {
+          requestId: requestData?.requestId ?? null,
+          accessCode: requestData?.accessCode ?? null,
+          submittedDate: requestData?.submittedDate || new Date().toISOString(),
+        });
+
+        if (fallbackHistoryItem) {
+          setRequestHistory([fallbackHistoryItem]);
+          setHasActiveRequest(!rescueRequestService.isTerminalStatus(fallbackHistoryItem?.status));
+        } else {
+          setRequestHistory([]);
+          setHasActiveRequest(false);
         }
+      } finally {
+        setIsLoadingHistory(false);
       }
     }
   };
@@ -192,7 +255,7 @@ function Dashboard() {
         <h1>Hệ Thống Quản Lí Cứu Hộ Cứu Trợ Lũ Lụt</h1>
         <div className="header-buttons">
           <button className="btn-primary" onClick={handleOpenRequestForm} disabled={isPreparingRequestForm || hasActiveRequest}>
-            {isPreparingRequestForm ? 'Dang tai...' : hasActiveRequest ? 'Đang chờ xử lý' : 'Tạo yêu cầu'}
+            {isPreparingRequestForm ? 'Đang t' : hasActiveRequest ? 'Đang chờ xử lý' : 'Tạo yêu cầu'}
           </button>
           <div className="view-request-wrapper">
             <button 
@@ -262,12 +325,14 @@ function Dashboard() {
       {showRequestForm && <RequestForm onClose={handleCloseRequestForm} />}
 
       {/* View Request Popup */}
-      {showViewRequest && selectedRequestId && <ViewRequest 
+      {showViewRequest && (selectedRequestId || selectedRequest) && <ViewRequest 
         requestId={selectedRequestId} 
+        requestData={selectedRequest}
         onClose={() => {
           setShowViewRequest(false);
           setShowStatusDetail(false);
           setSelectedRequestId(null);
+          setSelectedRequest(null);
         }} 
       />}
 
@@ -312,7 +377,8 @@ function Dashboard() {
                       key={request.requestId || index} 
                       className="detail-item" 
                       onClick={() => {
-                        setSelectedRequestId(request.requestId);
+                        setSelectedRequest(request);
+                        setSelectedRequestId(request.requestId ?? null);
                         setShowStatusDetail(false);
                         setShowViewRequest(true);
                       }}
@@ -344,22 +410,22 @@ function Dashboard() {
         <div className="stats-bar">
           <div className="stat-item">
             <div className="stat-icon">🕐</div>
-            <div className="stat-number">--</div>
+            <div className="stat-number">{MOCK_STATS.receivedRequests}</div>
             <div className="stat-label">Các yêu cầu đã nhận</div>
           </div>
           <div className="stat-item">
             <div className="stat-icon">👥</div>
-            <div className="stat-number">--</div>
+            <div className="stat-number">{MOCK_STATS.rescuedPeople}</div>
             <div className="stat-label">Người được cứu trợ</div>
           </div>
           <div className="stat-item">
             <div className="stat-icon">❤️</div>
-            <div className="stat-number">--</div>
+            <div className="stat-number">{MOCK_STATS.supportedCount}</div>
             <div className="stat-label">Đã hỗ trợ</div>
           </div>
           <div className="stat-item">
             <div className="stat-icon">😊</div>
-            <div className="stat-number">--</div>
+            <div className="stat-number">{MOCK_STATS.safeCount}</div>
             <div className="stat-label">Báo an toàn</div>
           </div>
         </div>
@@ -383,7 +449,7 @@ function Dashboard() {
         ></iframe>
         
         {/* Map Controls */}
-        <div className="map-controls">
+        {/* <div className="map-controls">
           <div className="level-control">
             <span>Mức 1</span>
             <div className="level-bar"></div>
@@ -421,12 +487,12 @@ function Dashboard() {
               </div>
             )}
           </div>
-        </div>
+        </div> */}
       </div>
 
       {/* Bottom Navigation */}
       <nav className="bottom-nav">
-        <button className="nav-item">Thông Tin</button>
+        {/* <button className="nav-item">Thông Tin</button> */}
         <button className="nav-item">Khảo Sát</button>
         <button className="nav-item">Liên Hệ</button>
       </nav>
@@ -435,4 +501,5 @@ function Dashboard() {
 }
 
 export default Dashboard;
+
 

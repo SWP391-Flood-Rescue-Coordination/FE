@@ -2,6 +2,40 @@ import api from './api'
 
 const PHONE_REGEX = /^(?:\+84|84|0)\d{9}$/
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const LOGIN_PHONE_STORAGE_KEY = 'loginPhone'
+
+const parseStoredUser = () => {
+  const raw = localStorage.getItem('user')
+  if (!raw) {
+    return null
+  }
+
+  try {
+    return JSON.parse(raw)
+  } catch {
+    return null
+  }
+}
+
+const normalizeValidPhone = (value) => {
+  const candidate = String(value ?? '').trim()
+  return PHONE_REGEX.test(candidate) ? candidate : ''
+}
+
+const resolveDefaultPhone = () => {
+  const storedUser = parseStoredUser()
+  const userPhone = normalizeValidPhone(storedUser?.phone)
+  if (userPhone) {
+    return userPhone
+  }
+
+  const usernameAsPhone = normalizeValidPhone(storedUser?.username)
+  if (usernameAsPhone) {
+    return usernameAsPhone
+  }
+
+  return normalizeValidPhone(localStorage.getItem(LOGIN_PHONE_STORAGE_KEY))
+}
 
 const flattenValidationErrors = (errors) => {
   if (!errors || typeof errors !== 'object') {
@@ -133,11 +167,20 @@ const authService = {
       throw authError
     }
 
+    const storedUser = {
+      ...data.user,
+      phone: normalizeValidPhone(data?.user?.phone) || payload.phone,
+    }
+
     localStorage.setItem('accessToken', data.accessToken)
-    localStorage.setItem('user', JSON.stringify(data.user))
+    localStorage.setItem(LOGIN_PHONE_STORAGE_KEY, payload.phone)
+    localStorage.setItem('user', JSON.stringify(storedUser))
     localStorage.removeItem('refreshToken')
 
-    return data
+    return {
+      ...data,
+      user: storedUser,
+    }
   },
 
   register: async (username, phone, email, password, fullName) => {
@@ -169,22 +212,13 @@ const authService = {
     localStorage.removeItem('accessToken')
     localStorage.removeItem('refreshToken')
     localStorage.removeItem('user')
+    localStorage.removeItem(LOGIN_PHONE_STORAGE_KEY)
   },
 
   isAuthenticated: () => Boolean(localStorage.getItem('accessToken')),
 
-  getUserInfo: () => {
-    const raw = localStorage.getItem('user')
-    if (!raw) {
-      return null
-    }
-
-    try {
-      return JSON.parse(raw)
-    } catch {
-      return null
-    }
-  },
+  getUserInfo: () => parseStoredUser(),
+  getDefaultPhone: () => resolveDefaultPhone(),
 
   getLoginErrorMessage,
   getRegisterErrorMessage,

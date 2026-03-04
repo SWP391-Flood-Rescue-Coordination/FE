@@ -74,7 +74,7 @@ const Login = ({ onClose, onShowForgotPassword, onShowRegister, onLoginSuccess }
       <div className="login-header">
         {onClose && (
           <button className="close-button" onClick={onClose} disabled={loading}>
-            <span className="arrow-icon">{'<-'}</span>
+            <span className="arrow-icon">←</span>
             Về trang chủ
           </button>
         )}
