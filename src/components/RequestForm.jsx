@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { useState } from 'react'
 import authService from '../services/authService'
 import rescueRequestService from '../services/rescueRequestService'
 import './RequestForm.css'
 
 const INITIAL_FORM_DATA = {
   requestId: null,
+  accessCode: null,
+  contactName: '',
   phone: '',
   location: '',
   address: '',
@@ -21,27 +22,20 @@ const INITIAL_FORM_DATA = {
   status: 'Pending',
 }
 
-const CITIZEN_ROLE = 'CITIZEN'
-
 const sanitizeNumberText = (value) => String(value ?? '').replace(/[^0-9]/g, '')
 
 function RequestForm({ onClose }) {
-  const navigate = useNavigate()
-  const [formData, setFormData] = useState(INITIAL_FORM_DATA)
+  const [formData, setFormData] = useState(() => ({
+    ...INITIAL_FORM_DATA,
+    contactName: String(authService.getUserInfo()?.fullName ?? '').trim(),
+    phone: sanitizeNumberText(authService.getDefaultPhone()),
+    conditions: {
+      ...INITIAL_FORM_DATA.conditions,
+    },
+  }))
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
-
-  // Auto-fill phone from localStorage when component mounts
-  useEffect(() => {
-    const user = authService.getUserInfo()
-    if (user?.userId) {
-      const savedPhone = localStorage.getItem(`user_phone_${user.userId}`)
-      if (savedPhone) {
-        setFormData((prev) => ({ ...prev, phone: savedPhone }))
-      }
-    }
-  }, [])
 
   const handleConditionChange = (condition) => {
     setFormData((prev) => ({
@@ -88,21 +82,6 @@ function RequestForm({ onClose }) {
     setErrorMessage('')
     setSuccessMessage('')
 
-    if (!authService.isAuthenticated()) {
-      setErrorMessage('Bạn cần đăng nhập để gửi yêu cầu cứu hộ.')
-      window.setTimeout(() => {
-        navigate('/login')
-      }, 800)
-      return
-    }
-
-    const user = authService.getUserInfo()
-    const role = String(user?.role ?? '').toUpperCase()
-    if (role !== CITIZEN_ROLE) {
-      setErrorMessage('Chỉ tài khoản Công dân mới được gửi yêu cầu cứu hộ.')
-      return
-    }
-
     const validation = rescueRequestService.validateCreatePayloadInput(formData)
     if (!validation.valid) {
       setErrorMessage(validation.message)
@@ -121,17 +100,12 @@ function RequestForm({ onClose }) {
 
       setSuccessMessage(data?.message || 'Gửi yêu cầu cứu hộ thành công.')
 
-      // Save phone to localStorage for future use
-      const user = authService.getUserInfo()
-      if (user?.userId && formData.phone) {
-        localStorage.setItem(`user_phone_${user.userId}`, formData.phone)
-      }
-
       const submittedRequest = {
         ...formData,
         mode: 'create',
         submittedDate: new Date().toISOString(),
         requestId: data?.requestId ?? null,
+        accessCode: data?.accessCode ?? null,
         status: 'Pending',
       }
 
@@ -141,14 +115,7 @@ function RequestForm({ onClose }) {
         }
       }, 700)
     } catch (error) {
-      const status = error?.response?.status
       setErrorMessage(rescueRequestService.getCreateRequestErrorMessage(error))
-
-      if (status === 401) {
-        window.setTimeout(() => {
-          navigate('/login')
-        }, 900)
-      }
     } finally {
       setIsSubmitting(false)
     }
@@ -196,7 +163,7 @@ function RequestForm({ onClose }) {
                     Chọn vị trí
                   </button>
                 </div>
-                <small className="request-input-hint">Nhập theo cấu trúc sau: "vĩ độ", "kinh độ"</small>
+                <small className="request-input-hint">Nhập theo định dạng: vĩ độ,kinh độ</small>
               </div>
 
               <div className="form-field">
@@ -265,7 +232,7 @@ function RequestForm({ onClose }) {
                       onChange={() => handleConditionChange('floodUnder1m')}
                       disabled={isSubmitting}
                     />
-                    Ngập dưới 1 mét
+                    Ngập dưới 1m
                   </label>
                   <label className="checkbox-label">
                     <input
@@ -274,7 +241,7 @@ function RequestForm({ onClose }) {
                       onChange={() => handleConditionChange('floodOver1m')}
                       disabled={isSubmitting}
                     />
-                    Ngập trên 1 mét
+                    Ngập trên 1m
                   </label>
                 </div>
               </div>

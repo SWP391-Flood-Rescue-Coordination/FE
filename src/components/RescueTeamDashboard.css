@@ -1,4 +1,4 @@
-.rescue-dashboard {
+﻿.rescue-dashboard {
   display: flex;
   flex-direction: column;
   height: 100vh;
@@ -463,21 +463,29 @@
   letter-spacing: 0.3px;
 }
 
-.priority-badge.priority-khẩn.cấp,
-.priority-badge.priority-khẩn {
+.priority-badge.priority-urgent {
   background: #fee2e2;
   color: #dc2626;
 }
 
-.priority-badge.priority-cao {
+.priority-badge.priority-high {
   background: #ffedd5;
-  color: #FF6B35;
+  color: #ff6b35;
 }
 
-.priority-badge.priority-trung.bình,
-.priority-badge.priority-trung {
+.priority-badge.priority-medium {
   background: #ffedd5;
-  color: #FFA500;
+  color: #ffa500;
+}
+
+.priority-badge.priority-low {
+  background: #e6f4ea;
+  color: #1a7f37;
+}
+
+.priority-badge.priority-default {
+  background: #e5e7eb;
+  color: #374151;
 }
 
 .status-badge {

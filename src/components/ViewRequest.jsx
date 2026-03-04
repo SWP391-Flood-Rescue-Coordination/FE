@@ -1,83 +1,201 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import authService from '../services/authService';
 import rescueRequestService from '../services/rescueRequestService';
 import './ViewRequest.css';
 
+const EMPTY_FORM_DATA = {
+  requestId: null,
+  accessCode: null,
+  phone: '',
+  location: '',
+  address: '',
+  totalPeople: 0,
+  conditions: {
+    needSupplies: false,
+    houseCollapsed: false,
+    needMedical: false,
+    floodUnder1m: false,
+    floodOver1m: false,
+  },
+  notes: '',
+  status: 'Pending',
+};
+
 function ViewRequest({ onClose, requestData, requestId }) {
+  const isAuthenticated = authService.isAuthenticated();
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [formData, setFormData] = useState(requestData || {
-    phone: '',
-    location: '',
-    address: '',
-    totalPeople: 0,
-    conditions: {
-      needSupplies: false,
-      houseCollapsed: false,
-      needMedical: false,
-      floodUnder1m: false,
-      floodOver1m: false
-    },
-    notes: '',
-    status: 'Pending'
-  });
+  const [formData, setFormData] = useState(EMPTY_FORM_DATA);
 
-  // Load data from API if only requestId is provided
+  const normalizedStatus = rescueRequestService.normalizeStatus(formData.status);
+  const isTerminal = rescueRequestService.isTerminalStatus(formData.status);
+
+  const canGuestEdit = useMemo(
+    () => !isAuthenticated && Boolean(formData?.requestId) && Boolean(formData?.accessCode),
+    [isAuthenticated, formData?.requestId, formData?.accessCode],
+  );
+
+  const canStartEdit = !isTerminal && !isLoading;
+
   useEffect(() => {
     const loadRequestData = async () => {
-      if (requestId && !requestData) {
-        setIsLoading(true);
-        setErrorMessage('');
-        try {
-          const data = await rescueRequestService.getRequestById(requestId);
-          const formattedData = rescueRequestService.toRequestFormData(data);
-          setFormData(formattedData);
-        } catch (error) {
-          setErrorMessage('Không thể tải dữ liệu yêu cầu. Vui lòng thử lại.');
-          console.error('Error loading request:', error);
-        } finally {
-          setIsLoading(false);
+      setIsLoading(true);
+      setErrorMessage('');
+
+      try {
+        let sourceData = null;
+
+        if (requestData) {
+          sourceData = requestData;
+        } else if (isAuthenticated) {
+          sourceData = requestId
+            ? await rescueRequestService.getRequestById(requestId)
+            : await rescueRequestService.getMyLatestRequest();
+        } else {
+          sourceData = await rescueRequestService.getTrackedGuestRequestStatus();
         }
+
+        if (!sourceData) {
+          setFormData(EMPTY_FORM_DATA);
+          setErrorMessage('Không tìm thấy yêu cầu cứu hộ nào.');
+          return;
+        }
+
+        const formatted = rescueRequestService.toRequestFormData(sourceData);
+        setFormData({
+          ...EMPTY_FORM_DATA,
+          ...formatted,
+          requestId: formatted?.requestId ?? sourceData?.requestId ?? requestId ?? null,
+          accessCode: formatted?.accessCode ?? sourceData?.accessCode ?? null,
+          conditions: {
+            ...EMPTY_FORM_DATA.conditions,
+            ...(formatted?.conditions || {}),
+          },
+        });
+      } catch (error) {
+        if (error?.response?.status === 404) {
+          setErrorMessage('Không tìm thấy yêu cầu cứu hộ nào.');
+        } else {
+          setErrorMessage('Không thể tải dữ liệu yêu cầu. Vui lòng thử lại.');
+        }
+      } finally {
+        setIsLoading(false);
       }
     };
 
     loadRequestData();
-  }, [requestId, requestData]);
-
-  const normalizedStatus = rescueRequestService.normalizeStatus(formData.status);
-  const isApproved = normalizedStatus === 'COMPLETED' || normalizedStatus === 'CANCELLED' || normalizedStatus === 'DUPLICATE';
-  const isTerminal = rescueRequestService.isTerminalStatus(formData.status);
+  }, [requestData, requestId, isAuthenticated]);
 
   const getStatusLabel = (status) => {
     const statusMap = {
-      'PENDING': 'Đang chờ xử lý',
-      'VERIFIED': 'Đã xác minh',
-      'ASSIGNED': 'Đã phân công',
-      'IN_PROGRESS': 'Đang cứu hộ',
-      'COMPLETED': 'Đã hoàn thành',
-      'CANCELLED': 'Đã hủy',
-      'DUPLICATE': 'Trùng lặp'
+      PENDING: 'Đang chờ xử lý',
+      VERIFIED: 'Đã xác minh',
+      ASSIGNED: 'Đã phân công',
+      IN_PROGRESS: 'Đang cứu hộ',
+      COMPLETED: 'Đã hoàn thành',
+      CANCELLED: 'Đã hủy',
+      DUPLICATE: 'Trùng lặp',
     };
     return statusMap[rescueRequestService.normalizeStatus(status)] || status;
   };
 
-  const handleSubmit = (e) => {
+  const handleOpenMap = () => {
+    const coordinates = rescueRequestService.parseCoordinates(formData.location);
+    let query = '';
+
+    if (coordinates.latitude !== null && coordinates.longitude !== null) {
+      query = `${coordinates.latitude},${coordinates.longitude}`;
+    } else {
+      const address = String(formData.address ?? '').trim();
+      if (address) {
+        query = address;
+      }
+    }
+
+    if (!query) {
+      query = '10.762622,106.660172';
+    }
+
+    window.open(`https://www.google.com/maps?q=${encodeURIComponent(query)}`, '_blank');
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isEditing) {
-      console.log('Request updated:', formData);
+
+    if (!isEditing) {
+      return;
+    }
+
+    if (!isAuthenticated && !canGuestEdit) {
+      setErrorMessage('Không tìm thấy mã truy cập để chỉnh sửa yêu cầu guest.');
       setIsEditing(false);
-      // Có thể gọi API để cập nhật ở đây
+      return;
+    }
+
+    if (isAuthenticated && !canGuestEdit) {
+      // Luồng đã đăng nhập hiện chưa có API sửa riêng.
+      // Giữ UI chỉnh sửa bình thường và đóng chế độ sửa tại FE.
+      setIsEditing(false);
+      return;
+    }
+
+    setIsLoading(true);
+    setErrorMessage('');
+
+    try {
+      const updateResult = await rescueRequestService.updateGuestRequest(
+        formData.requestId,
+        formData,
+        formData.accessCode,
+      );
+
+      if (!updateResult?.success) {
+        setErrorMessage(updateResult?.message || 'Không thể cập nhật yêu cầu.');
+        return;
+      }
+
+      const refreshed = await rescueRequestService.getTrackedGuestRequestStatus();
+      const formatted = rescueRequestService.toRequestFormData({
+        ...refreshed,
+        accessCode: formData.accessCode,
+      });
+
+      setFormData((prev) => ({
+        ...prev,
+        ...formatted,
+        requestId: prev.requestId,
+        accessCode: prev.accessCode,
+        conditions: {
+          ...EMPTY_FORM_DATA.conditions,
+          ...(formatted?.conditions || {}),
+        },
+      }));
+
+      setIsEditing(false);
+    } catch (error) {
+      setErrorMessage(error?.response?.data?.message || 'Không thể cập nhật yêu cầu. Vui lòng thử lại.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleEditClick = (e) => {
-    if (!isApproved) {
-      if (!isEditing) {
-        e.preventDefault();
-        setIsEditing(true);
-      }
-      // Nếu isEditing = true, để form submit tự nhiên
+    if (isEditing) {
+      return;
     }
+
+    e.preventDefault();
+
+    if (!canStartEdit) {
+      if (isTerminal) {
+        setErrorMessage('Yêu cầu đã ở trạng thái kết thúc, không thể chỉnh sửa.');
+      }
+      return;
+    }
+
+    setErrorMessage('');
+    setIsEditing(true);
   };
 
   const handleConditionChange = (condition) => {
@@ -85,10 +203,12 @@ function ViewRequest({ onClose, requestData, requestId }) {
       ...formData,
       conditions: {
         ...formData.conditions,
-        [condition]: !formData.conditions[condition]
-      }
+        [condition]: !formData.conditions[condition],
+      },
     });
   };
+
+  const editButtonDisabled = isEditing ? isLoading : !canStartEdit;
 
   return (
     <div className="request-overlay">
@@ -112,62 +232,54 @@ function ViewRequest({ onClose, requestData, requestId }) {
             <strong>Trạng thái:</strong> {getStatusLabel(formData.status)}
           </div>
         )}
-        
+
         <form onSubmit={handleSubmit}>
           <div className="form-row">
             <div className="form-left">
-              {/* Số điện thoại */}
               <div className="form-field">
                 <label>Số điện thoại</label>
                 <input
                   type="tel"
                   value={formData.phone}
-                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   disabled={!isEditing}
                   required
                 />
               </div>
 
-              {/* Vị trí */}
               <div className="form-field">
                 <label>Vị trí</label>
                 <div className="location-group">
                   <input
                     type="text"
                     value={formData.location}
-                    onChange={(e) => setFormData({...formData, location: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                     disabled={!isEditing}
                     required
                   />
-                  <button 
-                    type="button" 
-                    className="location-btn"
-                    disabled={!isEditing}
-                  >
-                    📍 Chọn vị trí trên bản đồ
+                  <button type="button" className="location-btn" disabled={!isEditing} onClick={handleOpenMap}>
+                    Chọn vị trí
                   </button>
                 </div>
               </div>
 
-              {/* Địa chỉ */}
               <div className="form-field">
                 <label>Địa chỉ</label>
                 <input
                   type="text"
                   value={formData.address}
-                  onChange={(e) => setFormData({...formData, address: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                   disabled={!isEditing}
                   required
                 />
               </div>
 
-              {/* Số người */}
               <div className="form-field">
                 <label>Số người</label>
                 <input
                   type="number"
                   value={formData.totalPeople}
-                  onChange={(e) => setFormData({...formData, totalPeople: parseInt(e.target.value) || 0})}
+                  onChange={(e) => setFormData({ ...formData, totalPeople: parseInt(e.target.value, 10) || 0 })}
                   disabled={!isEditing}
                   min="0"
                   required
@@ -176,7 +288,6 @@ function ViewRequest({ onClose, requestData, requestId }) {
             </div>
 
             <div className="form-right">
-              {/* Tình trạng */}
               <div className="form-field">
                 <label>Tình trạng</label>
                 <div className="checkbox-group">
@@ -228,13 +339,12 @@ function ViewRequest({ onClose, requestData, requestId }) {
                 </div>
               </div>
 
-              {/* Ghi chú */}
               <div className="form-field">
                 <label>Ghi chú:</label>
                 <textarea
                   rows="5"
                   value={formData.notes}
-                  onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   disabled={!isEditing}
                 ></textarea>
               </div>
@@ -242,11 +352,11 @@ function ViewRequest({ onClose, requestData, requestId }) {
           </div>
 
           <div className="form-actions">
-            <button 
-              type={isEditing ? "submit" : "button"}
-              className={`submit-btn ${isTerminal || isLoading ? 'disabled' : ''}`}
+            <button
+              type={isEditing ? 'submit' : 'button'}
+              className={`submit-btn ${editButtonDisabled ? 'disabled' : ''}`}
               onClick={handleEditClick}
-              disabled={isTerminal || isLoading}
+              disabled={editButtonDisabled}
             >
               {isEditing ? 'Lưu thay đổi' : 'Chỉnh sửa'}
             </button>
