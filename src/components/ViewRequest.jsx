@@ -45,14 +45,24 @@ function ViewRequest({ onClose, requestData, requestId }) {
 
       try {
         let sourceData = null;
+        const requestDataId = requestData?.requestId ?? requestData?.RequestId ?? null;
+        const resolvedRequestId = requestId ?? requestDataId ?? null;
 
         if (requestData) {
           sourceData = requestData;
-        } else if (isAuthenticated) {
-          sourceData = requestId
-            ? await rescueRequestService.getRequestById(requestId)
-            : await rescueRequestService.getMyLatestRequest();
-        } else {
+        }
+
+        if (isAuthenticated) {
+          if (resolvedRequestId) {
+            const detailData = await rescueRequestService.getRequestById(resolvedRequestId);
+            sourceData = {
+              ...(sourceData || {}),
+              ...(detailData || {}),
+            };
+          } else if (!sourceData) {
+            sourceData = await rescueRequestService.getMyLatestRequest();
+          }
+        } else if (!sourceData) {
           sourceData = await rescueRequestService.getTrackedGuestRequestStatus();
         }
 

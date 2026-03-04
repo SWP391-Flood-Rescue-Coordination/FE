@@ -196,29 +196,70 @@ const inferConditionsFromDescription = (description) => {
   }
 }
 
+const normalizeConditions = (conditions) => ({
+  needSupplies: Boolean(conditions?.needSupplies),
+  houseCollapsed: Boolean(conditions?.houseCollapsed),
+  needMedical: Boolean(conditions?.needMedical),
+  floodUnder1m: Boolean(conditions?.floodUnder1m),
+  floodOver1m: Boolean(conditions?.floodOver1m),
+})
+
 const toRequestFormData = (requestItem) => {
-  const latitude = requestItem?.latitude
-  const longitude = requestItem?.longitude
-  const hasCoordinates = latitude !== null && latitude !== undefined && longitude !== null && longitude !== undefined
-  const description = String(requestItem?.description ?? '').trim()
+  const rawLocation = String(requestItem?.location ?? requestItem?.Location ?? '').trim()
+  const latitude = toNullableCoordinate(pickFirstMeaningful(requestItem?.latitude, requestItem?.Latitude))
+  const longitude = toNullableCoordinate(pickFirstMeaningful(requestItem?.longitude, requestItem?.Longitude))
+  const hasCoordinates = latitude !== null && longitude !== null
+  const description = String(
+    pickFirstMeaningful(requestItem?.description, requestItem?.Description, requestItem?.notes, requestItem?.Notes) ?? '',
+  ).trim()
+  const rawConditions = requestItem?.conditions ?? requestItem?.Conditions
+  const hasConditionObject = rawConditions && typeof rawConditions === 'object' && !Array.isArray(rawConditions)
+  const peopleValue = pickFirstMeaningful(
+    requestItem?.totalPeople,
+    requestItem?.TotalPeople,
+    requestItem?.numberOfAffectedPeople,
+    requestItem?.NumberOfAffectedPeople,
+    requestItem?.numberOfPeople,
+    requestItem?.NumberOfPeople,
+    requestItem?.number_of_affected_people,
+    requestItem?.number_of_people,
+  )
 
   return {
-    requestId: requestItem?.requestId ?? requestItem?.request_id ?? null,
-    phone: String(requestItem?.phone ?? requestItem?.contactPhone ?? requestItem?.citizenPhone ?? '').trim(),
-    location: hasCoordinates ? `${latitude},${longitude}` : '',
-    address: String(requestItem?.address ?? '').trim(),
-    totalPeople:
-      requestItem?.numberOfAffectedPeople !== null && requestItem?.numberOfAffectedPeople !== undefined
-        ? String(requestItem.numberOfAffectedPeople)
-        : requestItem?.numberOfPeople !== null && requestItem?.numberOfPeople !== undefined
-          ? String(requestItem.numberOfPeople)
-        : '',
-    conditions: inferConditionsFromDescription(description),
-    notes: description,
-    status: requestItem?.status ?? 'Pending',
-    accessCode: requestItem?.accessCode ?? null,
-    submittedDate: requestItem?.createdAt ?? null,
-    updatedAt: requestItem?.updatedAt ?? null,
+    requestId: requestItem?.requestId ?? requestItem?.RequestId ?? requestItem?.request_id ?? null,
+    phone: String(
+      pickFirstMeaningful(
+        requestItem?.phone,
+        requestItem?.Phone,
+        requestItem?.contactPhone,
+        requestItem?.ContactPhone,
+        requestItem?.citizenPhone,
+        requestItem?.CitizenPhone,
+      ) ?? '',
+    ).trim(),
+    location: rawLocation || (hasCoordinates ? `${latitude},${longitude}` : ''),
+    address: String(pickFirstMeaningful(requestItem?.address, requestItem?.Address) ?? '').trim(),
+    totalPeople: hasMeaningfulValue(peopleValue) ? String(peopleValue).trim() : '',
+    conditions: hasConditionObject ? normalizeConditions(rawConditions) : inferConditionsFromDescription(description),
+    notes: String(
+      pickFirstMeaningful(
+        requestItem?.notes,
+        requestItem?.Notes,
+        requestItem?.description,
+        requestItem?.Description,
+      ) ?? '',
+    ).trim(),
+    status: pickFirstMeaningful(requestItem?.status, requestItem?.Status) ?? 'Pending',
+    accessCode: pickFirstMeaningful(requestItem?.accessCode, requestItem?.AccessCode) ?? null,
+    submittedDate:
+      pickFirstMeaningful(
+        requestItem?.submittedDate,
+        requestItem?.SubmittedDate,
+        requestItem?.createdAt,
+        requestItem?.CreatedAt,
+        requestItem?.created_at,
+      ) ?? null,
+    updatedAt: pickFirstMeaningful(requestItem?.updatedAt, requestItem?.UpdatedAt, requestItem?.updated_at) ?? null,
   }
 }
 
@@ -288,6 +329,9 @@ const validateCreatePayloadInput = (formData) => {
 const unwrapApiData = (response) => {
   if (response?.data?.data !== undefined) {
     return response.data.data
+  }
+  if (response?.data?.Data !== undefined) {
+    return response.data.Data
   }
   return response?.data
 }
@@ -400,12 +444,30 @@ const rescueRequestService = {
   createRescueRequest: async (formData) => {
     const payload = buildCreatePayload(formData)
     const response = await api.post('/RescueRequest', payload)
-    const data = response?.data ?? {}
+    const rawData = response?.data ?? {}
+    const requestId = toNullableInteger(
+      pickFirstMeaningful(rawData?.requestId, rawData?.RequestId, rawData?.data?.requestId, rawData?.Data?.requestId),
+    )
+    const accessCodeRaw = pickFirstMeaningful(
+      rawData?.accessCode,
+      rawData?.AccessCode,
+      rawData?.data?.accessCode,
+      rawData?.Data?.accessCode,
+    )
+    const accessCode = String(accessCodeRaw ?? '').trim() || null
+    const successRaw = pickFirstMeaningful(rawData?.success, rawData?.Success, true)
 
-    if (data?.requestId && data?.accessCode) {
-      storeGuestTracking(data.requestId, data.accessCode)
+    const data = {
+      ...rawData,
+      requestId,
+      accessCode,
+      success: Boolean(successRaw),
+    }
+
+    if (requestId && accessCode) {
+      storeGuestTracking(requestId, accessCode)
       storeGuestDetails(
-        buildGuestDetailsFromForm(formData, data.requestId, data.accessCode, 'Pending'),
+        buildGuestDetailsFromForm(formData, requestId, accessCode, 'Pending'),
       )
     }
 
