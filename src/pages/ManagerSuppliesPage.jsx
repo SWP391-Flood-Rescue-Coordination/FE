@@ -49,6 +49,8 @@ function ManagerSuppliesPage() {
           quantity: 500,
           unit: 'chai',
           minQuantity: 100,
+          importDate: '2026-02-15',
+          exportDate: '2026-03-01',
         },
         {
           supplyId: 2,
@@ -57,6 +59,8 @@ function ManagerSuppliesPage() {
           quantity: 300,
           unit: 'gói',
           minQuantity: 150,
+          importDate: '2026-02-20',
+          exportDate: '2026-02-28',
         },
         {
           supplyId: 3,
@@ -65,6 +69,8 @@ function ManagerSuppliesPage() {
           quantity: 50,
           unit: 'cái',
           minQuantity: 80,
+          importDate: '2026-02-10',
+          exportDate: '2026-03-02',
         },
         {
           supplyId: 4,
@@ -73,6 +79,8 @@ function ManagerSuppliesPage() {
           quantity: 200,
           unit: 'hộp',
           minQuantity: 100,
+          importDate: '2026-02-18',
+          exportDate: '2026-02-25',
         },
         {
           supplyId: 5,
@@ -81,6 +89,8 @@ function ManagerSuppliesPage() {
           quantity: 30,
           unit: 'cái',
           minQuantity: 50,
+          importDate: '2026-02-12',
+          exportDate: '2026-03-03',
         },
       ])
       
@@ -238,16 +248,10 @@ function ManagerSuppliesPage() {
         Quay lại 
       </button>
       <header className="page-header">
-        <div className="header-title">
-          <h1>
-            <CubeIcon className="icon" />
-            Quản lý Vật tư
-          </h1>
-          <button className="add-button" onClick={handleAddSupply}>
-            <PlusIcon className="icon" />
-            Thêm vật tư
-          </button>
-        </div>
+        <h1>
+          <CubeIcon className="icon" />
+          Quản lý Vật tư
+        </h1>
       </header>
 
       <div className="page-content">
@@ -301,10 +305,6 @@ function ManagerSuppliesPage() {
             <span className="stat-label">Sắp hết:</span>
             <span className="stat-value">{lowStockCount}</span>
           </div>
-          <div className="stat-item">
-            <span className="stat-label">Hiển thị:</span>
-            <span className="stat-value">{filteredSupplies.length}</span>
-          </div>
         </div>
 
         {/* Supplies Grid */}
@@ -345,23 +345,22 @@ function ManagerSuppliesPage() {
                       {supply.minQuantity} {supply.unit}
                     </span>
                   </div>
-                </div>
-
-                <div className="supply-actions">
-                  <button
-                    className="edit-btn"
-                    onClick={() => handleEditSupply(supply)}
-                  >
-                    <PencilIcon className="icon" />
-                    Sửa
-                  </button>
-                  <button
-                    className="delete-btn"
-                    onClick={() => handleDeleteSupply(supply.supplyId)}
-                  >
-                    <TrashIcon className="icon" />
-                    Xóa
-                  </button>
+                  <div className="stat">
+                    <span className="label">Ngày nhập:</span>
+                    <span className="value">
+                      {supply.importDate
+                        ? new Date(supply.importDate).toLocaleDateString('vi-VN')
+                        : '-'}
+                    </span>
+                  </div>
+                  <div className="stat">
+                    <span className="label">Ngày xuất:</span>
+                    <span className="value">
+                      {supply.exportDate
+                        ? new Date(supply.exportDate).toLocaleDateString('vi-VN')
+                        : '-'}
+                    </span>
+                  </div>
                 </div>
               </div>
             ))}

@@ -94,12 +94,12 @@
 
 /* Layout */
 .manager-vehicles-page .page-layout {
-  max-width: 1400px;
-  margin: 0 auto;
+  max-width: 1600px;
+  margin: 0 4rem 0 3rem;
   display: flex;
   gap: 1rem;
   align-items: flex-start;
-  padding: 0 1rem;
+  padding: 0 0.5rem 0 1.5rem;
 }
 
 /* Sidebar */
@@ -277,8 +277,8 @@
 .manager-vehicles-page .vehicles-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.9rem;
-  min-width: 1200px;
+  font-size: 0.85rem;
+  min-width: 1360px;
 }
 
 .manager-vehicles-page .vehicles-table thead {
@@ -329,41 +329,6 @@
   padding: 0.25rem 0.5rem;
   border-radius: 4px;
   display: inline-block;
-}
-
-/* Status Badges */
-.manager-vehicles-page .status-badge {
-  display: inline-block;
-  padding: 0.375rem 0.75rem;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.manager-vehicles-page .status-badge.success {
-  background: #d1fae5;
-  color: #065f46;
-}
-
-.manager-vehicles-page .status-badge.info {
-  background: #dbeafe;
-  color: #1e40af;
-}
-
-.manager-vehicles-page .status-badge.warning {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.manager-vehicles-page .status-badge.danger {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.manager-vehicles-page .status-badge.default {
-  background: #f3f4f6;
-  color: #4b5563;
 }
 
 /* Responsive */

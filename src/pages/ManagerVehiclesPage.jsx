@@ -94,11 +94,7 @@ function ManagerVehiclesPage() {
 
   const getStatusBadge = (status) => {
     const statusInfo = STATUS_MAP[status] || { label: status, color: 'default' }
-    return (
-      <span className={`status-badge ${statusInfo.color}`}>
-        {statusInfo.label}
-      </span>
-    )
+    return statusInfo.label
   }
 
   const getStatusCount = (status) => {
@@ -191,8 +187,8 @@ function ManagerVehiclesPage() {
                   <th>Trạng thái</th>
                   <th>Cập nhật bởi</th>
                   <th>Vị trí hiện tại</th>
-                  <th>TG bảo hành gần nhất</th>
-                  <th>TG cập nhật</th>
+                  <th>Thời gian bảo hành gần nhất</th>
+                  <th>Thời gian cập nhật</th>
                 </tr>
               </thead>
               <tbody>

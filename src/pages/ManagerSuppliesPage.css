@@ -30,12 +30,6 @@
   }
 }
 
-/* Header */
-.manager-supplies-page .page-header {
-  max-width: 1400px;
-  margin: 0 auto 2rem;
-}
-
 .manager-supplies-page .back-button {
   position: fixed;
   top: 20px;
@@ -69,13 +63,13 @@
   height: 1.25rem;
 }
 
-.manager-supplies-page .header-title {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+/* Header */
+.manager-supplies-page .page-header {
+  max-width: 1400px;
+  margin: 0 auto 2rem;
 }
 
-.manager-supplies-page .header-title h1 {
+.manager-supplies-page .page-header h1 {
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -86,34 +80,9 @@
   justify-content: center;
 }
 
-.manager-supplies-page .header-title h1 .icon {
+.manager-supplies-page .page-header h1 .icon {
   width: 2rem;
   height: 2rem;
-}
-
-.manager-supplies-page .add-button {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: white;
-  color: #667eea;
-  border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.manager-supplies-page .add-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-.manager-supplies-page .add-button .icon {
-  width: 1.25rem;
-  height: 1.25rem;
 }
 
 /* Content */
