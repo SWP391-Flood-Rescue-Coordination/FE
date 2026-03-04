@@ -255,7 +255,7 @@ function Dashboard() {
         <h1>Hệ Thống Quản Lí Cứu Hộ Cứu Trợ Lũ Lụt</h1>
         <div className="header-buttons">
           <button className="btn-primary" onClick={handleOpenRequestForm} disabled={isPreparingRequestForm || hasActiveRequest}>
-            {isPreparingRequestForm ? 'Dang tai...' : hasActiveRequest ? 'Đang chờ xử lý' : 'Tạo yêu cầu'}
+            {isPreparingRequestForm ? 'Đang t' : hasActiveRequest ? 'Đang chờ xử lý' : 'Tạo yêu cầu'}
           </button>
           <div className="view-request-wrapper">
             <button 
@@ -449,7 +449,7 @@ function Dashboard() {
         ></iframe>
         
         {/* Map Controls */}
-        <div className="map-controls">
+        {/* <div className="map-controls">
           <div className="level-control">
             <span>Mức 1</span>
             <div className="level-bar"></div>
@@ -487,12 +487,12 @@ function Dashboard() {
               </div>
             )}
           </div>
-        </div>
+        </div> */}
       </div>
 
       {/* Bottom Navigation */}
       <nav className="bottom-nav">
-        <button className="nav-item">Thông Tin</button>
+        {/* <button className="nav-item">Thông Tin</button> */}
         <button className="nav-item">Khảo Sát</button>
         <button className="nav-item">Liên Hệ</button>
       </nav>
