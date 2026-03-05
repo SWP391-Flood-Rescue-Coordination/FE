@@ -5,6 +5,7 @@ import './RequestForm.css'
 
 const INITIAL_FORM_DATA = {
   requestId: null,
+  accessCode: null,
   contactName: '',
   phone: '',
   location: '',
@@ -104,6 +105,7 @@ function RequestForm({ onClose }) {
         mode: 'create',
         submittedDate: new Date().toISOString(),
         requestId: data?.requestId ?? null,
+        accessCode: data?.accessCode ?? null,
         status: 'Pending',
       }
 

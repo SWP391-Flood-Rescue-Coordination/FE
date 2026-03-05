@@ -96,6 +96,9 @@ const mergeGuestRequestData = (apiData, cachedDetails, tracking) => {
     tracking?.requestId,
   )
   const requestId = toNullableInteger(requestIdRaw)
+  const accessCode = String(
+    pickFirstMeaningful(source?.accessCode, source?.AccessCode, cached?.accessCode, tracking?.accessCode) ?? '',
+  ).trim()
 
   const phone = String(
     pickFirstMeaningful(source?.phone, source?.contactPhone, source?.citizenPhone, cached?.phone) ?? '',
@@ -122,6 +125,7 @@ const mergeGuestRequestData = (apiData, cachedDetails, tracking) => {
     ...cached,
     ...source,
     requestId,
+    accessCode: accessCode || null,
     phone,
     address,
     description,
@@ -222,6 +226,7 @@ const toRequestFormData = (requestItem) => {
 
   return {
     requestId: requestItem?.requestId ?? requestItem?.RequestId ?? requestItem?.request_id ?? null,
+    accessCode: pickFirstMeaningful(requestItem?.accessCode, requestItem?.AccessCode) ?? null,
     phone: String(
       pickFirstMeaningful(
         requestItem?.phone,
@@ -371,11 +376,12 @@ const parseGuestTracking = (rawValue) => {
   try {
     const parsed = JSON.parse(rawValue)
     const requestId = Number.parseInt(String(parsed?.requestId ?? ''), 10)
+    const accessCode = String(parsed?.accessCode ?? '').trim()
     if (!Number.isInteger(requestId) || requestId <= 0) {
       return null
     }
 
-    return { requestId }
+    return { requestId, accessCode: accessCode || null }
   } catch {
     return null
   }
@@ -383,8 +389,9 @@ const parseGuestTracking = (rawValue) => {
 
 const getGuestTracking = () => parseGuestTracking(localStorage.getItem(GUEST_REQUEST_TRACKING_KEY))
 
-const storeGuestTracking = (requestId) => {
+const storeGuestTracking = (requestId, accessCode = null) => {
   const normalizedRequestId = Number.parseInt(String(requestId ?? ''), 10)
+  const normalizedAccessCode = String(accessCode ?? '').trim()
 
   if (!Number.isInteger(normalizedRequestId) || normalizedRequestId <= 0) {
     return
@@ -392,7 +399,7 @@ const storeGuestTracking = (requestId) => {
 
   localStorage.setItem(
     GUEST_REQUEST_TRACKING_KEY,
-    JSON.stringify({ requestId: normalizedRequestId }),
+    JSON.stringify({ requestId: normalizedRequestId, accessCode: normalizedAccessCode || null }),
   )
 }
 
@@ -429,12 +436,13 @@ const clearGuestDetails = () => {
   localStorage.removeItem(GUEST_REQUEST_DETAILS_KEY)
 }
 
-const buildGuestDetailsFromForm = (formData, requestId = null, status = 'Pending') => {
+const buildGuestDetailsFromForm = (formData, requestId = null, status = 'Pending', accessCode = null) => {
   const { latitude, longitude } = parseCoordinates(formData?.location)
   const peopleRaw = Number.parseInt(String(formData?.totalPeople ?? '').trim(), 10)
 
   return {
     requestId,
+    accessCode: String(accessCode ?? '').trim() || null,
     phone: String(formData?.phone ?? '').trim(),
     latitude,
     longitude,
@@ -470,17 +478,25 @@ const rescueRequestService = {
       pickFirstMeaningful(rawData?.requestId, rawData?.RequestId, rawData?.data?.requestId, rawData?.Data?.requestId),
     )
     const successRaw = pickFirstMeaningful(rawData?.success, rawData?.Success, true)
+    const accessCodeRaw = pickFirstMeaningful(
+      rawData?.accessCode,
+      rawData?.AccessCode,
+      rawData?.data?.accessCode,
+      rawData?.Data?.accessCode,
+    )
+    const accessCode = String(accessCodeRaw ?? '').trim() || null
 
     const data = {
       ...rawData,
       requestId,
+      accessCode,
       success: Boolean(successRaw),
     }
 
     if (requestId) {
-      storeGuestTracking(requestId)
+      storeGuestTracking(requestId, accessCode)
       storeGuestDetails(
-        buildGuestDetailsFromForm(formData, requestId, 'Pending'),
+        buildGuestDetailsFromForm(formData, requestId, 'Pending', accessCode),
       )
     }
 
@@ -497,10 +513,13 @@ const rescueRequestService = {
     return unwrapApiData(response)
   },
 
-  getGuestRequestStatus: async (requestId) => {
-    const response = await api.get('/RescueRequest/guest/status', {
-      params: { requestId },
-    })
+  getGuestRequestStatus: async (requestId, accessCode = null) => {
+    const params = { requestId }
+    if (String(accessCode ?? '').trim()) {
+      params.accessCode = String(accessCode).trim()
+    }
+
+    const response = await api.get('/RescueRequest/guest/status', { params })
     return unwrapApiData(response)
   },
 
@@ -511,23 +530,35 @@ const rescueRequestService = {
     }
 
     const cachedDetails = getGuestDetails()
-    const data = await rescueRequestService.getGuestRequestStatus(tracking.requestId)
+    const data = await rescueRequestService.getGuestRequestStatus(tracking.requestId, tracking.accessCode)
     const merged = mergeGuestRequestData(data, cachedDetails, tracking)
 
     storeGuestDetails(merged)
+    storeGuestTracking(merged?.requestId ?? tracking.requestId, merged?.accessCode ?? tracking.accessCode)
     return merged
   },
 
-  updateGuestRequest: async (requestId, formData) => {
+  updateGuestRequest: async (requestId, formData, accessCode = null) => {
     const payload = buildGuestUpdatePayload(formData)
-    const response = await api.put(`/RescueRequest/guest/update/${requestId}`, payload)
+    const query = {}
+    if (String(accessCode ?? '').trim()) {
+      query.accessCode = String(accessCode).trim()
+    }
+
+    const requestConfig = Object.keys(query).length > 0 ? { params: query } : undefined
+    const response = await api.put(`/RescueRequest/guest/update/${requestId}`, payload, requestConfig)
     const result = response?.data ?? {}
 
     if (result?.success) {
       const existingDetails = getGuestDetails()
       storeGuestDetails({
         ...(existingDetails || {}),
-        ...buildGuestDetailsFromForm(formData, requestId, existingDetails?.status || 'Pending'),
+        ...buildGuestDetailsFromForm(
+          formData,
+          requestId,
+          existingDetails?.status || 'Pending',
+          accessCode ?? existingDetails?.accessCode ?? null,
+        ),
       })
     }
 
