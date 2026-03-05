@@ -11,6 +11,22 @@ const unwrapApiData = (response) => {
 
 const normalizeArray = (value) => (Array.isArray(value) ? value : [])
 
+const VEHICLE_STATUS_TO_API_VALUE = {
+  AVAILABLE: 'AVAILABLE',
+  INUSE: 'INUSE',
+  IN_USE: 'INUSE',
+  MAINTENANCE: 'MAINTENANCE',
+  DISABLED: 'DISABLED',
+}
+
+const toVehicleApiStatusValue = (status) => {
+  const normalized = String(status ?? '')
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, '_')
+  return VEHICLE_STATUS_TO_API_VALUE[normalized] || status
+}
+
 const managerService = {
   /**
    * Lấy tổng quan dashboard statistics
@@ -69,7 +85,8 @@ const managerService = {
    */
   getAllVehicles: async (status = '') => {
     try {
-      const params = status ? { status } : undefined
+      const normalizedStatus = toVehicleApiStatusValue(status)
+      const params = normalizedStatus ? { status: normalizedStatus } : undefined
       const response = await api.get('/Vehicle', { params })
       return normalizeArray(unwrapApiData(response))
     } catch (error) {

@@ -68,9 +68,9 @@ function ManagerDashboardPage() {
         // Vehicle stats
         Promise.all([
           managerService.getAllVehicles(''),
-          managerService.getAllVehicles('Available'),
-          managerService.getAllVehicles('InUse'),
-          managerService.getAllVehicles('Maintenance'),
+          managerService.getAllVehicles('AVAILABLE'),
+          managerService.getAllVehicles('INUSE'),
+          managerService.getAllVehicles('MAINTENANCE'),
         ]),
         // Supply stats (fallback nếu API chưa có)
         managerService.getSupplyStats().catch(() => ({ totalTypes: 0, lowStock: 0 })),

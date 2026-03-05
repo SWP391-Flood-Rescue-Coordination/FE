@@ -71,8 +71,8 @@ function CoordinatorDashboardPage() {
       coordinatorService.getAvailableRescueTeams('AVAILABLE'),
       coordinatorService.getAvailableRescueTeams('BUSY'),
       coordinatorService.getVehicles('AVAILABLE'),
-      coordinatorService.getVehicles('InUse'),
-      coordinatorService.getVehicles('Maintenance'),
+      coordinatorService.getVehicles('INUSE'),
+      coordinatorService.getVehicles('MAINTENANCE'),
     ])
 
     const hasUnauthorized = results.some(

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+﻿import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   TruckIcon,
@@ -9,18 +9,20 @@ import managerService from '../services/managerService'
 import './ManagerVehiclesPage.css'
 
 const STATUS_MAP = {
-  Available: { label: 'Sẵn sàng', color: 'success' },
-  InUse: { label: 'Đang sử dụng', color: 'info' },
-  Maintenance: { label: 'Bảo trì', color: 'warning' },
-  Disabled: { label: 'Ngưng hoạt động', color: 'danger' },
+  AVAILABLE: { label: 'Sáºµn sÃ ng', color: 'success' },
+  INUSE: { label: 'Äang sá»­ dá»¥ng', color: 'info' },
+  MAINTENANCE: { label: 'Báº£o trÃ¬', color: 'warning' },
+  DISABLED: { label: 'NgÆ°ng hoáº¡t Ä‘á»™ng', color: 'danger' },
 }
 
 const FILTER_BUTTONS = [
-  { key: '', label: 'Tổng phương tiện', icon: 'all' },
-  { key: 'Available', label: 'Đang sẵn sàng', icon: 'available' },
-  { key: 'InUse', label: 'Đang sử dụng', icon: 'inuse' },
-  { key: 'Maintenance', label: 'Báo trì', icon: 'maintenance' },
+  { key: '', label: 'Tá»•ng phÆ°Æ¡ng tiá»‡n', icon: 'all' },
+  { key: 'AVAILABLE', label: 'Äang sáºµn sÃ ng', icon: 'available' },
+  { key: 'INUSE', label: 'Äang sá»­ dá»¥ng', icon: 'inuse' },
+  { key: 'MAINTENANCE', label: 'BÃ¡o trÃ¬', icon: 'maintenance' },
 ]
+
+const normalizeVehicleStatus = (status) => String(status ?? '').trim().toUpperCase().replace(/[\s-]+/g, '')
 
 function ManagerVehiclesPage() {
   const navigate = useNavigate()
@@ -78,7 +80,7 @@ function ManagerVehiclesPage() {
 
     // Filter by status
     if (statusFilter) {
-      filtered = filtered.filter((v) => v.status === statusFilter)
+      filtered = filtered.filter((v) => normalizeVehicleStatus(v.status) === statusFilter)
     }
 
     setFilteredVehicles(filtered)
@@ -93,25 +95,25 @@ function ManagerVehiclesPage() {
   }
 
   const getStatusBadge = (status) => {
-    const statusInfo = STATUS_MAP[status] || { label: status, color: 'default' }
+    const statusInfo = STATUS_MAP[normalizeVehicleStatus(status)] || { label: status, color: 'default' }
     return statusInfo.label
   }
 
   const getStatusCount = (status) => {
     if (!status) return vehicles.length
-    return vehicles.filter((v) => v.status === status).length
+    return vehicles.filter((v) => normalizeVehicleStatus(v.status) === status).length
   }
 
   if (isLoading) {
     return (
       <div className="manager-vehicles-page">
         <button className="back-button" onClick={handleBack}>
-          <span className="arrow-icon">←</span>
-          Quay lại
+          <span className="arrow-icon">â†</span>
+          Quay láº¡i
         </button>
         <div className="page-loading">
           <div className="loading-spinner"></div>
-          <p>Đang tải danh sách phương tiện...</p>
+          <p>Äang táº£i danh sÃ¡ch phÆ°Æ¡ng tiá»‡n...</p>
         </div>
       </div>
     )
@@ -120,14 +122,14 @@ function ManagerVehiclesPage() {
   return (
     <div className="manager-vehicles-page">
       <button className="back-button" onClick={handleBack}>
-        <span className="arrow-icon">←</span>
-        Quay lại
+        <span className="arrow-icon">â†</span>
+        Quay láº¡i
       </button>
       
       <header className="page-header">
         <h1>
           <TruckIcon className="icon" />
-          Quản lý Phương tiện
+          Quáº£n lÃ½ PhÆ°Æ¡ng tiá»‡n
         </h1>
       </header>
 
@@ -160,7 +162,7 @@ function ManagerVehiclesPage() {
             <MagnifyingGlassIcon className="icon" />
             <input
               type="text"
-              placeholder="Tìm kiếm theo tên, loại, biển số, mã phương tiện..."
+              placeholder="TÃ¬m kiáº¿m theo tÃªn, loáº¡i, biá»ƒn sá»‘, mÃ£ phÆ°Æ¡ng tiá»‡n..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -171,7 +173,7 @@ function ManagerVehiclesPage() {
         {filteredVehicles.length === 0 ? (
           <div className="empty-state">
             <TruckIcon className="icon" />
-            <p>Không tìm thấy phương tiện nào</p>
+            <p>KhÃ´ng tÃ¬m tháº¥y phÆ°Æ¡ng tiá»‡n nÃ o</p>
           </div>
         ) : (
           <div className="vehicles-table-container">
@@ -179,16 +181,16 @@ function ManagerVehiclesPage() {
               <thead>
                 <tr>
                   <th>Vehicle ID</th>
-                  <th>Mã phương tiện</th>
-                  <th>Tên phương tiện</th>
-                  <th>Biển số</th>
+                  <th>MÃ£ phÆ°Æ¡ng tiá»‡n</th>
+                  <th>TÃªn phÆ°Æ¡ng tiá»‡n</th>
+                  <th>Biá»ƒn sá»‘</th>
                   <th>Type ID</th>
-                  <th>Sức chứa</th>
-                  <th>Trạng thái</th>
-                  <th>Cập nhật bởi</th>
-                  <th>Vị trí hiện tại</th>
-                  <th>Thời gian bảo hành gần nhất</th>
-                  <th>Thời gian cập nhật</th>
+                  <th>Sá»©c chá»©a</th>
+                  <th>Tráº¡ng thÃ¡i</th>
+                  <th>Cáº­p nháº­t bá»Ÿi</th>
+                  <th>Vá»‹ trÃ­ hiá»‡n táº¡i</th>
+                  <th>Thá»i gian báº£o hÃ nh gáº§n nháº¥t</th>
+                  <th>Thá»i gian cáº­p nháº­t</th>
                 </tr>
               </thead>
               <tbody>
@@ -226,3 +228,4 @@ function ManagerVehiclesPage() {
 }
 
 export default ManagerVehiclesPage
+
