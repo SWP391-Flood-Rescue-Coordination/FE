@@ -70,7 +70,7 @@ function CoordinatorDashboardPage() {
       coordinatorService.getAvailableRescueTeams(),
       coordinatorService.getAvailableRescueTeams('AVAILABLE'),
       coordinatorService.getAvailableRescueTeams('BUSY'),
-      coordinatorService.getVehicles('Available'),
+      coordinatorService.getVehicles('AVAILABLE'),
       coordinatorService.getVehicles('InUse'),
       coordinatorService.getVehicles('Maintenance'),
     ])
