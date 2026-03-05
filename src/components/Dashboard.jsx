@@ -56,7 +56,6 @@ function Dashboard() {
       ...formatted,
       submittedDate: requestItem?.createdAt || fallback?.submittedDate || new Date().toISOString(),
       requestId: requestItem?.requestId ?? fallback?.requestId ?? formatted?.requestId ?? null,
-      accessCode: requestItem?.accessCode ?? fallback?.accessCode ?? formatted?.accessCode ?? null,
       status: requestItem?.status || fallback?.status || formatted?.status || 'Pending',
     };
   };
@@ -231,7 +230,6 @@ function Dashboard() {
         console.error('Error reloading request history:', error);
         const fallbackHistoryItem = buildHistoryItem(requestData, {
           requestId: requestData?.requestId ?? null,
-          accessCode: requestData?.accessCode ?? null,
           submittedDate: requestData?.submittedDate || new Date().toISOString(),
         });
 

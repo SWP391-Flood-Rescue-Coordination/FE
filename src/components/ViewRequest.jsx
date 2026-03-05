@@ -5,7 +5,6 @@ import './ViewRequest.css';
 
 const EMPTY_FORM_DATA = {
   requestId: null,
-  accessCode: null,
   phone: '',
   location: '',
   address: '',
@@ -33,8 +32,8 @@ function ViewRequest({ onClose, requestData, requestId }) {
   const isTerminal = rescueRequestService.isTerminalStatus(formData.status);
 
   const canGuestEdit = useMemo(
-    () => !isAuthenticated && Boolean(formData?.requestId) && Boolean(formData?.accessCode),
-    [isAuthenticated, formData?.requestId, formData?.accessCode],
+    () => !isAuthenticated && Boolean(formData?.requestId),
+    [isAuthenticated, formData?.requestId],
   );
 
   const canStartEdit = !isTerminal && !isLoading && !isConfirming;
@@ -79,7 +78,6 @@ function ViewRequest({ onClose, requestData, requestId }) {
           ...EMPTY_FORM_DATA,
           ...formatted,
           requestId: formatted?.requestId ?? sourceData?.requestId ?? requestId ?? null,
-          accessCode: formatted?.accessCode ?? sourceData?.accessCode ?? null,
           conditions: {
             ...EMPTY_FORM_DATA.conditions,
             ...(formatted?.conditions || {}),
@@ -141,7 +139,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
     }
 
     if (!isAuthenticated && !canGuestEdit) {
-      setErrorMessage('Không tìm thấy mã truy cập để chỉnh sửa yêu cầu guest.');
+      setErrorMessage('Không tìm thấy mã yêu cầu để chỉnh sửa yêu cầu guest.');
       setIsEditing(false);
       return;
     }
@@ -160,7 +158,6 @@ function ViewRequest({ onClose, requestData, requestId }) {
       const updateResult = await rescueRequestService.updateGuestRequest(
         formData.requestId,
         formData,
-        formData.accessCode,
       );
 
       if (!updateResult?.success) {
@@ -169,16 +166,12 @@ function ViewRequest({ onClose, requestData, requestId }) {
       }
 
       const refreshed = await rescueRequestService.getTrackedGuestRequestStatus();
-      const formatted = rescueRequestService.toRequestFormData({
-        ...refreshed,
-        accessCode: formData.accessCode,
-      });
+      const formatted = rescueRequestService.toRequestFormData(refreshed);
 
       setFormData((prev) => ({
         ...prev,
         ...formatted,
         requestId: prev.requestId,
-        accessCode: prev.accessCode,
         conditions: {
           ...EMPTY_FORM_DATA.conditions,
           ...(formatted?.conditions || {}),
