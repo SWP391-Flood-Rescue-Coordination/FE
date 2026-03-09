@@ -96,9 +96,8 @@ const mergeGuestRequestData = (apiData, cachedDetails, tracking) => {
     tracking?.requestId,
   )
   const requestId = toNullableInteger(requestIdRaw)
-
   const accessCode = String(
-    pickFirstMeaningful(source?.accessCode, cached?.accessCode, tracking?.accessCode) ?? '',
+    pickFirstMeaningful(source?.accessCode, source?.AccessCode, cached?.accessCode, tracking?.accessCode) ?? '',
   ).trim()
 
   const phone = String(
@@ -196,29 +195,70 @@ const inferConditionsFromDescription = (description) => {
   }
 }
 
+const normalizeConditions = (conditions) => ({
+  needSupplies: Boolean(conditions?.needSupplies),
+  houseCollapsed: Boolean(conditions?.houseCollapsed),
+  needMedical: Boolean(conditions?.needMedical),
+  floodUnder1m: Boolean(conditions?.floodUnder1m),
+  floodOver1m: Boolean(conditions?.floodOver1m),
+})
+
 const toRequestFormData = (requestItem) => {
-  const latitude = requestItem?.latitude
-  const longitude = requestItem?.longitude
-  const hasCoordinates = latitude !== null && latitude !== undefined && longitude !== null && longitude !== undefined
-  const description = String(requestItem?.description ?? '').trim()
+  const rawLocation = String(requestItem?.location ?? requestItem?.Location ?? '').trim()
+  const latitude = toNullableCoordinate(pickFirstMeaningful(requestItem?.latitude, requestItem?.Latitude))
+  const longitude = toNullableCoordinate(pickFirstMeaningful(requestItem?.longitude, requestItem?.Longitude))
+  const hasCoordinates = latitude !== null && longitude !== null
+  const description = String(
+    pickFirstMeaningful(requestItem?.description, requestItem?.Description, requestItem?.notes, requestItem?.Notes) ?? '',
+  ).trim()
+  const rawConditions = requestItem?.conditions ?? requestItem?.Conditions
+  const hasConditionObject = rawConditions && typeof rawConditions === 'object' && !Array.isArray(rawConditions)
+  const peopleValue = pickFirstMeaningful(
+    requestItem?.totalPeople,
+    requestItem?.TotalPeople,
+    requestItem?.numberOfAffectedPeople,
+    requestItem?.NumberOfAffectedPeople,
+    requestItem?.numberOfPeople,
+    requestItem?.NumberOfPeople,
+    requestItem?.number_of_affected_people,
+    requestItem?.number_of_people,
+  )
 
   return {
-    requestId: requestItem?.requestId ?? requestItem?.request_id ?? null,
-    phone: String(requestItem?.phone ?? requestItem?.contactPhone ?? requestItem?.citizenPhone ?? '').trim(),
-    location: hasCoordinates ? `${latitude},${longitude}` : '',
-    address: String(requestItem?.address ?? '').trim(),
-    totalPeople:
-      requestItem?.numberOfAffectedPeople !== null && requestItem?.numberOfAffectedPeople !== undefined
-        ? String(requestItem.numberOfAffectedPeople)
-        : requestItem?.numberOfPeople !== null && requestItem?.numberOfPeople !== undefined
-          ? String(requestItem.numberOfPeople)
-        : '',
-    conditions: inferConditionsFromDescription(description),
-    notes: description,
-    status: requestItem?.status ?? 'Pending',
-    accessCode: requestItem?.accessCode ?? null,
-    submittedDate: requestItem?.createdAt ?? null,
-    updatedAt: requestItem?.updatedAt ?? null,
+    requestId: requestItem?.requestId ?? requestItem?.RequestId ?? requestItem?.request_id ?? null,
+    accessCode: pickFirstMeaningful(requestItem?.accessCode, requestItem?.AccessCode) ?? null,
+    phone: String(
+      pickFirstMeaningful(
+        requestItem?.phone,
+        requestItem?.Phone,
+        requestItem?.contactPhone,
+        requestItem?.ContactPhone,
+        requestItem?.citizenPhone,
+        requestItem?.CitizenPhone,
+      ) ?? '',
+    ).trim(),
+    location: rawLocation || (hasCoordinates ? `${latitude},${longitude}` : ''),
+    address: String(pickFirstMeaningful(requestItem?.address, requestItem?.Address) ?? '').trim(),
+    totalPeople: hasMeaningfulValue(peopleValue) ? String(peopleValue).trim() : '',
+    conditions: hasConditionObject ? normalizeConditions(rawConditions) : inferConditionsFromDescription(description),
+    notes: String(
+      pickFirstMeaningful(
+        requestItem?.notes,
+        requestItem?.Notes,
+        requestItem?.description,
+        requestItem?.Description,
+      ) ?? '',
+    ).trim(),
+    status: pickFirstMeaningful(requestItem?.status, requestItem?.Status) ?? 'Pending',
+    submittedDate:
+      pickFirstMeaningful(
+        requestItem?.submittedDate,
+        requestItem?.SubmittedDate,
+        requestItem?.createdAt,
+        requestItem?.CreatedAt,
+        requestItem?.created_at,
+      ) ?? null,
+    updatedAt: pickFirstMeaningful(requestItem?.updatedAt, requestItem?.UpdatedAt, requestItem?.updated_at) ?? null,
   }
 }
 
@@ -247,6 +287,37 @@ const getCreateRequestErrorMessage = (error) => {
   }
 
   return data?.message || data?.title || 'Khong the gui yeu cau cuu ho. Vui long thu lai.'
+}
+
+const getConfirmRescuedErrorMessage = (error) => {
+  const status = error?.response?.status
+  const data = error?.response?.data
+
+  if (status === 400) {
+    const validationMessages = flattenValidationErrors(data?.errors)
+    if (validationMessages.length > 0) {
+      return validationMessages.join(' ')
+    }
+    return data?.message || data?.Message || 'Khong the xac nhan yeu cau nay.'
+  }
+
+  if (status === 401) {
+    return 'Phien dang nhap da het han. Vui long dang nhap lai.'
+  }
+
+  if (status === 403) {
+    return data?.message || data?.Message || 'Ban khong co quyen xac nhan yeu cau nay.'
+  }
+
+  if (status === 404) {
+    return data?.message || data?.Message || 'Khong tim thay yeu cau can xac nhan.'
+  }
+
+  if (status >= 500) {
+    return 'He thong dang gap loi. Vui long thu lai sau.'
+  }
+
+  return data?.message || data?.Message || data?.title || 'Khong the xac nhan da duoc cuu ho.'
 }
 
 const buildCreatePayload = (formData) => {
@@ -289,6 +360,9 @@ const unwrapApiData = (response) => {
   if (response?.data?.data !== undefined) {
     return response.data.data
   }
+  if (response?.data?.Data !== undefined) {
+    return response.data.Data
+  }
   return response?.data
 }
 
@@ -303,12 +377,11 @@ const parseGuestTracking = (rawValue) => {
     const parsed = JSON.parse(rawValue)
     const requestId = Number.parseInt(String(parsed?.requestId ?? ''), 10)
     const accessCode = String(parsed?.accessCode ?? '').trim()
-
-    if (!Number.isInteger(requestId) || requestId <= 0 || !accessCode) {
+    if (!Number.isInteger(requestId) || requestId <= 0) {
       return null
     }
 
-    return { requestId, accessCode }
+    return { requestId, accessCode: accessCode || null }
   } catch {
     return null
   }
@@ -316,17 +389,17 @@ const parseGuestTracking = (rawValue) => {
 
 const getGuestTracking = () => parseGuestTracking(localStorage.getItem(GUEST_REQUEST_TRACKING_KEY))
 
-const storeGuestTracking = (requestId, accessCode) => {
+const storeGuestTracking = (requestId, accessCode = null) => {
   const normalizedRequestId = Number.parseInt(String(requestId ?? ''), 10)
   const normalizedAccessCode = String(accessCode ?? '').trim()
 
-  if (!Number.isInteger(normalizedRequestId) || normalizedRequestId <= 0 || !normalizedAccessCode) {
+  if (!Number.isInteger(normalizedRequestId) || normalizedRequestId <= 0) {
     return
   }
 
   localStorage.setItem(
     GUEST_REQUEST_TRACKING_KEY,
-    JSON.stringify({ requestId: normalizedRequestId, accessCode: normalizedAccessCode }),
+    JSON.stringify({ requestId: normalizedRequestId, accessCode: normalizedAccessCode || null }),
   )
 }
 
@@ -363,13 +436,13 @@ const clearGuestDetails = () => {
   localStorage.removeItem(GUEST_REQUEST_DETAILS_KEY)
 }
 
-const buildGuestDetailsFromForm = (formData, requestId = null, accessCode = null, status = 'Pending') => {
+const buildGuestDetailsFromForm = (formData, requestId = null, status = 'Pending', accessCode = null) => {
   const { latitude, longitude } = parseCoordinates(formData?.location)
   const peopleRaw = Number.parseInt(String(formData?.totalPeople ?? '').trim(), 10)
 
   return {
     requestId,
-    accessCode,
+    accessCode: String(accessCode ?? '').trim() || null,
     phone: String(formData?.phone ?? '').trim(),
     latitude,
     longitude,
@@ -400,12 +473,30 @@ const rescueRequestService = {
   createRescueRequest: async (formData) => {
     const payload = buildCreatePayload(formData)
     const response = await api.post('/RescueRequest', payload)
-    const data = response?.data ?? {}
+    const rawData = response?.data ?? {}
+    const requestId = toNullableInteger(
+      pickFirstMeaningful(rawData?.requestId, rawData?.RequestId, rawData?.data?.requestId, rawData?.Data?.requestId),
+    )
+    const successRaw = pickFirstMeaningful(rawData?.success, rawData?.Success, true)
+    const accessCodeRaw = pickFirstMeaningful(
+      rawData?.accessCode,
+      rawData?.AccessCode,
+      rawData?.data?.accessCode,
+      rawData?.Data?.accessCode,
+    )
+    const accessCode = String(accessCodeRaw ?? '').trim() || null
 
-    if (data?.requestId && data?.accessCode) {
-      storeGuestTracking(data.requestId, data.accessCode)
+    const data = {
+      ...rawData,
+      requestId,
+      accessCode,
+      success: Boolean(successRaw),
+    }
+
+    if (requestId) {
+      storeGuestTracking(requestId, accessCode)
       storeGuestDetails(
-        buildGuestDetailsFromForm(formData, data.requestId, data.accessCode, 'Pending'),
+        buildGuestDetailsFromForm(formData, requestId, 'Pending', accessCode),
       )
     }
 
@@ -422,10 +513,13 @@ const rescueRequestService = {
     return unwrapApiData(response)
   },
 
-  getGuestRequestStatus: async (requestId, accessCode) => {
-    const response = await api.get('/RescueRequest/guest/status', {
-      params: { requestId, accessCode },
-    })
+  getGuestRequestStatus: async (requestId, accessCode = null) => {
+    const params = { requestId }
+    if (String(accessCode ?? '').trim()) {
+      params.accessCode = String(accessCode).trim()
+    }
+
+    const response = await api.get('/RescueRequest/guest/status', { params })
     return unwrapApiData(response)
   },
 
@@ -440,21 +534,59 @@ const rescueRequestService = {
     const merged = mergeGuestRequestData(data, cachedDetails, tracking)
 
     storeGuestDetails(merged)
+    storeGuestTracking(merged?.requestId ?? tracking.requestId, merged?.accessCode ?? tracking.accessCode)
     return merged
   },
 
-  updateGuestRequest: async (requestId, formData, accessCode) => {
+  updateGuestRequest: async (requestId, formData, accessCode = null) => {
     const payload = buildGuestUpdatePayload(formData)
-    const response = await api.put(`/RescueRequest/guest/update/${requestId}`, payload, {
-      params: { accessCode },
-    })
+    const query = {}
+    if (String(accessCode ?? '').trim()) {
+      query.accessCode = String(accessCode).trim()
+    }
+
+    const requestConfig = Object.keys(query).length > 0 ? { params: query } : undefined
+    const response = await api.put(`/RescueRequest/guest/update/${requestId}`, payload, requestConfig)
     const result = response?.data ?? {}
 
     if (result?.success) {
       const existingDetails = getGuestDetails()
       storeGuestDetails({
         ...(existingDetails || {}),
-        ...buildGuestDetailsFromForm(formData, requestId, accessCode, existingDetails?.status || 'Pending'),
+        ...buildGuestDetailsFromForm(
+          formData,
+          requestId,
+          existingDetails?.status || 'Pending',
+          accessCode ?? existingDetails?.accessCode ?? null,
+        ),
+      })
+    }
+
+    return result
+  },
+
+  confirmRescued: async (requestId) => {
+    const response = await api.put(`/RescueRequest/${requestId}/confirm-rescued`)
+    return response?.data ?? {}
+  },
+
+  confirmRescuedAsGuest: async (requestId, phone) => {
+    const payload = {
+      phone: String(phone ?? '').trim(),
+    }
+    const response = await api.put(`/RescueRequest/guest/${requestId}/confirm-rescued`, payload)
+    const result = response?.data ?? {}
+
+    const successRaw = pickFirstMeaningful(result?.success, result?.Success, false)
+    if (Boolean(successRaw)) {
+      const existingDetails = getGuestDetails()
+      const resolvedStatus = String(pickFirstMeaningful(result?.status, result?.Status, 'Completed'))
+      storeGuestDetails({
+        ...(existingDetails || {}),
+        requestId: toNullableInteger(requestId),
+        phone: payload.phone || existingDetails?.phone || '',
+        status: resolvedStatus,
+        updatedAt: new Date().toISOString(),
       })
     }
 
@@ -481,6 +613,7 @@ const rescueRequestService = {
   buildGuestUpdatePayload,
   validateCreatePayloadInput,
   getCreateRequestErrorMessage,
+  getConfirmRescuedErrorMessage,
 }
 
 export default rescueRequestService

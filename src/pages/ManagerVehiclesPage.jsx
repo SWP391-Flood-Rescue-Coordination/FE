@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+﻿import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   TruckIcon,
@@ -9,18 +9,20 @@ import managerService from '../services/managerService'
 import './ManagerVehiclesPage.css'
 
 const STATUS_MAP = {
-  Available: { label: 'Sẵn sàng', color: 'success' },
-  InUse: { label: 'Đang sử dụng', color: 'info' },
-  Maintenance: { label: 'Bảo trì', color: 'warning' },
-  Disabled: { label: 'Ngưng hoạt động', color: 'danger' },
+  AVAILABLE: { label: 'Sẵn sàng', color: 'success' },
+  INUSE: { label: 'Đang sử dụng', color: 'info' },
+  MAINTENANCE: { label: 'Bảo trì', color: 'warning' },
+  DISABLED: { label: 'Ngừng hoạt động', color: 'danger' },
 }
 
 const FILTER_BUTTONS = [
   { key: '', label: 'Tổng phương tiện', icon: 'all' },
-  { key: 'Available', label: 'Đang sẵn sàng', icon: 'available' },
-  { key: 'InUse', label: 'Đang sử dụng', icon: 'inuse' },
-  { key: 'Maintenance', label: 'Báo trì', icon: 'maintenance' },
+  { key: 'AVAILABLE', label: 'Đang sẵn sàng', icon: 'available' },
+  { key: 'INUSE', label: 'Đang sử dụng', icon: 'inuse' },
+  { key: 'MAINTENANCE', label: 'Bảo trì', icon: 'maintenance' },
 ]
+
+const normalizeVehicleStatus = (status) => String(status ?? '').trim().toUpperCase().replace(/[\s-]+/g, '')
 
 function ManagerVehiclesPage() {
   const navigate = useNavigate()
@@ -78,7 +80,7 @@ function ManagerVehiclesPage() {
 
     // Filter by status
     if (statusFilter) {
-      filtered = filtered.filter((v) => v.status === statusFilter)
+      filtered = filtered.filter((v) => normalizeVehicleStatus(v.status) === statusFilter)
     }
 
     setFilteredVehicles(filtered)
@@ -93,13 +95,13 @@ function ManagerVehiclesPage() {
   }
 
   const getStatusBadge = (status) => {
-    const statusInfo = STATUS_MAP[status] || { label: status, color: 'default' }
+    const statusInfo = STATUS_MAP[normalizeVehicleStatus(status)] || { label: status, color: 'default' }
     return statusInfo.label
   }
 
   const getStatusCount = (status) => {
     if (!status) return vehicles.length
-    return vehicles.filter((v) => v.status === status).length
+    return vehicles.filter((v) => normalizeVehicleStatus(v.status) === status).length
   }
 
   if (isLoading) {
@@ -226,3 +228,4 @@ function ManagerVehiclesPage() {
 }
 
 export default ManagerVehiclesPage
+

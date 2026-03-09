@@ -367,6 +367,7 @@ function Dashboard() {
                     'VERIFIED': 'Đã xác minh',
                     'ASSIGNED': 'Đã phân công',
                     'IN_PROGRESS': 'Đang cứu hộ',
+                    'CONFIRMED': 'Đã xác nhận',
                     'COMPLETED': 'Đã hoàn thành',
                     'CANCELLED': 'Đã hủy',
                     'DUPLICATE': 'Trùng lặp'

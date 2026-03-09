@@ -15,6 +15,7 @@ const STATUS_TO_API_VALUE = {
   PENDING: 'Pending',
   VERIFIED: 'Verified',
   ASSIGNED: 'Assigned',
+  CONFIRMED: 'Confirmed',
   IN_PROGRESS: 'In Progress',
   COMPLETED: 'Completed',
   CANCELLED: 'Cancelled',
@@ -30,10 +31,11 @@ const toApiStatusValue = (status) => {
 }
 
 const VEHICLE_STATUS_TO_API_VALUE = {
-  AVAILABLE: 'Available',
-  IN_USE: 'InUse',
-  MAINTENANCE: 'Maintenance',
-  DISABLED: 'Disabled',
+  AVAILABLE: 'AVAILABLE',
+  INUSE: 'INUSE',
+  IN_USE: 'INUSE',
+  MAINTENANCE: 'MAINTENANCE',
+  DISABLED: 'DISABLED',
 }
 
 const toVehicleApiStatusValue = (status) => {
@@ -82,7 +84,7 @@ const coordinatorService = {
   },
 
   getAvailableVehicles: async () => {
-    const response = await api.get('/Vehicle', { params: { status: 'Available' } })
+    const response = await api.get('/Vehicle', { params: { status: 'AVAILABLE' } })
     return normalizeArray(unwrapApiData(response))
   },
 

@@ -12,6 +12,8 @@ import {
   ChartBarIcon,
   WrenchScrewdriverIcon,
   UserCircleIcon,
+  ClipboardDocumentListIcon,
+  DocumentTextIcon,
 } from '@heroicons/react/24/outline'
 import authService from '../services/authService'
 import managerService from '../services/managerService'
@@ -68,9 +70,9 @@ function ManagerDashboardPage() {
         // Vehicle stats
         Promise.all([
           managerService.getAllVehicles(''),
-          managerService.getAllVehicles('Available'),
-          managerService.getAllVehicles('InUse'),
-          managerService.getAllVehicles('Maintenance'),
+          managerService.getAllVehicles('AVAILABLE'),
+          managerService.getAllVehicles('INUSE'),
+          managerService.getAllVehicles('MAINTENANCE'),
         ]),
         // Supply stats (fallback nếu API chưa có)
         managerService.getSupplyStats().catch(() => ({ totalTypes: 0, lowStock: 0 })),
@@ -178,6 +180,18 @@ function ManagerDashboardPage() {
     navigate('/manager/supplies?filter=lowStock')
   }
 
+  const handleNavigateToImportReceipt = () => {
+    navigate('/manager/import-receipt')
+  }
+
+  const handleNavigateToImportReceiptsList = () => {
+    navigate('/manager/import-receipts')
+  }
+
+  const handleNavigateToReliefExport = () => {
+    navigate('/manager/relief-export')
+  }
+
   // Chart rendering helper functions
   const renderLineChart = (data, color = '#667eea') => {
     const maxValue = Math.max(...data)
@@ -254,8 +268,19 @@ function ManagerDashboardPage() {
     <div className="manager-dashboard">
       <header className="manager-header">
         <h1>Manager Dashboard</h1>
-        <div className="header-info">
-          <span className="user-name">{currentUser?.fullName || 'Manager'}</span>
+        <div className="header-buttons">
+          <button className="btn-create-receipt" onClick={handleNavigateToImportReceipt}>
+            <ClipboardDocumentListIcon className="icon" />
+            Tạo phiếu nhập 
+          </button>
+          <button className="btn-relief-export" onClick={handleNavigateToReliefExport}>
+            <TruckIcon className="icon" />
+            Tạo phiếu xuất 
+          </button>
+          <button className="btn-view-receipts" onClick={handleNavigateToImportReceiptsList}>
+            <DocumentTextIcon className="icon" />
+            Xem phiếu 
+          </button>
           <div className="auth-user-group" ref={userMenuRef}>
             <button
               type="button"

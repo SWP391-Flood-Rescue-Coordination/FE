@@ -139,26 +139,26 @@ function RescueTeamDashboard() {
 
   const handleComplete = async () => {
     const normalizedStatus = normalizeOperationStatus(selectedMission?.rawStatus);
-    const canComplete = normalizedStatus === 'ASSIGNED' || normalizedStatus === 'IN_PROGRESS';
+    const canComplete = normalizedStatus === 'ASSIGNED';
 
     if (!canComplete) {
-      alert('Nhiệm vụ chưa ở trạng thái có thể hoàn tất.');
+      alert('Nhiệm vụ chưa ở trạng thái có thể xác nhận cứu hộ.');
       return;
     }
 
-    if (!window.confirm('Xác nhận hoàn tất nhiệm vụ cứu hộ này?')) {
+    if (!window.confirm('Xác nhận đội đã hoàn thành cứu hộ và chuyển yêu cầu sang trạng thái đã xác nhận?')) {
       return;
     }
 
     setUpdating(true);
     try {
-      // Nghiệp vụ: khi đội đã nhìn thấy nhiệm vụ (Assigned), bấm Hoàn tất chuyển thẳng Completed.
-      await rescueTeamService.updateOperationStatus(selectedMission.operationId, 'Completed');
+      // Luồng mới: Rescue Team xác nhận đã cứu hộ (Assigned -> Confirmed).
+      await rescueTeamService.updateOperationStatus(selectedMission.operationId, 'Confirmed');
 
-      // Xóa nhiệm vụ khỏi danh sách local (vì đã completed)
+      // Xóa khỏi danh sách nhiệm vụ đang xử lý của đội.
       setMissions((prev) => prev.filter((m) => m.id !== selectedMission.id));
       setSelectedMission(null);
-      alert('Đã hoàn tất nhiệm vụ thành công!');
+      alert('Đã xác nhận cứu hộ thành công! Người dân có thể xác nhận hoàn tất.');
 
       // Refresh lại danh sách
       await fetchMissions();
@@ -364,7 +364,7 @@ function RescueTeamDashboard() {
                     onClick={handleComplete}
                     disabled={updating}
                   >
-                    {updating ? 'Đang xử lý...' : 'Hoàn tất'}
+                    {updating ? 'Đang xử lý...' : 'Xác nhận cứu hộ'}
                   </button>
                 </div>
               </div>

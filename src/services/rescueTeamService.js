@@ -22,8 +22,9 @@ const normalizeStatus = (status) => {
  */
 const mapStatusDisplay = (status) => {
   const statusMap = {
-    'Assigned': 'Chờ xử lý',
+    'Assigned': 'Đã phân công',
     'In Progress': 'Đang thực hiện',
+    'Confirmed': 'Đã xác nhận',
     'Completed': 'Hoàn thành'
   }
   return statusMap[status] || status
@@ -198,14 +199,14 @@ const rescueTeamService = {
    * PUT /api/rescue-team/operations/{operationId}/status
    * 
    * @param {number} operationId - ID của operation
-   * @param {string} newStatus - Trạng thái mới: "In Progress" hoặc "Completed"
+   * @param {string} newStatus - Trạng thái mới: "Confirmed" hoặc "Failed"
    * @returns {Promise<Object>} Response từ BE
    * @throws {Error} Nếu có lỗi từ API
    */
   updateOperationStatus: async (operationId, newStatus) => {
     try {
       const payload = {
-        newStatus: newStatus // "In Progress" hoặc "Completed"
+        newStatus: newStatus // "Confirmed" hoặc "Failed"
       }
       
       const response = await api.put(

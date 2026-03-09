@@ -25,11 +25,88 @@
   color: rgb(240, 42, 42);
 }
 
-.manager-header .header-info,
-.manager-header .header-actions {
+.manager-header .header-buttons {
   display: flex;
   align-items: center;
   gap: 15px;
+}
+
+.manager-header .btn-create-receipt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 27px 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background-color: #dc2626;
+  color: white;
+}
+
+.manager-header .btn-create-receipt:hover {
+  background-color: #b91c1c;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
+}
+
+.manager-header .btn-create-receipt .icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.manager-header .btn-view-receipts {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 27px 10px 20px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background-color: white;
+  color: #2c3e50;
+}
+
+.manager-header .btn-view-receipts:hover {
+  background-color: #f0f0f0;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.manager-header .btn-view-receipts .icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.manager-header .btn-relief-export {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 27px 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background-color: #dc2626;
+  color: white;
+}
+
+.manager-header .btn-relief-export:hover {
+  background-color: #b91c1c;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
+}
+
+.manager-header .btn-relief-export .icon {
+  width: 1.25rem;
+  height: 1.25rem;
 }
 
 .manager-header .user-name {
@@ -357,10 +434,14 @@
 }
 
 .metric-card.primary .metric-icon,
+.metric-card.danger .metric-icon {
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+}
+
 .metric-card.success .metric-icon,
 .metric-card.info .metric-icon,
-.metric-card.warning .metric-icon,
-.metric-card.danger .metric-icon {
+.metric-card.warning .metric-icon {
   background: rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(10px);
 }
@@ -527,13 +608,23 @@
     align-items: flex-start;
   }
 
-  .manager-header .header-info {
+  .manager-header .header-buttons {
     width: 100%;
     justify-content: space-between;
   }
 
   .manager-header .user-name {
     display: none;
+  }
+
+  .manager-header .btn-create-receipt {
+    font-size: 14px;
+    padding: 8px 16px 8px 12px;
+  }
+
+  .manager-header .btn-view-receipts {
+    font-size: 14px;
+    padding: 8px 16px 8px 12px;
   }
 
   .manager-content {
@@ -574,6 +665,33 @@
 @media (max-width: 480px) {
   .manager-header h1 {
     font-size: 1.25rem;
+    margin-left: 10px;
+  }
+
+  .manager-header .header-buttons {
+    flex-wrap: wrap;
+  }
+
+  .manager-header .btn-create-receipt {
+    font-size: 12px;
+    padding: 6px 12px;
+    gap: 4px;
+  }
+
+  .manager-header .btn-create-receipt .icon {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .manager-header .btn-view-receipts {
+    font-size: 12px;
+    padding: 6px 12px;
+    gap: 4px;
+  }
+
+  .manager-header .btn-view-receipts .icon {
+    width: 1rem;
+    height: 1rem;
   }
 
   .manager-header .logout-button span {
