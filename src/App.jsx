@@ -9,6 +9,7 @@ import CoordinatorDashboardPage from './pages/CoordinatorDashboardPage'
 import ManagerDashboardPage from './pages/ManagerDashboardPage'
 import ManagerVehiclesPage from './pages/ManagerVehiclesPage'
 import ManagerSuppliesPage from './pages/ManagerSuppliesPage'
+import ManagerReliefExportPage from './pages/ManagerReliefExportPage'
 import './App.css'
 
 function App() {
@@ -25,6 +26,7 @@ function App() {
           <Route path="/manager" element={<ManagerDashboardPage />} />
           <Route path="/manager/vehicles" element={<ManagerVehiclesPage />} />
           <Route path="/manager/supplies" element={<ManagerSuppliesPage />} />
+          <Route path="/manager/relief-export" element={<ManagerReliefExportPage />} />
         </Routes>
       </div>
     </Router>

@@ -255,7 +255,6 @@ function ManagerDashboardPage() {
       <header className="manager-header">
         <h1>Manager Dashboard</h1>
         <div className="header-info">
-          <span className="user-name">{currentUser?.fullName || 'Manager'}</span>
           <div className="auth-user-group" ref={userMenuRef}>
             <button
               type="button"

@@ -28,9 +28,6 @@ const toVehicleApiStatusValue = (status) => {
 }
 
 const managerService = {
-  /**
-   * Lấy tổng quan dashboard statistics
-   */
   getDashboardStats: async () => {
     try {
       const response = await api.get(`${MANAGER_BASE}/dashboard-stats`)
@@ -41,9 +38,6 @@ const managerService = {
     }
   },
 
-  /**
-   * Lấy thống kê phương tiện
-   */
   getVehicleStats: async () => {
     try {
       const response = await api.get(`${MANAGER_BASE}/vehicle-stats`)
@@ -54,9 +48,6 @@ const managerService = {
     }
   },
 
-  /**
-   * Lấy thống kê vật tư
-   */
   getSupplyStats: async () => {
     try {
       const response = await api.get(`${MANAGER_BASE}/supply-stats`)
@@ -67,9 +58,6 @@ const managerService = {
     }
   },
 
-  /**
-   * Lấy thống kê hoạt động hôm nay
-   */
   getTodayStats: async () => {
     try {
       const response = await api.get(`${MANAGER_BASE}/today-stats`)
@@ -80,9 +68,6 @@ const managerService = {
     }
   },
 
-  /**
-   * Lấy danh sách tất cả phương tiện
-   */
   getAllVehicles: async (status = '') => {
     try {
       const normalizedStatus = toVehicleApiStatusValue(status)
@@ -95,9 +80,6 @@ const managerService = {
     }
   },
 
-  /**
-   * Lấy danh sách vật tư
-   */
   getSupplies: async () => {
     try {
       const response = await api.get(`${MANAGER_BASE}/supplies`)
@@ -108,9 +90,16 @@ const managerService = {
     }
   },
 
-  /**
-   * Lấy vật tư sắp hết (low stock)
-   */
+  getRecipientUnits: async () => {
+    try {
+      const response = await api.get(`${MANAGER_BASE}/recipient-units`)
+      return normalizeArray(unwrapApiData(response))
+    } catch (error) {
+      console.error('[managerService] getRecipientUnits error:', error)
+      throw error
+    }
+  },
+
   getLowStockSupplies: async () => {
     try {
       const response = await api.get(`${MANAGER_BASE}/supplies/low-stock`)
@@ -121,9 +110,6 @@ const managerService = {
     }
   },
 
-  /**
-   * Thêm vật tư mới
-   */
   addSupply: async (supplyData) => {
     try {
       const response = await api.post(`${MANAGER_BASE}/supplies`, supplyData)
@@ -134,9 +120,6 @@ const managerService = {
     }
   },
 
-  /**
-   * Cập nhật vật tư
-   */
   updateSupply: async (supplyId, supplyData) => {
     try {
       const response = await api.put(`${MANAGER_BASE}/supplies/${supplyId}`, supplyData)
@@ -147,9 +130,6 @@ const managerService = {
     }
   },
 
-  /**
-   * Xóa vật tư
-   */
   deleteSupply: async (supplyId) => {
     try {
       const response = await api.delete(`${MANAGER_BASE}/supplies/${supplyId}`)
@@ -160,9 +140,6 @@ const managerService = {
     }
   },
 
-  /**
-   * Lấy báo cáo chi tiết
-   */
   getDetailedReport: async (startDate, endDate) => {
     try {
       const params = { startDate, endDate }
@@ -174,9 +151,6 @@ const managerService = {
     }
   },
 
-  /**
-   * Export báo cáo
-   */
   exportReport: async (reportType, startDate, endDate) => {
     try {
       const response = await api.get(`${MANAGER_BASE}/reports/export`, {
@@ -190,9 +164,16 @@ const managerService = {
     }
   },
 
-  /**
-   * Error message handlers
-   */
+  createReliefExportOrder: async (payload) => {
+    try {
+      const response = await api.post(`${MANAGER_BASE}/relief-export-orders`, payload)
+      return unwrapApiData(response)
+    } catch (error) {
+      console.error('[managerService] createReliefExportOrder error:', error)
+      throw error
+    }
+  },
+
   getErrorMessage: (error) => {
     const status = error?.response?.status
     const data = error?.response?.data
