@@ -8,7 +8,6 @@ import {
   CubeIcon,
   ExclamationTriangleIcon,
   MapPinIcon,
-  TruckIcon,
 } from '@heroicons/react/24/outline'
 import authService from '../services/authService'
 import managerService from '../services/managerService'
@@ -150,9 +149,7 @@ function ManagerReliefExportPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [recipientOptions, setRecipientOptions] = useState([])
   const [supplies, setSupplies] = useState([])
-  const [vehicles, setVehicles] = useState([])
   const [selectedRecipientId, setSelectedRecipientId] = useState('')
-  const [selectedVehicleIds, setSelectedVehicleIds] = useState([])
   const [supplyQuantities, setSupplyQuantities] = useState({})
   const [errorMessage, setErrorMessage] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
@@ -161,13 +158,12 @@ function ManagerReliefExportPage() {
     setIsLoading(true)
 
     try {
-      const [recipientResult, supplyResult, vehicleResult] = await Promise.allSettled([
+      const [recipientResult, supplyResult] = await Promise.allSettled([
         managerService.getRecipientUnits(),
         managerService.getSupplies(),
-        managerService.getAllVehicles('AVAILABLE'),
       ])
 
-      const hasUnauthorized = [recipientResult, supplyResult, vehicleResult].some(
+      const hasUnauthorized = [recipientResult, supplyResult].some(
         (result) => result.status === 'rejected' && result.reason?.response?.status === 401,
       )
 
@@ -193,16 +189,6 @@ function ManagerReliefExportPage() {
       } else {
         setSupplies(DEFAULT_SUPPLIES)
       }
-
-      if (vehicleResult.status === 'fulfilled') {
-        const normalizedVehicles = vehicleResult.value
-          .map(normalizeVehicle)
-          .filter((item) => item.id)
-          .filter((item) => !item.status || item.status === 'AVAILABLE')
-        setVehicles(normalizedVehicles)
-      } else {
-        setVehicles([])
-      }
     } finally {
       setIsLoading(false)
     }
@@ -227,13 +213,6 @@ function ManagerReliefExportPage() {
   const selectedRecipient = useMemo(
     () => recipientOptions.find((item) => String(item.id) === String(selectedRecipientId)) || null,
     [recipientOptions, selectedRecipientId],
-  )
-
-  const selectedVehicleIdSet = useMemo(() => new Set(selectedVehicleIds), [selectedVehicleIds])
-
-  const selectedVehicles = useMemo(
-    () => vehicles.filter((vehicle) => selectedVehicleIdSet.has(String(vehicle.id))),
-    [selectedVehicleIdSet, vehicles],
   )
 
   const selectedSupplyItems = useMemo(
@@ -284,14 +263,13 @@ function ManagerReliefExportPage() {
 
   const canSubmit =
     Boolean(selectedRecipient) &&
-    selectedVehicleIds.length > 0 &&
     selectedSupplyItems.length > 0 &&
     Object.keys(supplyValidationMap).length === 0 &&
     !isLoading &&
     !isSubmitting
 
   const handleBack = () => {
-    navigate('/manager/vehicles')
+    navigate('/manager')
   }
 
   const handleSelectRecipient = (recipientId) => {
@@ -330,19 +308,8 @@ function ManagerReliefExportPage() {
     setSuccessMessage('')
   }
 
-  const handleToggleVehicle = (vehicleId) => {
-    const key = String(vehicleId)
-
-    setSelectedVehicleIds((prev) =>
-      prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key],
-    )
-    setErrorMessage('')
-    setSuccessMessage('')
-  }
-
   const resetForm = () => {
     setSelectedRecipientId('')
-    setSelectedVehicleIds([])
     setSupplyQuantities({})
   }
 
@@ -362,11 +329,6 @@ function ManagerReliefExportPage() {
       return
     }
 
-    if (selectedVehicleIds.length === 0) {
-      setErrorMessage('Vui lòng chọn ít nhất một phương tiện vận chuyển.')
-      return
-    }
-
     setIsSubmitting(true)
     setErrorMessage('')
     setSuccessMessage('')
@@ -381,7 +343,6 @@ function ManagerReliefExportPage() {
           supplyId: toNumericIfPossible(item.id),
           quantity: item.parsedQuantity,
         })),
-        vehicleIds: selectedVehicleIds.map((item) => toNumericIfPossible(item)),
       })
 
       setSuccessMessage('Tạo phiếu xuất kho thành công.')
@@ -557,71 +518,6 @@ function ManagerReliefExportPage() {
               </table>
             </div>
           </section>
-
-          <section className="panel">
-            <div className="section-heading">
-              <div className="section-title">
-                <TruckIcon className="icon" />
-                <h2>Chọn phương tiện vận chuyển</h2>
-              </div>
-              <span className="section-meta">Chỉ hiển thị phương tiện sẵn sàng</span>
-            </div>
-
-            <div className="selection-toolbar">
-              <strong>Danh sách xe sẵn sàng</strong>
-              <span>Đã chọn: {selectedVehicleIds.length}</span>
-            </div>
-
-            <div className="table-wrap">
-              <table className="data-table vehicle-table">
-                <thead>
-                  <tr>
-                    <th>Chọn</th>
-                    <th>Mã xe</th>
-                    <th>Tên xe</th>
-                    <th>Biển số</th>
-                    <th>Loại xe</th>
-                    <th>Sức chứa</th>
-                    <th>Vị trí</th>
-                    <th>Trạng thái</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {vehicles.length === 0 && (
-                    <tr>
-                      <td colSpan="8" className="empty-row">
-                        Không có phương tiện phù hợp để điều phối.
-                      </td>
-                    </tr>
-                  )}
-
-                  {vehicles.map((vehicle) => {
-                    const isChecked = selectedVehicleIdSet.has(String(vehicle.id))
-
-                    return (
-                      <tr key={vehicle.id} className={isChecked ? 'is-selected' : ''}>
-                        <td>
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => handleToggleVehicle(vehicle.id)}
-                            disabled={isSubmitting}
-                          />
-                        </td>
-                        <td>{vehicle.vehicleCode || '-'}</td>
-                        <td>{vehicle.name || '-'}</td>
-                        <td>{vehicle.licensePlate || '-'}</td>
-                        <td>{vehicle.vehicleTypeName || '-'}</td>
-                        <td>{vehicle.capacity ?? '-'}</td>
-                        <td>{vehicle.currentLocation || '-'}</td>
-                        <td>{VEHICLE_STATUS_LABELS[vehicle.status] || vehicle.status || '-'}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </section>
         </main>
 
         <aside className="page-sidebar">
@@ -640,10 +536,6 @@ function ManagerReliefExportPage() {
                 <span>Tổng số lượng vật tư xuất</span>
                 <strong>{totalRequestedQuantity}</strong>
               </div>
-              <div className="summary-item">
-                <span>Phương tiện đã chọn</span>
-                <strong>{selectedVehicles.length}</strong>
-              </div>
             </div>
 
             <div className="summary-block">
@@ -661,28 +553,12 @@ function ManagerReliefExportPage() {
               )}
             </div>
 
-            <div className="summary-block">
-              <h3>Danh sách phương tiện</h3>
-              {selectedVehicles.length === 0 ? (
-                <p className="summary-empty">Chưa chọn phương tiện vận chuyển.</p>
-              ) : (
-                <div className="vehicle-list">
-                  {selectedVehicles.map((vehicle) => (
-                    <div key={vehicle.id} className="vehicle-list-item">
-                      <strong>{vehicle.name || vehicle.vehicleCode || `Phương tiện #${vehicle.id}`}</strong>
-                      <span>{vehicle.licensePlate || vehicle.currentLocation || '-'}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
             <button type="button" className="submit-button" onClick={handleSubmit} disabled={!canSubmit}>
               {isSubmitting ? 'Đang tạo phiếu xuất kho...' : 'Gửi phiếu xuất kho'}
             </button>
 
             <p className="summary-note">
-              Không thể điều phối khi chưa chọn đơn vị nhận, vật tư hợp lệ hoặc phương tiện vận chuyển.
+              Không thể xuất kho khi chưa chọn đơn vị nhận hoặc vật tư hợp lệ.
             </p>
           </section>
         </aside>

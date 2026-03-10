@@ -174,6 +174,36 @@ const managerService = {
     }
   },
 
+  getCategories: async () => {
+    try {
+      const response = await api.get(`${MANAGER_BASE}/categories`)
+      return normalizeArray(unwrapApiData(response))
+    } catch (error) {
+      console.error('[managerService] getCategories error:', error)
+      throw error
+    }
+  },
+
+  createImportReceipt: async (payload) => {
+    try {
+      const response = await api.post(`${MANAGER_BASE}/import-receipts`, payload)
+      return unwrapApiData(response)
+    } catch (error) {
+      console.error('[managerService] createImportReceipt error:', error)
+      throw error
+    }
+  },
+
+  getImportReceipts: async () => {
+    try {
+      const response = await api.get(`${MANAGER_BASE}/import-receipts`)
+      return normalizeArray(unwrapApiData(response))
+    } catch (error) {
+      console.error('[managerService] getImportReceipts error:', error)
+      throw error
+    }
+  },
+
   getErrorMessage: (error) => {
     const status = error?.response?.status
     const data = error?.response?.data

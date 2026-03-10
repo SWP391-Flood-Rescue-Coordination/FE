@@ -76,13 +76,6 @@
   margin: 0 auto 2rem;
 }
 
-.manager-vehicles-page .page-header-inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
 .manager-vehicles-page .page-header h1 {
   display: flex;
   align-items: center;
@@ -96,33 +89,6 @@
 .manager-vehicles-page .page-header h1 .icon {
   width: 2rem;
   height: 2rem;
-}
-
-.manager-vehicles-page .primary-action-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.65rem;
-  border: none;
-  border-radius: 10px;
-  background: #dc2626;
-  color: #fff;
-  padding: 0.85rem 1.35rem;
-  font-size: 0.95rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-  flex-shrink: 0;
-}
-
-.manager-vehicles-page .primary-action-button .icon {
-  width: 1.25rem;
-  height: 1.25rem;
-}
-
-.manager-vehicles-page .primary-action-button:hover {
-  background: #b91c1c;
-  transform: translateY(-1px);
-  box-shadow: 0 10px 24px rgba(220, 38, 38, 0.24);
 }
 
 /* Layout */
@@ -366,11 +332,6 @@
 
 /* Responsive */
 @media (max-width: 1024px) {
-  .manager-vehicles-page .page-header-inner {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
   .manager-vehicles-page .page-layout {
     flex-direction: column;
   }

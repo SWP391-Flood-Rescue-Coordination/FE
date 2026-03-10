@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import {
   TruckIcon,
   MagnifyingGlassIcon,
-  ArchiveBoxArrowDownIcon,
 } from '@heroicons/react/24/outline'
 import authService from '../services/authService'
 import managerService from '../services/managerService'
@@ -95,10 +94,6 @@ function ManagerVehiclesPage() {
     setStatusFilter(filterKey)
   }
 
-  const handleNavigateToReliefExport = () => {
-    navigate('/manager/relief-export')
-  }
-
   const getStatusBadge = (status) => {
     const statusInfo = STATUS_MAP[normalizeVehicleStatus(status)] || { label: status, color: 'default' }
     return statusInfo.label
@@ -132,16 +127,10 @@ function ManagerVehiclesPage() {
       </button>
       
       <header className="page-header">
-        <div className="page-header-inner">
-          <h1>
-            <TruckIcon className="icon" />
-            Quản lý Phương tiện
-          </h1>
-          <button type="button" className="primary-action-button" onClick={handleNavigateToReliefExport}>
-            <ArchiveBoxArrowDownIcon className="icon" />
-            Xuất kho cứu trợ
-          </button>
-        </div>
+        <h1>
+          <TruckIcon className="icon" />
+          Quản lý Phương tiện
+        </h1>
       </header>
 
       <div className="page-layout">
