@@ -632,6 +632,216 @@
   font-size: 1rem;
 }
 
+/* Error Message */
+.manager-import-receipts-list-page .error-message {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  border: 2px solid #fca5a5;
+  color: #991b1b;
+  padding: 1rem 1.25rem;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.12);
+}
+
+/* Filter Header */
+.manager-import-receipts-list-page .filter-header {
+  margin-bottom: 1.25rem;
+}
+
+.manager-import-receipts-list-page .filter-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.85rem 1.5rem;
+  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  position: relative;
+}
+
+.manager-import-receipts-list-page .filter-toggle-btn .icon {
+  width: 1.2rem;
+  height: 1.2rem;
+  color: #6b7280;
+  transition: transform 0.3s ease;
+}
+
+.manager-import-receipts-list-page .filter-toggle-btn:hover {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  color: white;
+  border-color: #dc2626;
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.2);
+}
+
+.manager-import-receipts-list-page .filter-toggle-btn:hover .icon {
+  color: white;
+  transform: rotate(180deg);
+}
+
+.manager-import-receipts-list-page .filter-active-badge {
+  width: 0.65rem;
+  height: 0.65rem;
+  background: #dc2626;
+  border-radius: 50%;
+  color: #dc2626;
+  font-size: 0;
+  animation: pulse 2s infinite;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Advanced Filters */
+.manager-import-receipts-list-page .advanced-filters {
+  background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
+  border: 2px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.manager-import-receipts-list-page .filters-row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 1.25rem;
+  margin-bottom: 1.25rem;
+  align-items: flex-end;
+}
+
+.manager-import-receipts-list-page .filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 180px;
+}
+
+.manager-import-receipts-list-page .filter-group label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+  color: #374151;
+  font-size: 0.9rem;
+}
+
+.manager-import-receipts-list-page .filter-group label .icon {
+  width: 1.1rem;
+  height: 1.1rem;
+  color: #6b7280;
+}
+
+.manager-import-receipts-list-page .filter-group input[type="date"],
+.manager-import-receipts-list-page .filter-group select {
+  width: 100%;
+  height: 44px;
+  padding: 0.75rem 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #374151;
+  background: white;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  box-sizing: border-box;
+  line-height: 1.2;
+}
+
+.manager-import-receipts-list-page .filter-group input[type="date"]:focus,
+.manager-import-receipts-list-page .filter-group select:focus {
+  outline: none;
+  border-color: #dc2626;
+  box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.12);
+}
+
+.manager-import-receipts-list-page .reset-filter-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 44px;
+  padding: 0.75rem 1.25rem;
+  background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(31, 41, 55, 0.2);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  white-space: nowrap;
+  box-sizing: border-box;
+  line-height: 1.2;
+  flex-shrink: 0;
+  width: auto;
+  align-self: flex-end;
+}
+
+.manager-import-receipts-list-page .reset-filter-btn .icon {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.manager-import-receipts-list-page .reset-filter-btn:hover {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  box-shadow: 0 6px 18px rgba(220, 38, 38, 0.3);
+  transform: translateY(-2px);
+}
+
+.manager-import-receipts-list-page .filter-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 1rem;
+  border-top: 2px solid #e5e7eb;
+}
+
+.manager-import-receipts-list-page .filter-result-count {
+  font-size: 0.95rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.manager-import-receipts-list-page .filter-result-count strong {
+  color: #dc2626;
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .manager-import-receipts-list-page {
@@ -641,6 +851,31 @@
 
   .manager-import-receipts-list-page .page-header h1 {
     font-size: 1.75rem;
+  }
+
+  .manager-import-receipts-list-page .tabs-container {
+    width: 100%;
+    flex-direction: row;
+    overflow-x: auto;
+  }
+
+  .manager-import-receipts-list-page .tab-button {
+    padding: 0.75rem 1.25rem;
+    font-size: 0.9rem;
+    white-space: nowrap;
+  }
+
+  .manager-import-receipts-list-page .filters-row {
+    flex-direction: column;
+  }
+
+  .manager-import-receipts-list-page .filter-group {
+    width: 100%;
+  }
+
+  .manager-import-receipts-list-page .reset-filter-btn {
+    width: 100%;
+    align-self: stretch;
   }
 
   .manager-import-receipts-list-page .receipts-grid {
