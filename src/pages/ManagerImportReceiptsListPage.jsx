@@ -10,7 +10,6 @@ import {
   EyeIcon,
   ArrowDownTrayIcon,
   ArrowUpTrayIcon,
-  UserIcon,
   FunnelIcon,
   XMarkIcon,
   Squares2X2Icon
@@ -34,7 +33,6 @@ function ManagerImportReceiptsListPage() {
   // Filter states
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
-  const [selectedCreator, setSelectedCreator] = useState('')
   const [showFilters, setShowFilters] = useState(false)
 
   // Fetch danh sách phiếu nhập/xuất kho
@@ -275,14 +273,12 @@ function ManagerImportReceiptsListPage() {
         if (type === 'import') {
           return (
             receipt.source?.toLowerCase().includes(lowerSearch) ||
-            receipt.receiveAddress?.toLowerCase().includes(lowerSearch) ||
-            receipt.createdBy?.toLowerCase().includes(lowerSearch)
+            receipt.receiveAddress?.toLowerCase().includes(lowerSearch)
           )
         } else {
           return (
             receipt.destination?.toLowerCase().includes(lowerSearch) ||
-            receipt.recipientAddress?.toLowerCase().includes(lowerSearch) ||
-            receipt.createdBy?.toLowerCase().includes(lowerSearch)
+            receipt.recipientAddress?.toLowerCase().includes(lowerSearch)
           )
         }
       })
@@ -303,24 +299,13 @@ function ManagerImportReceiptsListPage() {
       )
     }
 
-    // Filter by creator
-    if (selectedCreator) {
-      filtered = filtered.filter(receipt => 
-        receipt.createdBy === selectedCreator
-      )
-    }
-
     setFilteredReceipts(filtered)
-  }, [searchTerm, receipts, startDate, endDate, selectedCreator])
-
-  // Get unique creators for filter
-  const allCreators = [...new Set(receipts.map(r => r.createdBy).filter(Boolean))]
+  }, [searchTerm, receipts, startDate, endDate])
 
   // Reset filters
   const handleResetFilters = () => {
     setStartDate('')
     setEndDate('')
-    setSelectedCreator('')
     setSearchTerm('')
   }
 
@@ -414,7 +399,7 @@ function ManagerImportReceiptsListPage() {
           >
             <FunnelIcon className="icon" />
             <span>Bộ lọc tổng hợp</span>
-            {(startDate || endDate || selectedCreator) && (
+            {(startDate || endDate) && (
               <span className="filter-active-badge">●</span>
             )}
           </button>
@@ -450,24 +435,6 @@ function ManagerImportReceiptsListPage() {
                 />
               </div>
 
-              <div className="filter-group">
-                <label>
-                  <UserIcon className="icon" />
-                  Người tạo
-                </label>
-                <select
-                  value={selectedCreator}
-                  onChange={(e) => setSelectedCreator(e.target.value)}
-                >
-                  <option value="">Tất cả</option>
-                  {allCreators.map((creator) => (
-                    <option key={creator} value={creator}>
-                      {creator}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
               <button 
                 className="reset-filter-btn"
                 onClick={handleResetFilters}
@@ -492,10 +459,10 @@ function ManagerImportReceiptsListPage() {
             type="text"
             placeholder={
               activeTab === 'all'
-                ? 'Tìm kiếm theo nguồn/đích, địa chỉ, người tạo...'
+                ? 'Tìm kiếm theo nguồn/đích, địa chỉ...'
                 : activeTab === 'import'
-                ? 'Tìm kiếm theo nguồn gốc, địa chỉ tiếp nhận, người tạo...'
-                : 'Tìm kiếm theo đơn vị nhận, địa chỉ, người tạo...'
+                ? 'Tìm kiếm theo nguồn gốc, địa chỉ tiếp nhận...'
+                : 'Tìm kiếm theo đơn vị nhận, địa chỉ...'
             }
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -507,7 +474,7 @@ function ManagerImportReceiptsListPage() {
           <div className="empty-state">
             <ClipboardDocumentListIcon className="empty-icon" />
             <p>
-              {searchTerm || startDate || endDate || selectedCreator
+              {searchTerm || startDate || endDate
                 ? 'Không tìm thấy phiếu nào phù hợp'
                 : activeTab === 'all'
                 ? 'Chưa có phiếu nào'
@@ -568,11 +535,6 @@ function ManagerImportReceiptsListPage() {
                       <span className="value small">
                         {receipt.totalItems} loại vật tư
                       </span>
-                    </div>
-
-                    <div className="receipt-info-row">
-                      <span className="label">Người tạo:</span>
-                      <span className="value">{receipt.createdBy}</span>
                     </div>
                   </div>
 
@@ -644,13 +606,6 @@ function ManagerImportReceiptsListPage() {
                         <div className="detail-item">
                           <span className="detail-label">Ngày tạo</span>
                           <span className="detail-value">{formatDateTime(selectedReceipt.createdAt)}</span>
-                        </div>
-                        <div className="detail-item">
-                          <span className="detail-label">Người tạo</span>
-                          <span className="detail-value">
-                            <UserIcon className="icon-inline" />
-                            {selectedReceipt.createdBy}
-                          </span>
                         </div>
                       </div>
                     </div>

@@ -208,7 +208,6 @@ function RescueTeamDashboard() {
           /* Trạng thái: Có lỗi */
           <div className="no-mission-container">
             <div className="no-mission-box">
-              <div className="no-mission-icon">⚠️</div>
               <h2>Không thể tải danh sách nhiệm vụ</h2>
               <p>{error}</p>
               <button 
@@ -226,7 +225,6 @@ function RescueTeamDashboard() {
           /* Trạng thái: Không có nhiệm vụ */
           <div className="no-mission-container">
             <div className="no-mission-box">
-              <div className="no-mission-icon">🚁</div>
               <h2>Hiện tại không có nhiệm vụ cứu hộ.</h2>
               <p>Vui lòng chờ điều phối.</p>
             </div>
