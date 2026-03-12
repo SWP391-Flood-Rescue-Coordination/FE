@@ -12,6 +12,9 @@ import ManagerSuppliesPage from './pages/ManagerSuppliesPage'
 import ManagerReliefExportPage from './pages/ManagerReliefExportPage'
 import ManagerImportReceiptPage from './pages/ManagerImportReceiptPage'
 import ManagerImportReceiptsListPage from './pages/ManagerImportReceiptsListPage'
+import AdminDashboardPage from './pages/AdminDashboardPage'
+import AdminUsersPage from './pages/AdminUsersPage'
+import AdminRequestsPage from './pages/AdminRequestsPage'
 import './App.css'
 
 function App() {
@@ -25,6 +28,9 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/rescue-team" element={<RescueTeamDashboard />} />
           <Route path="/rescue-coordinator" element={<CoordinatorDashboardPage />} />
+          <Route path="/admin" element={<AdminDashboardPage />} />
+          <Route path="/admin/users" element={<AdminUsersPage />} />
+          <Route path="/admin/requests" element={<AdminRequestsPage />} />
           <Route path="/manager" element={<ManagerDashboardPage />} />
           <Route path="/manager/vehicles" element={<ManagerVehiclesPage />} />
           <Route path="/manager/supplies" element={<ManagerSuppliesPage />} />
