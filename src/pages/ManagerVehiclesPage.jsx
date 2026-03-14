@@ -16,10 +16,10 @@ const STATUS_MAP = {
 }
 
 const FILTER_BUTTONS = [
-  { key: '', label: 'Tổng phương tiện', icon: 'all' },
-  { key: 'AVAILABLE', label: 'Đang sẵn sàng', icon: 'available' },
-  { key: 'INUSE', label: 'Đang sử dụng', icon: 'inuse' },
-  { key: 'MAINTENANCE', label: 'Bảo trì', icon: 'maintenance' },
+  { key: '', label: 'Tổng phương tiện' },
+  { key: 'AVAILABLE', label: 'Đang sẵn sàng' },
+  { key: 'INUSE', label: 'Đang sử dụng' },
+  { key: 'MAINTENANCE', label: 'Bảo trì' },
 ]
 
 const normalizeVehicleStatus = (status) => String(status ?? '').trim().toUpperCase().replace(/[\s-]+/g, '')
@@ -78,7 +78,6 @@ function ManagerVehiclesPage() {
       )
     }
 
-    // Filter by status
     if (statusFilter) {
       filtered = filtered.filter((v) => normalizeVehicleStatus(v.status) === statusFilter)
     }
@@ -88,10 +87,6 @@ function ManagerVehiclesPage() {
 
   const handleBack = () => {
     navigate('/manager')
-  }
-
-  const handleFilterClick = (filterKey) => {
-    setStatusFilter(filterKey)
   }
 
   const getStatusBadge = (status) => {
@@ -125,7 +120,7 @@ function ManagerVehiclesPage() {
         <span className="arrow-icon">←</span>
         Quay lại
       </button>
-      
+
       <header className="page-header">
         <h1>
           <TruckIcon className="icon" />
@@ -133,25 +128,22 @@ function ManagerVehiclesPage() {
         </h1>
       </header>
 
-      <div className="page-layout">
-        {/* Sidebar Filters */}
-        <aside className="sidebar">
-          <div className="sidebar-filters">
-            {FILTER_BUTTONS.map((filter) => (
-              <button
-                key={filter.key}
-                className={`filter-btn ${statusFilter === filter.key ? 'active' : ''}`}
-                onClick={() => handleFilterClick(filter.key)}
-              >
-                <span className="filter-label">{filter.label}</span>
-                <span className="filter-count">{getStatusCount(filter.key)}</span>
-              </button>
-            ))}
-          </div>
-        </aside>
+      <div className="status-toolbar" role="tablist" aria-label="Lọc trạng thái phương tiện">
+        {FILTER_BUTTONS.map((filter) => (
+          <button
+            key={filter.key}
+            className={`status-chip ${statusFilter === filter.key ? 'active' : ''}`}
+            onClick={() => setStatusFilter(filter.key)}
+            type="button"
+          >
+            <span>{filter.label}</span>
+            <span className="chip-count">{getStatusCount(filter.key)}</span>
+          </button>
+        ))}
+      </div>
 
-        {/* Main Content */}
-        <div className="page-content">
+      <div className="page-content">
+
         {errorMessage && (
           <div className="error-message">{errorMessage}</div>
         )}
@@ -221,7 +213,6 @@ function ManagerVehiclesPage() {
             </table>
           </div>
         )}
-        </div>
       </div>
     </div>
   )
