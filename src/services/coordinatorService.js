@@ -31,11 +31,11 @@ const toApiStatusValue = (status) => {
 }
 
 const VEHICLE_STATUS_TO_API_VALUE = {
-  AVAILABLE: 'AVAILABLE',
-  INUSE: 'INUSE',
-  IN_USE: 'INUSE',
-  MAINTENANCE: 'MAINTENANCE',
-  DISABLED: 'DISABLED',
+  AVAILABLE: 'Available',
+  INUSE: 'InUse',
+  IN_USE: 'InUse',
+  MAINTENANCE: 'Maintenance',
+  DISABLED: 'Disabled',
 }
 
 const toVehicleApiStatusValue = (status) => {

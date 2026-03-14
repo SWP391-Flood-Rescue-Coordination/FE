@@ -22,12 +22,6 @@ const PRIORITY_OPTIONS = [
   { value: 'LOW', label: 'Thấp' },
 ]
 
-const DEFAULT_PRIORITY_LEVELS = [
-  { id: 3, label: 'Cao' },
-  { id: 2, label: 'Trung bình' },
-  { id: 1, label: 'Thấp' },
-]
-
 const STATUS_LABEL_MAP = {
   PENDING: 'Chờ tiếp nhận',
   VERIFIED: 'Đã xác minh',
@@ -440,10 +434,10 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
         .filter((item) => item.id !== null)
         .sort((a, b) => Number(b.id) - Number(a.id))
 
-      setPriorityLevels(normalizedPriorityLevels.length > 0 ? normalizedPriorityLevels : DEFAULT_PRIORITY_LEVELS)
+      setPriorityLevels(normalizedPriorityLevels)
     } else {
       handleApiError(priorityResult.reason, '', { silent: true })
-      setPriorityLevels(DEFAULT_PRIORITY_LEVELS)
+      setPriorityLevels([])
     }
 
     if (teamResult.status === 'fulfilled') {
