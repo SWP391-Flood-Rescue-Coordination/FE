@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeftOnRectangleIcon,
@@ -51,14 +51,16 @@ function ManagerDashboardPage() {
     consumptionRate: 0,
   })
 
-  // Monthly stats - Mock data for charts
-  const [monthlyStats] = useState({
-    requestsServed: [12, 19, 15, 25, 22, 30, 28, 35, 32, 38, 42, 45, 48, 52, 49, 55, 58, 62, 65, 68, 70, 72, 75, 78, 80, 82, 85, 87, 90],
-    suppliesDistributed: [150, 180, 160, 220, 200, 250, 240, 280, 270, 300, 320, 340, 350, 370, 360, 390, 400, 420, 440, 460, 480, 500, 520, 540, 560, 580, 600, 620, 640],
-    peopleHelped: [45, 52, 48, 65, 60, 75, 70, 85, 80, 95, 100, 110, 105, 120, 115, 130, 135, 145, 150, 160, 165, 175, 180, 190, 195, 205, 210, 220, 225],
-    vehiclesUsed: [3, 4, 3, 5, 4, 6, 5, 6, 5, 7, 6, 7, 7, 8, 7, 8, 8, 9, 9, 10, 9, 10, 10, 11, 10, 11, 11, 12, 12],
-    days: Array.from({ length: 29 }, (_, i) => i + 1),
-  })
+  const monthlyStats = useMemo(() => {
+    const currentDay = new Date().getDate()
+    return {
+      requestsServed: [Number(todayStats?.requestsServed) || 0],
+      suppliesDistributed: [Number(todayStats?.suppliesDistributed) || 0],
+      peopleHelped: [Number(todayStats?.peopleHelped) || 0],
+      vehiclesUsed: [Number(todayStats?.vehiclesUsed) || 0],
+      days: [currentDay],
+    }
+  }, [todayStats])
 
   const fetchDashboardData = useCallback(async () => {
     setIsLoading(true)
@@ -74,16 +76,8 @@ function ManagerDashboardPage() {
           managerService.getAllVehicles('INUSE'),
           managerService.getAllVehicles('MAINTENANCE'),
         ]),
-        // Supply stats (fallback nếu API chưa có)
-        managerService.getSupplyStats().catch(() => ({ totalTypes: 0, lowStock: 0 })),
-        // Today stats (fallback nếu API chưa có)
-        managerService.getTodayStats().catch(() => ({
-          requestsServed: 0,
-          peopleHelped: 0,
-          suppliesDistributed: 0,
-          vehiclesUsed: 0,
-          consumptionRate: 0,
-        })),
+        managerService.getSupplyStats(),
+        managerService.getTodayStats(),
       ])
 
       // Check unauthorized
@@ -194,10 +188,16 @@ function ManagerDashboardPage() {
 
   // Chart rendering helper functions
   const renderLineChart = (data, color = '#667eea') => {
+    if (!Array.isArray(data) || data.length === 0) {
+      return null
+    }
+
     const maxValue = Math.max(...data)
+    const safeMax = maxValue > 0 ? maxValue : 1
+    const denominator = data.length > 1 ? data.length - 1 : 1
     const points = data.map((value, index) => {
-      const x = (index / (data.length - 1)) * 100
-      const y = 100 - (value / maxValue) * 80
+      const x = (index / denominator) * 100
+      const y = 100 - (value / safeMax) * 80
       return `${x},${y}`
     }).join(' ')
 
@@ -215,13 +215,18 @@ function ManagerDashboardPage() {
   }
 
   const renderBarChart = (data, colors = ['#667eea', '#764ba2']) => {
+    if (!Array.isArray(data) || data.length === 0) {
+      return null
+    }
+
     const maxValue = Math.max(...data)
+    const safeMax = maxValue > 0 ? maxValue : 1
     const barWidth = 100 / data.length - 1
     
     return (
       <svg viewBox="0 0 100 100" className="bar-chart" preserveAspectRatio="none">
         {data.map((value, index) => {
-          const height = (value / maxValue) * 90
+          const height = (value / safeMax) * 90
           const x = index * (100 / data.length)
           const y = 100 - height
           const color = colors[index % colors.length]

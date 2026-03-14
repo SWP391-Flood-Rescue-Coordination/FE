@@ -40,59 +40,7 @@ function ManagerSuppliesPage() {
     setErrorMessage('')
 
     try {
-      // Fallback mock data nếu API chưa có
-      const data = await managerService.getSupplies().catch(() => [
-        {
-          supplyId: 1,
-          name: 'Nước uống đóng chai',
-          type: 'Nhu yếu phẩm',
-          quantity: 500,
-          unit: 'chai',
-          minQuantity: 100,
-          importDate: '2026-02-15',
-          exportDate: '2026-03-01',
-        },
-        {
-          supplyId: 2,
-          name: 'Mì gói',
-          type: 'Thực phẩm',
-          quantity: 300,
-          unit: 'gói',
-          minQuantity: 150,
-          importDate: '2026-02-20',
-          exportDate: '2026-02-28',
-        },
-        {
-          supplyId: 3,
-          name: 'Áo mưa',
-          type: 'Quần áo',
-          quantity: 50,
-          unit: 'cái',
-          minQuantity: 80,
-          importDate: '2026-02-10',
-          exportDate: '2026-03-02',
-        },
-        {
-          supplyId: 4,
-          name: 'Thuốc men cơ bản',
-          type: 'Y tế',
-          quantity: 200,
-          unit: 'hộp',
-          minQuantity: 100,
-          importDate: '2026-02-18',
-          exportDate: '2026-02-25',
-        },
-        {
-          supplyId: 5,
-          name: 'Chăn màn',
-          type: 'Sinh hoạt',
-          quantity: 30,
-          unit: 'cái',
-          minQuantity: 50,
-          importDate: '2026-02-12',
-          exportDate: '2026-03-03',
-        },
-      ])
+      const data = await managerService.getSupplies()
       
       setSupplies(data)
       setFilteredSupplies(data)
@@ -221,10 +169,10 @@ function ManagerSuppliesPage() {
   }
 
   const isLowStock = (supply) => {
-    return supply.quantity < supply.minQuantity
+    return Number(supply.quantity) <= Number(supply.minQuantity)
   }
 
-  const lowStockCount = filteredSupplies.filter(isLowStock).length
+  const lowStockCount = supplies.filter(isLowStock).length
 
   if (isLoading) {
     return (

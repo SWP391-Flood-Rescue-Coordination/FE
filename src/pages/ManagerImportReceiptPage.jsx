@@ -13,59 +13,6 @@ import authService from '../services/authService'
 import managerService from '../services/managerService'
 import './ManagerImportReceiptPage.css'
 
-const DEFAULT_SUPPLIES = [
-  { supplyId: 1, name: 'Nước uống đóng chai', type: 'Nhu yếu phẩm', unit: 'chai' },
-  { supplyId: 2, name: 'Mì gói', type: 'Thực phẩm', unit: 'gói' },
-  { supplyId: 3, name: 'Áo mưa', type: 'Quần áo', unit: 'cái' },
-  { supplyId: 4, name: 'Thuốc men cơ bản', type: 'Y tế', unit: 'hộp' },
-  { supplyId: 5, name: 'Chăn màn', type: 'Sinh hoạt', unit: 'cái' },
-]
-
-const DEFAULT_SOURCES = [
-  {
-    id: 'source-01',
-    name: 'Công ty TNHH Vật tư Cứu hộ Á Châu',
-    type: 'Công ty',
-    region: 'Quận 1, TP.HCM',
-    address: '123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP.HCM',
-  },
-  {
-    id: 'source-02',
-    name: 'Công ty CP Thiết bị An toàn Việt Nam',
-    type: 'Công ty',
-    region: 'Quận 3, TP.HCM',
-    address: '456 Võ Văn Tần, Phường 6, Quận 3, TP.HCM',
-  },
-  {
-    id: 'source-03',
-    name: 'Công ty TNHH Trang thiết bị Y tế Medico',
-    type: 'Công ty',
-    region: 'Bình Thạnh, TP.HCM',
-    address: '789 Điện Biên Phủ, Phường 25, Bình Thạnh, TP.HCM',
-  },
-  {
-    id: 'source-04',
-    name: 'Công ty CP Thực phẩm Dinh dưỡng Sài Gòn',
-    type: 'Công ty',
-    region: 'Tân Bình, TP.HCM',
-    address: '234 Cộng Hòa, Phường 13, Tân Bình, TP.HCM',
-  },
-  {
-    id: 'source-05',
-    name: 'Công ty TNHH Dược phẩm Hồng Hà',
-    type: 'Công ty',
-    region: 'Phú Nhuận, TP.HCM',
-    address: '567 Phan Đăng Lưu, Phường 1, Phú Nhuận, TP.HCM',
-  },
-  {
-    id: 'source-06',
-    name: 'Công ty CP Vật tư Cứu trợ Thiên Phúc',
-    type: 'Công ty',
-    region: 'Quận 7, TP.HCM',
-    address: '890 Nguyễn Văn Linh, Phường Tân Phú, Quận 7, TP.HCM',
-  },
-]
-
 const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value, key)
 
 const toFiniteNumber = (value) => {
@@ -84,6 +31,7 @@ function ManagerImportReceiptPage() {
   // Data from API
   const [supplies, setSupplies] = useState([])
   const [categories, setCategories] = useState([])
+  const [sourceOptions, setSourceOptions] = useState([])
   
   // Form data
   const [selectedSourceId, setSelectedSourceId] = useState('')
@@ -98,9 +46,10 @@ function ManagerImportReceiptPage() {
     setErrorMessage('')
 
     try {
-      const [suppliesResult, categoriesResult] = await Promise.allSettled([
-        managerService.getSupplies().catch(() => DEFAULT_SUPPLIES),
-        managerService.getCategories().catch(() => []),
+      const [suppliesResult, categoriesResult, importReceiptsResult] = await Promise.allSettled([
+        managerService.getSupplies(),
+        managerService.getCategories(),
+        managerService.getImportReceipts(),
       ])
 
       // Normalize supplies
@@ -120,6 +69,44 @@ function ManagerImportReceiptPage() {
       // Categories
       if (categoriesResult.status === 'fulfilled' && Array.isArray(categoriesResult.value)) {
         setCategories(categoriesResult.value)
+      } else {
+        setCategories([])
+      }
+
+      if (importReceiptsResult.status === 'fulfilled' && Array.isArray(importReceiptsResult.value)) {
+        const uniqueSources = new Map()
+
+        importReceiptsResult.value.forEach((receipt) => {
+          const name = String(receipt?.source ?? '').trim()
+          if (!name) {
+            return
+          }
+
+          const address = String(receipt?.receiveAddress ?? '').trim()
+          const key = `${name.toLowerCase()}|${address.toLowerCase()}`
+          if (uniqueSources.has(key)) {
+            return
+          }
+
+          uniqueSources.set(key, {
+            id: `source-${uniqueSources.size + 1}`,
+            name,
+            type: 'Nguồn nhập',
+            region: '',
+            address,
+          })
+        })
+
+        setSourceOptions(Array.from(uniqueSources.values()))
+      } else {
+        setSourceOptions([])
+      }
+
+      const hasRejected = [suppliesResult, categoriesResult, importReceiptsResult].some(
+        (result) => result.status === 'rejected',
+      )
+      if (hasRejected) {
+        setErrorMessage('Không thể tải đầy đủ dữ liệu từ hệ thống. Vui lòng thử lại.')
       }
     } catch (error) {
       console.error('Error fetching data:', error)
@@ -166,8 +153,8 @@ function ManagerImportReceiptPage() {
   }, [selectedSupplyItems])
 
   const selectedSource = useMemo(
-    () => DEFAULT_SOURCES.find((item) => String(item.id) === String(selectedSourceId)) || null,
-    [selectedSourceId],
+    () => sourceOptions.find((item) => String(item.id) === String(selectedSourceId)) || null,
+    [sourceOptions, selectedSourceId],
   )
 
   const canSubmit = useMemo(() => {
@@ -236,7 +223,7 @@ function ManagerImportReceiptPage() {
     
     // Validate
     if (!selectedSourceId) {
-      setErrorMessage('Vui lòng chọn đơn vị nhận')
+      setErrorMessage('Vui lòng chọn đơn vị nhập')
       return
     }
     
@@ -351,11 +338,15 @@ function ManagerImportReceiptPage() {
                 <BuildingOffice2Icon className="icon" />
                 <h2>Chọn đơn vị nhập</h2>
               </div>
-              <span className="section-meta">{DEFAULT_SOURCES.length} đơn vị khả dụng</span>
+              <span className="section-meta">{sourceOptions.length} đơn vị khả dụng</span>
             </div>
 
             <div className="recipient-grid">
-              {DEFAULT_SOURCES.map((source) => {
+              {sourceOptions.length === 0 && (
+                <div className="empty-row">Chưa có nguồn nhập từ dữ liệu hệ thống.</div>
+              )}
+
+              {sourceOptions.map((source) => {
                 const isSelected = String(source.id) === String(selectedSourceId)
 
                 return (

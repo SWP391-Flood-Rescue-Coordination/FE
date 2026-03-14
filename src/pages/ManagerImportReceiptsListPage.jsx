@@ -10,7 +10,6 @@ import {
   EyeIcon,
   ArrowDownTrayIcon,
   ArrowUpTrayIcon,
-  UserIcon,
   FunnelIcon,
   XMarkIcon,
   Squares2X2Icon
@@ -34,7 +33,6 @@ function ManagerImportReceiptsListPage() {
   // Filter states
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
-  const [selectedCreator, setSelectedCreator] = useState('')
   const [showFilters, setShowFilters] = useState(false)
 
   // Fetch danh sách phiếu nhập/xuất kho
@@ -48,95 +46,8 @@ function ManagerImportReceiptsListPage() {
 
       if (activeTab === 'all') {
         // Lấy cả phiếu nhập và phiếu xuất
-        const importReceipts = await managerService.getImportReceipts().catch(() => [
-          {
-            receiptId: 1,
-            type: 'import',
-            source: 'Công ty TNHH Vật tư Cứu hộ Á Châu',
-            receiveAddress: '123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP.HCM',
-            createdAt: '2026-03-05T10:30:00',
-            createdBy: 'admin',
-            totalItems: 3,
-            items: [
-              { itemName: 'Nước uống', categoryName: 'Nhu yếu phẩm', quantity: 100, unit: 'chai' },
-              { itemName: 'Mì gói', categoryName: 'Thực phẩm', quantity: 200, unit: 'gói' },
-              { itemName: 'Áo mưa', categoryName: 'Quần áo', quantity: 50, unit: 'cái' },
-            ]
-          },
-          {
-            receiptId: 2,
-            type: 'import',
-            source: 'Công ty CP Thiết bị An toàn Việt Nam',
-            receiveAddress: '456 Võ Văn Tần, Phường 6, Quận 3, TP.HCM',
-            createdAt: '2026-03-07T14:15:00',
-            createdBy: 'manager',
-            totalItems: 2,
-            items: [
-              { itemName: 'Chăn màn', categoryName: 'Sinh hoạt', quantity: 80, unit: 'cái' },
-              { itemName: 'Thuốc men', categoryName: 'Y tế', quantity: 150, unit: 'hộp' },
-            ]
-          },
-          {
-            receiptId: 3,
-            type: 'import',
-            source: 'Công ty TNHH Trang thiết bị Y tế Medico',
-            receiveAddress: '789 Điện Biên Phủ, Phường 25, Bình Thạnh, TP.HCM',
-            createdAt: '2026-03-08T09:00:00',
-            createdBy: 'admin',
-            totalItems: 4,
-            items: [
-              { itemName: 'Nước uống', categoryName: 'Nhu yếu phẩm', quantity: 300, unit: 'chai' },
-              { itemName: 'Mì gói', categoryName: 'Thực phẩm', quantity: 500, unit: 'gói' },
-              { itemName: 'Bánh mì', categoryName: 'Thực phẩm', quantity: 200, unit: 'ổ' },
-              { itemName: 'Khẩu trang', categoryName: 'Y tế', quantity: 1000, unit: 'cái' },
-            ]
-          },
-        ])
-
-        const exportReceipts = await Promise.resolve([
-          {
-            receiptId: 101,
-            type: 'export',
-            destination: 'Đội Cứu Hộ Alpha',
-            recipientAddress: '12 Đường Trần Hưng Đạo, Quận 1, TP.HCM',
-            createdAt: '2026-03-10T08:45:00',
-            createdBy: 'manager',
-            totalItems: 3,
-            items: [
-              { itemName: 'Nước uống', categoryName: 'Nhu yếu phẩm', quantity: 50, unit: 'chai' },
-              { itemName: 'Mì gói', categoryName: 'Thực phẩm', quantity: 100, unit: 'gói' },
-              { itemName: 'Khăn mặt', categoryName: 'Sinh hoạt', quantity: 30, unit: 'cái' },
-            ]
-          },
-          {
-            receiptId: 102,
-            type: 'export',
-            destination: 'Đội Cứu Hộ Beta',
-            recipientAddress: '456 Đường Lý Thái Tổ, Quận 10, TP.HCM',
-            createdAt: '2026-03-11T13:20:00',
-            createdBy: 'admin',
-            totalItems: 2,
-            items: [
-              { itemName: 'Thuốc men', categoryName: 'Y tế', quantity: 60, unit: 'hộp' },
-              { itemName: 'Chăn màn', categoryName: 'Sinh hoạt', quantity: 40, unit: 'cái' },
-            ]
-          },
-          {
-            receiptId: 103,
-            type: 'export',
-            destination: 'Trung Tâm Cứu Trợ Gamma',
-            recipientAddress: '789 Đường Nguyễn Thị Minh Khai, Quận 3, TP.HCM',
-            createdAt: '2026-03-09T10:00:00',
-            createdBy: 'manager',
-            totalItems: 4,
-            items: [
-              { itemName: 'Nước uống', categoryName: 'Nhu yếu phẩm', quantity: 200, unit: 'chai' },
-              { itemName: 'Mì gói', categoryName: 'Thực phẩm', quantity: 300, unit: 'gói' },
-              { itemName: 'Âo mưa', categoryName: 'Quần áo', quantity: 50, unit: 'cái' },
-              { itemName: 'Khẩu trang', categoryName: 'Y tế', quantity: 500, unit: 'cái' },
-            ]
-          },
-        ])
+        const importReceipts = await managerService.getImportReceipts()
+        const exportReceipts = await managerService.getExportReceipts()
 
         // Mark import/export types
         const markedImport = importReceipts.map(r => ({ ...r, type: 'import' }))
@@ -147,97 +58,10 @@ function ManagerImportReceiptsListPage() {
           new Date(b.createdAt) - new Date(a.createdAt)
         )
       } else if (activeTab === 'import') {
-        data = await managerService.getImportReceipts().catch(() => [
-          {
-            receiptId: 1,
-            type: 'import',
-            source: 'Công ty TNHH Vật tư Cứu hộ Á Châu',
-            receiveAddress: '123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP.HCM',
-            createdAt: '2026-03-05T10:30:00',
-            createdBy: 'admin',
-            totalItems: 3,
-            items: [
-              { itemName: 'Nước uống', categoryName: 'Nhu yếu phẩm', quantity: 100, unit: 'chai' },
-              { itemName: 'Mì gói', categoryName: 'Thực phẩm', quantity: 200, unit: 'gói' },
-              { itemName: 'Áo mưa', categoryName: 'Quần áo', quantity: 50, unit: 'cái' },
-            ]
-          },
-          {
-            receiptId: 2,
-            type: 'import',
-            source: 'Công ty CP Thiết bị An toàn Việt Nam',
-            receiveAddress: '456 Võ Văn Tần, Phường 6, Quận 3, TP.HCM',
-            createdAt: '2026-03-07T14:15:00',
-            createdBy: 'manager',
-            totalItems: 2,
-            items: [
-              { itemName: 'Chăn màn', categoryName: 'Sinh hoạt', quantity: 80, unit: 'cái' },
-              { itemName: 'Thuốc men', categoryName: 'Y tế', quantity: 150, unit: 'hộp' },
-            ]
-          },
-          {
-            receiptId: 3,
-            type: 'import',
-            source: 'Công ty TNHH Trang thiết bị Y tế Medico',
-            receiveAddress: '789 Điện Biên Phủ, Phường 25, Bình Thạnh, TP.HCM',
-            createdAt: '2026-03-08T09:00:00',
-            createdBy: 'admin',
-            totalItems: 4,
-            items: [
-              { itemName: 'Nước uống', categoryName: 'Nhu yếu phẩm', quantity: 300, unit: 'chai' },
-              { itemName: 'Mì gói', categoryName: 'Thực phẩm', quantity: 500, unit: 'gói' },
-              { itemName: 'Bánh mì', categoryName: 'Thực phẩm', quantity: 200, unit: 'ổ' },
-              { itemName: 'Khẩu trang', categoryName: 'Y tế', quantity: 1000, unit: 'cái' },
-            ]
-          },
-        ])
+        data = await managerService.getImportReceipts()
         data = data.map(r => ({ ...r, type: 'import' }))
       } else {
-        // Export receipts
-        data = await Promise.resolve([
-          {
-            receiptId: 101,
-            type: 'export',
-            destination: 'Đội Cứu Hộ Alpha',
-            recipientAddress: '12 Đường Trần Hưng Đạo, Quận 1, TP.HCM',
-            createdAt: '2026-03-10T08:45:00',
-            createdBy: 'manager',
-            totalItems: 3,
-            items: [
-              { itemName: 'Nước uống', categoryName: 'Nhu yếu phẩm', quantity: 50, unit: 'chai' },
-              { itemName: 'Mì gói', categoryName: 'Thực phẩm', quantity: 100, unit: 'gói' },
-              { itemName: 'Khăn mặt', categoryName: 'Sinh hoạt', quantity: 30, unit: 'cái' },
-            ]
-          },
-          {
-            receiptId: 102,
-            type: 'export',
-            destination: 'Đội Cứu Hộ Beta',
-            recipientAddress: '456 Đường Lý Thái Tổ, Quận 10, TP.HCM',
-            createdAt: '2026-03-11T13:20:00',
-            createdBy: 'admin',
-            totalItems: 2,
-            items: [
-              { itemName: 'Thuốc men', categoryName: 'Y tế', quantity: 60, unit: 'hộp' },
-              { itemName: 'Chăn màn', categoryName: 'Sinh hoạt', quantity: 40, unit: 'cái' },
-            ]
-          },
-          {
-            receiptId: 103,
-            type: 'export',
-            destination: 'Trung Tâm Cứu Trợ Gamma',
-            recipientAddress: '789 Đường Nguyễn Thị Minh Khai, Quận 3, TP.HCM',
-            createdAt: '2026-03-09T10:00:00',
-            createdBy: 'manager',
-            totalItems: 4,
-            items: [
-              { itemName: 'Nước uống', categoryName: 'Nhu yếu phẩm', quantity: 200, unit: 'chai' },
-              { itemName: 'Mì gói', categoryName: 'Thực phẩm', quantity: 300, unit: 'gói' },
-              { itemName: 'Âo mưa', categoryName: 'Quần áo', quantity: 50, unit: 'cái' },
-              { itemName: 'Khẩu trang', categoryName: 'Y tế', quantity: 500, unit: 'cái' },
-            ]
-          },
-        ])
+        data = await managerService.getExportReceipts()
         data = data.map(r => ({ ...r, type: 'export' }))
       }
       
@@ -275,14 +99,12 @@ function ManagerImportReceiptsListPage() {
         if (type === 'import') {
           return (
             receipt.source?.toLowerCase().includes(lowerSearch) ||
-            receipt.receiveAddress?.toLowerCase().includes(lowerSearch) ||
-            receipt.createdBy?.toLowerCase().includes(lowerSearch)
+            receipt.receiveAddress?.toLowerCase().includes(lowerSearch)
           )
         } else {
           return (
             receipt.destination?.toLowerCase().includes(lowerSearch) ||
-            receipt.recipientAddress?.toLowerCase().includes(lowerSearch) ||
-            receipt.createdBy?.toLowerCase().includes(lowerSearch)
+            receipt.recipientAddress?.toLowerCase().includes(lowerSearch)
           )
         }
       })
@@ -303,24 +125,13 @@ function ManagerImportReceiptsListPage() {
       )
     }
 
-    // Filter by creator
-    if (selectedCreator) {
-      filtered = filtered.filter(receipt => 
-        receipt.createdBy === selectedCreator
-      )
-    }
-
     setFilteredReceipts(filtered)
-  }, [searchTerm, receipts, startDate, endDate, selectedCreator])
-
-  // Get unique creators for filter
-  const allCreators = [...new Set(receipts.map(r => r.createdBy).filter(Boolean))]
+  }, [searchTerm, receipts, startDate, endDate])
 
   // Reset filters
   const handleResetFilters = () => {
     setStartDate('')
     setEndDate('')
-    setSelectedCreator('')
     setSearchTerm('')
   }
 
@@ -414,7 +225,7 @@ function ManagerImportReceiptsListPage() {
           >
             <FunnelIcon className="icon" />
             <span>Bộ lọc tổng hợp</span>
-            {(startDate || endDate || selectedCreator) && (
+            {(startDate || endDate) && (
               <span className="filter-active-badge">●</span>
             )}
           </button>
@@ -450,24 +261,6 @@ function ManagerImportReceiptsListPage() {
                 />
               </div>
 
-              <div className="filter-group">
-                <label>
-                  <UserIcon className="icon" />
-                  Người tạo
-                </label>
-                <select
-                  value={selectedCreator}
-                  onChange={(e) => setSelectedCreator(e.target.value)}
-                >
-                  <option value="">Tất cả</option>
-                  {allCreators.map((creator) => (
-                    <option key={creator} value={creator}>
-                      {creator}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
               <button 
                 className="reset-filter-btn"
                 onClick={handleResetFilters}
@@ -492,10 +285,10 @@ function ManagerImportReceiptsListPage() {
             type="text"
             placeholder={
               activeTab === 'all'
-                ? 'Tìm kiếm theo nguồn/đích, địa chỉ, người tạo...'
+                ? 'Tìm kiếm theo nguồn/đích, địa chỉ...'
                 : activeTab === 'import'
-                ? 'Tìm kiếm theo nguồn gốc, địa chỉ tiếp nhận, người tạo...'
-                : 'Tìm kiếm theo đơn vị nhận, địa chỉ, người tạo...'
+                ? 'Tìm kiếm theo nguồn gốc, địa chỉ tiếp nhận...'
+                : 'Tìm kiếm theo đơn vị nhận, địa chỉ...'
             }
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -507,7 +300,7 @@ function ManagerImportReceiptsListPage() {
           <div className="empty-state">
             <ClipboardDocumentListIcon className="empty-icon" />
             <p>
-              {searchTerm || startDate || endDate || selectedCreator
+              {searchTerm || startDate || endDate
                 ? 'Không tìm thấy phiếu nào phù hợp'
                 : activeTab === 'all'
                 ? 'Chưa có phiếu nào'
@@ -568,11 +361,6 @@ function ManagerImportReceiptsListPage() {
                       <span className="value small">
                         {receipt.totalItems} loại vật tư
                       </span>
-                    </div>
-
-                    <div className="receipt-info-row">
-                      <span className="label">Người tạo:</span>
-                      <span className="value">{receipt.createdBy}</span>
                     </div>
                   </div>
 
@@ -644,13 +432,6 @@ function ManagerImportReceiptsListPage() {
                         <div className="detail-item">
                           <span className="detail-label">Ngày tạo</span>
                           <span className="detail-value">{formatDateTime(selectedReceipt.createdAt)}</span>
-                        </div>
-                        <div className="detail-item">
-                          <span className="detail-label">Người tạo</span>
-                          <span className="detail-value">
-                            <UserIcon className="icon-inline" />
-                            {selectedReceipt.createdBy}
-                          </span>
                         </div>
                       </div>
                     </div>

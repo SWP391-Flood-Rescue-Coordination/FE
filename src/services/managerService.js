@@ -1,22 +1,45 @@
 import api from './api'
 
-const MANAGER_BASE = '/Manager'
-
 const unwrapApiData = (response) => {
   if (response?.data?.data !== undefined) {
     return response.data.data
+  }
+  if (response?.data?.Data !== undefined) {
+    return response.data.Data
   }
   return response?.data
 }
 
 const normalizeArray = (value) => (Array.isArray(value) ? value : [])
 
+const MAX_RELIEF_ITEM_THRESHOLD = 2147483647
+
+const REQUEST_STATUS_TO_API_VALUE = {
+  PENDING: 'Pending',
+  VERIFIED: 'Verified',
+  ASSIGNED: 'Assigned',
+  CONFIRMED: 'Confirmed',
+  IN_PROGRESS: 'In Progress',
+  COMPLETED: 'Completed',
+  CANCELLED: 'Cancelled',
+  CANCELED: 'Cancelled',
+  DUPLICATE: 'Duplicate',
+}
+
 const VEHICLE_STATUS_TO_API_VALUE = {
-  AVAILABLE: 'AVAILABLE',
-  INUSE: 'INUSE',
-  IN_USE: 'INUSE',
-  MAINTENANCE: 'MAINTENANCE',
-  DISABLED: 'DISABLED',
+  AVAILABLE: 'Available',
+  INUSE: 'InUse',
+  IN_USE: 'InUse',
+  MAINTENANCE: 'Maintenance',
+  DISABLED: 'Disabled',
+}
+
+const toApiRequestStatusValue = (status) => {
+  const normalized = String(status ?? '')
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, '_')
+  return REQUEST_STATUS_TO_API_VALUE[normalized] || status
 }
 
 const toVehicleApiStatusValue = (status) => {
@@ -27,11 +50,252 @@ const toVehicleApiStatusValue = (status) => {
   return VEHICLE_STATUS_TO_API_VALUE[normalized] || status
 }
 
+const toNumber = (value, fallback = 0) => {
+  const numeric = Number(value)
+  return Number.isFinite(numeric) ? numeric : fallback
+}
+
+const isLowStockSupply = (item) => {
+  const quantity = toNumber(item?.quantity)
+  const minQuantity = toNumber(item?.minQuantity)
+  return quantity <= minQuantity
+}
+
+const normalizeVehicle = (vehicle) => ({
+  vehicleId: vehicle?.vehicleId,
+  vehicleCode: vehicle?.vehicleCode || '',
+  vehicleName: vehicle?.vehicleName || '',
+  vehicleTypeId: vehicle?.vehicleTypeId,
+  vehicleTypeName: vehicle?.vehicleTypeName || '',
+  vehicleType: vehicle?.vehicleTypeName || '',
+  licensePlate: vehicle?.licensePlate || '',
+  capacity: vehicle?.capacity,
+  status: vehicle?.status || '',
+  coordinator: vehicle?.coordinator || '-',
+  currentLocation: vehicle?.currentLocation || '',
+  lastMaintenance: vehicle?.lastMaintenance,
+  lastMaintenanceDate: vehicle?.lastMaintenance,
+  updatedAt: vehicle?.updatedAt,
+  createdAt: vehicle?.updatedAt,
+})
+
+const normalizeSupply = (item) => ({
+  supplyId: item?.itemId ?? item?.supplyId ?? item?.id,
+  id: item?.itemId ?? item?.supplyId ?? item?.id,
+  name: item?.itemName || item?.item_name || item?.name || item?.supplyName || item?.supply_name || '',
+  type:
+    item?.categoryName ||
+    item?.category_name ||
+    item?.type ||
+    item?.category ||
+    (item?.categoryId != null ? `Nhóm ${item.categoryId}` : '-'),
+  categoryId: item?.categoryId ?? item?.category_id ?? item?.CategoryId,
+  quantity: toNumber(
+    item?.quantity ??
+      item?.Quantity ??
+      item?.stockQuantity ??
+      item?.stock_quantity ??
+      item?.quantityInStock ??
+      item?.quantity_in_stock ??
+      item?.availableQuantity,
+  ),
+  unit: item?.unit || item?.Unit || item?.unit_name || 'đơn vị',
+  minQuantity: toNumber(item?.minQuantity ?? item?.min_quantity ?? item?.MinQuantity),
+  isActive: Boolean(item?.isActive),
+  importDate: item?.createdAt ?? item?.created_at,
+  exportDate: item?.updatedAt ?? item?.updated_at,
+  itemCode: item?.itemCode ?? item?.item_code,
+})
+
+const parseStockBody = (body) => {
+  const raw = String(body ?? '').trim()
+  if (!raw) {
+    return []
+  }
+
+  return raw
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map((entry) => {
+      const [itemIdRaw, quantityRaw] = entry.split('-').map((part) => String(part ?? '').trim())
+      const itemId = Number(itemIdRaw)
+      const quantity = Number(quantityRaw)
+      return {
+        itemId: Number.isFinite(itemId) ? itemId : null,
+        quantity: Number.isFinite(quantity) ? quantity : null,
+      }
+    })
+    .filter((entry) => entry.itemId !== null && entry.quantity !== null)
+}
+
+const toSupplyNameMap = (supplies) => {
+  const map = new Map()
+  normalizeArray(supplies).forEach((item) => {
+    const id = Number(item?.supplyId ?? item?.id)
+    const name = String(item?.name ?? '').trim()
+    const unit = String(item?.unit ?? '').trim()
+    const categoryName = String(item?.type ?? '').trim()
+    if (Number.isFinite(id) && name) {
+      map.set(id, { name, unit, categoryName })
+    }
+  })
+  return map
+}
+
+const normalizeStockEntry = (entry) => ({
+  id: entry?.id,
+  type: String(entry?.type ?? '').trim().toUpperCase(),
+  date: entry?.date,
+  body: entry?.body,
+  fromTo: entry?.fromTo ?? entry?.from_to ?? '',
+  note: entry?.note ?? '',
+})
+
+const toReceiptItems = (entry, supplyNameMap) =>
+  parseStockBody(entry?.body).map((part) => {
+    const resolved = supplyNameMap.get(part.itemId) || {}
+    return {
+      itemId: part.itemId,
+      itemName: resolved.name || `Vật tư #${part.itemId}`,
+      categoryName: resolved.categoryName || '-',
+      quantity: part.quantity,
+      unit: resolved.unit || 'đơn vị',
+    }
+  })
+
+const normalizeImportReceipt = (entry, supplyNameMap) => {
+  const items = toReceiptItems(entry, supplyNameMap)
+  return {
+    receiptId: entry.id,
+    type: 'import',
+    source: entry.fromTo || 'Không rõ nguồn',
+    receiveAddress: entry.note || '',
+    createdAt: entry.date,
+    createdBy: '-',
+    totalItems: items.length,
+    items,
+  }
+}
+
+const normalizeExportReceipt = (entry, supplyNameMap) => {
+  const items = toReceiptItems(entry, supplyNameMap)
+  return {
+    receiptId: entry.id,
+    type: 'export',
+    destination: entry.fromTo || 'Không rõ đơn vị nhận',
+    recipientAddress: entry.note || '',
+    createdAt: entry.date,
+    createdBy: '-',
+    totalItems: items.length,
+    items,
+  }
+}
+
+const createNotImplementedError = (message) => {
+  const error = new Error(message)
+  error.response = {
+    status: 501,
+    data: {
+      message,
+    },
+  }
+  return error
+}
+
+const isNotFoundError = (error) => error?.response?.status === 404
+
+const normalizeReceiptItemsInput = (items) =>
+  normalizeArray(items)
+    .map((item) => {
+      const itemId = Number(item?.item_id ?? item?.itemId ?? item?.supplyId ?? item?.id)
+      const categoryId = Number(item?.category_id ?? item?.categoryId)
+      const quantity = Number(item?.quantity)
+
+      return {
+        item_id: Number.isFinite(itemId) ? itemId : null,
+        category_id: Number.isFinite(categoryId) ? categoryId : null,
+        quantity: Number.isFinite(quantity) ? quantity : null,
+      }
+    })
+    .filter((item) => item.item_id !== null && item.quantity !== null)
+
+const normalizeCategory = (item) => {
+  const categoryId = Number(item?.categoryId ?? item?.category_id ?? item?.id)
+  return {
+    categoryId: Number.isFinite(categoryId) ? categoryId : null,
+    name: String(item?.name ?? item?.categoryName ?? '').trim() || 'Chưa đặt tên',
+  }
+}
+
+const normalizeImportReceiptFromManager = (entry) => {
+  const items = normalizeArray(entry?.items).map((item) => ({
+    itemId: item?.itemId ?? item?.item_id ?? item?.supplyId,
+    itemName: item?.itemName ?? item?.name ?? item?.supplyName ?? 'Không rõ vật tư',
+    categoryName: item?.categoryName ?? item?.category ?? '-',
+    quantity: toNumber(item?.quantity),
+    unit: item?.unit ?? 'đơn vị',
+  }))
+
+  return {
+    receiptId: entry?.receiptId ?? entry?.id,
+    type: 'import',
+    source: entry?.source ?? entry?.fromTo ?? 'Không rõ nguồn',
+    receiveAddress: entry?.receiveAddress ?? entry?.receive_address ?? entry?.note ?? '',
+    createdAt: entry?.createdAt ?? entry?.created_at ?? null,
+    createdBy: entry?.createdBy ?? '-',
+    totalItems: toNumber(entry?.totalItems, items.length),
+    items,
+  }
+}
+
+const normalizeExportReceiptFromManager = (entry) => {
+  const items = normalizeArray(entry?.items).map((item) => ({
+    itemId: item?.itemId ?? item?.item_id ?? item?.supplyId,
+    itemName: item?.itemName ?? item?.name ?? item?.supplyName ?? 'Không rõ vật tư',
+    categoryName: item?.categoryName ?? item?.category ?? '-',
+    quantity: toNumber(item?.quantity),
+    unit: item?.unit ?? 'đơn vị',
+  }))
+
+  return {
+    receiptId: entry?.receiptId ?? entry?.id,
+    type: 'export',
+    destination: entry?.destination ?? entry?.recipientUnitName ?? entry?.fromTo ?? 'Không rõ đơn vị nhận',
+    recipientAddress: entry?.recipientAddress ?? entry?.recipient_address ?? entry?.note ?? '',
+    createdAt: entry?.createdAt ?? entry?.created_at ?? null,
+    createdBy: entry?.createdBy ?? '-',
+    totalItems: toNumber(entry?.totalItems, items.length),
+    items,
+  }
+}
+
+const getStatistics = async () => {
+  const response = await api.get('/RescueRequest/statistics')
+  return unwrapApiData(response) || {}
+}
+
+const getLowStockCount = async (threshold = 6) => {
+  const response = await api.get('/ReliefItem/low-stock/count', {
+    params: { n: threshold },
+  })
+  return toNumber(unwrapApiData(response), 0)
+}
+
 const managerService = {
   getDashboardStats: async () => {
     try {
-      const response = await api.get(`${MANAGER_BASE}/dashboard-stats`)
-      return unwrapApiData(response)
+      const stats = await getStatistics()
+      return {
+        totalRequests: toNumber(stats?.totalRequests ?? stats?.TotalRequests),
+        pendingRequests: toNumber(stats?.pendingRequests ?? stats?.PendingRequests),
+        verifiedRequests: toNumber(stats?.verifiedRequests ?? stats?.VerifiedRequests),
+        inProgressRequests: toNumber(stats?.inProgressRequests ?? stats?.InProgressRequests),
+        completedRequests: toNumber(stats?.completedRequests ?? stats?.CompletedRequests),
+        cancelledRequests: toNumber(stats?.cancelledRequests ?? stats?.CancelledRequests),
+        duplicateRequests: toNumber(stats?.duplicateRequests ?? stats?.DuplicateRequests),
+        todayRequests: toNumber(stats?.todayRequests ?? stats?.TodayRequests),
+      }
     } catch (error) {
       console.error('[managerService] getDashboardStats error:', error)
       throw error
@@ -40,8 +304,19 @@ const managerService = {
 
   getVehicleStats: async () => {
     try {
-      const response = await api.get(`${MANAGER_BASE}/vehicle-stats`)
-      return unwrapApiData(response)
+      const [allVehicles, availableVehicles, inUseVehicles, maintenanceVehicles] = await Promise.all([
+        managerService.getAllVehicles(''),
+        managerService.getAllVehicles('AVAILABLE'),
+        managerService.getAllVehicles('INUSE'),
+        managerService.getAllVehicles('MAINTENANCE'),
+      ])
+
+      return {
+        total: allVehicles.length,
+        available: availableVehicles.length,
+        inUse: inUseVehicles.length,
+        maintenance: maintenanceVehicles.length,
+      }
     } catch (error) {
       console.error('[managerService] getVehicleStats error:', error)
       throw error
@@ -50,8 +325,13 @@ const managerService = {
 
   getSupplyStats: async () => {
     try {
-      const response = await api.get(`${MANAGER_BASE}/supply-stats`)
-      return unwrapApiData(response)
+      const supplies = await managerService.getSupplies()
+      const lowStockCount = supplies.filter(isLowStockSupply).length
+
+      return {
+        totalTypes: supplies.length,
+        lowStock: lowStockCount,
+      }
     } catch (error) {
       console.error('[managerService] getSupplyStats error:', error)
       throw error
@@ -60,8 +340,40 @@ const managerService = {
 
   getTodayStats: async () => {
     try {
-      const response = await api.get(`${MANAGER_BASE}/today-stats`)
-      return unwrapApiData(response)
+      const [stats, outTransactions, inUseVehicles, supplies] = await Promise.all([
+        getStatistics(),
+        api
+          .get('/StockHistory', { params: { type: 'OUT' } })
+          .then((response) => normalizeArray(unwrapApiData(response)).map(normalizeStockEntry)),
+        managerService.getAllVehicles('INUSE'),
+        managerService.getSupplies(),
+      ])
+
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+
+      const todayOutTransactions = outTransactions.filter((entry) => {
+        const date = new Date(entry.date)
+        return Number.isFinite(date.getTime()) && date >= today
+      })
+
+      const suppliesDistributed = todayOutTransactions.reduce((sum, entry) => {
+        return sum + parseStockBody(entry.body).reduce((entrySum, part) => entrySum + toNumber(part.quantity), 0)
+      }, 0)
+
+      const totalStockQuantity = supplies.reduce((sum, item) => sum + toNumber(item.quantity), 0)
+      const consumptionRate =
+        totalStockQuantity > 0
+          ? Math.min(100, Math.round((suppliesDistributed / totalStockQuantity) * 100))
+          : 0
+
+      return {
+        requestsServed: toNumber(stats?.todayRequests ?? stats?.TodayRequests),
+        peopleHelped: 0,
+        suppliesDistributed,
+        vehiclesUsed: inUseVehicles.length,
+        consumptionRate,
+      }
     } catch (error) {
       console.error('[managerService] getTodayStats error:', error)
       throw error
@@ -73,7 +385,7 @@ const managerService = {
       const normalizedStatus = toVehicleApiStatusValue(status)
       const params = normalizedStatus ? { status: normalizedStatus } : undefined
       const response = await api.get('/Vehicle', { params })
-      return normalizeArray(unwrapApiData(response))
+      return normalizeArray(unwrapApiData(response)).map(normalizeVehicle)
     } catch (error) {
       console.error('[managerService] getAllVehicles error:', error)
       throw error
@@ -82,8 +394,26 @@ const managerService = {
 
   getSupplies: async () => {
     try {
-      const response = await api.get(`${MANAGER_BASE}/supplies`)
-      return normalizeArray(unwrapApiData(response))
+      try {
+        const managerResponse = await api.get('/Manager/supplies')
+        const managerItems = unwrapApiData(managerResponse)
+        const normalizedManagerItems = normalizeArray(managerItems).map(normalizeSupply)
+        if (normalizedManagerItems.length > 0) {
+          return normalizedManagerItems
+        }
+      } catch (managerError) {
+        if (!isNotFoundError(managerError)) {
+          throw managerError
+        }
+      }
+
+      const fallbackResponse = await api.get('/ReliefItem/low-stock', {
+        params: { n: MAX_RELIEF_ITEM_THRESHOLD },
+      })
+
+      const payload = fallbackResponse?.data
+      const items = payload?.items ?? payload?.Items ?? unwrapApiData(fallbackResponse)
+      return normalizeArray(items).map(normalizeSupply)
     } catch (error) {
       console.error('[managerService] getSupplies error:', error)
       throw error
@@ -92,8 +422,29 @@ const managerService = {
 
   getRecipientUnits: async () => {
     try {
-      const response = await api.get(`${MANAGER_BASE}/recipient-units`)
-      return normalizeArray(unwrapApiData(response))
+      const response = await api.get('/StockHistory', {
+        params: { type: 'OUT' },
+      })
+
+      const rows = normalizeArray(unwrapApiData(response)).map(normalizeStockEntry)
+      const unique = new Map()
+
+      rows.forEach((entry) => {
+        const name = String(entry.fromTo ?? '').trim()
+        if (!name || unique.has(name.toLowerCase())) {
+          return
+        }
+
+        unique.set(name.toLowerCase(), {
+          receiverUnitId: `unit-${unique.size + 1}`,
+          receiverUnitName: name,
+          receiverType: 'Đơn vị tiếp nhận',
+          region: '',
+          address: '',
+        })
+      })
+
+      return Array.from(unique.values())
     } catch (error) {
       console.error('[managerService] getRecipientUnits error:', error)
       throw error
@@ -102,8 +453,12 @@ const managerService = {
 
   getLowStockSupplies: async () => {
     try {
-      const response = await api.get(`${MANAGER_BASE}/supplies/low-stock`)
-      return normalizeArray(unwrapApiData(response))
+      const response = await api.get('/ReliefItem/low-stock', {
+        params: { n: 6 },
+      })
+      const payload = response?.data
+      const items = payload?.items ?? payload?.Items ?? unwrapApiData(response)
+      return normalizeArray(items).map(normalizeSupply)
     } catch (error) {
       console.error('[managerService] getLowStockSupplies error:', error)
       throw error
@@ -112,8 +467,8 @@ const managerService = {
 
   addSupply: async (supplyData) => {
     try {
-      const response = await api.post(`${MANAGER_BASE}/supplies`, supplyData)
-      return unwrapApiData(response)
+      void supplyData
+      throw createNotImplementedError('API thêm vật tư chưa được backend hỗ trợ.')
     } catch (error) {
       console.error('[managerService] addSupply error:', error)
       throw error
@@ -122,7 +477,24 @@ const managerService = {
 
   updateSupply: async (supplyId, supplyData) => {
     try {
-      const response = await api.put(`${MANAGER_BASE}/supplies/${supplyId}`, supplyData)
+      const payload = {}
+
+      if (supplyData?.name !== undefined) {
+        payload.itemName = String(supplyData.name).trim()
+      }
+      if (supplyData?.unit !== undefined) {
+        payload.unit = String(supplyData.unit).trim()
+      }
+      if (supplyData?.minQuantity !== undefined) {
+        payload.minQuantity = toNumber(supplyData.minQuantity)
+      }
+
+      const numericCategoryId = Number(supplyData?.categoryId)
+      if (Number.isFinite(numericCategoryId)) {
+        payload.categoryId = numericCategoryId
+      }
+
+      const response = await api.put(`/ReliefItem/${supplyId}`, payload)
       return unwrapApiData(response)
     } catch (error) {
       console.error('[managerService] updateSupply error:', error)
@@ -132,8 +504,8 @@ const managerService = {
 
   deleteSupply: async (supplyId) => {
     try {
-      const response = await api.delete(`${MANAGER_BASE}/supplies/${supplyId}`)
-      return unwrapApiData(response)
+      void supplyId
+      throw createNotImplementedError('API xóa vật tư chưa được backend hỗ trợ.')
     } catch (error) {
       console.error('[managerService] deleteSupply error:', error)
       throw error
@@ -142,9 +514,41 @@ const managerService = {
 
   getDetailedReport: async (startDate, endDate) => {
     try {
-      const params = { startDate, endDate }
-      const response = await api.get(`${MANAGER_BASE}/reports`, { params })
-      return unwrapApiData(response)
+      const params = {}
+      if (startDate) {
+        params.startDate = startDate
+      }
+      if (endDate) {
+        params.endDate = endDate
+      }
+
+      const response = await api.get('/RescueRequest', { params })
+      const rows = normalizeArray(unwrapApiData(response))
+
+      return rows.filter((item) => {
+        const createdAt = new Date(item?.createdAt)
+        if (!Number.isFinite(createdAt.getTime())) {
+          return false
+        }
+
+        if (startDate) {
+          const start = new Date(startDate)
+          start.setHours(0, 0, 0, 0)
+          if (createdAt < start) {
+            return false
+          }
+        }
+
+        if (endDate) {
+          const end = new Date(endDate)
+          end.setHours(23, 59, 59, 999)
+          if (createdAt > end) {
+            return false
+          }
+        }
+
+        return true
+      })
     } catch (error) {
       console.error('[managerService] getDetailedReport error:', error)
       throw error
@@ -153,11 +557,36 @@ const managerService = {
 
   exportReport: async (reportType, startDate, endDate) => {
     try {
-      const response = await api.get(`${MANAGER_BASE}/reports/export`, {
-        params: { reportType, startDate, endDate },
-        responseType: 'blob',
+      const reportRows = await managerService.getDetailedReport(startDate, endDate)
+      const normalizedReportType = String(reportType ?? 'summary').trim().toLowerCase()
+      const selectedRows =
+        normalizedReportType === 'completed'
+          ? reportRows.filter(
+              (item) => toApiRequestStatusValue(item?.status) === REQUEST_STATUS_TO_API_VALUE.COMPLETED,
+            )
+          : reportRows
+
+      const csvRows = [
+        'requestId,title,status,address,createdAt,updatedAt',
+        ...selectedRows.map((item) => {
+          const values = [
+            item?.requestId ?? '',
+            item?.title ?? '',
+            item?.status ?? '',
+            item?.address ?? '',
+            item?.createdAt ?? '',
+            item?.updatedAt ?? '',
+          ]
+
+          return values
+            .map((value) => `"${String(value).replaceAll('"', '""')}"`)
+            .join(',')
+        }),
+      ]
+
+      return new Blob([csvRows.join('\n')], {
+        type: 'text/csv;charset=utf-8;',
       })
-      return response.data
     } catch (error) {
       console.error('[managerService] exportReport error:', error)
       throw error
@@ -166,8 +595,30 @@ const managerService = {
 
   createReliefExportOrder: async (payload) => {
     try {
-      const response = await api.post(`${MANAGER_BASE}/relief-export-orders`, payload)
-      return unwrapApiData(response)
+      const body = {
+        recipient_unit_id: payload?.recipientUnitId ?? null,
+        recipient_unit_name: String(payload?.recipientUnitName ?? '').trim(),
+        recipient_type: String(payload?.recipientType ?? '').trim() || null,
+        recipient_region: String(payload?.recipientRegion ?? '').trim() || null,
+        items: normalizeArray(payload?.supplyItems)
+          .map((item) => ({
+            item_id: Number(item?.supplyId),
+            quantity: Number(item?.quantity),
+          }))
+          .filter((item) => Number.isFinite(item.item_id) && Number.isFinite(item.quantity) && item.quantity > 0),
+      }
+
+      try {
+        const response = await api.post('/Manager/export-receipts', body)
+        return unwrapApiData(response)
+      } catch (exportError) {
+        if (!isNotFoundError(exportError)) {
+          throw exportError
+        }
+
+        const fallbackResponse = await api.post('/StockHistory/export', body)
+        return unwrapApiData(fallbackResponse)
+      }
     } catch (error) {
       console.error('[managerService] createReliefExportOrder error:', error)
       throw error
@@ -176,8 +627,35 @@ const managerService = {
 
   getCategories: async () => {
     try {
-      const response = await api.get(`${MANAGER_BASE}/categories`)
-      return normalizeArray(unwrapApiData(response))
+      try {
+        const response = await api.get('/Manager/categories')
+        const categories = normalizeArray(unwrapApiData(response)).map(normalizeCategory)
+        const filteredCategories = categories.filter((item) => item.categoryId !== null)
+        if (filteredCategories.length > 0) {
+          return filteredCategories
+        }
+      } catch (categoriesError) {
+        if (!isNotFoundError(categoriesError)) {
+          throw categoriesError
+        }
+      }
+
+      const supplies = await managerService.getSupplies()
+      const dedup = new Map()
+
+      supplies.forEach((item) => {
+        const categoryId = Number(item?.categoryId)
+        if (!Number.isFinite(categoryId) || dedup.has(categoryId)) {
+          return
+        }
+
+        dedup.set(categoryId, {
+          categoryId,
+          name: item?.type || `Nhóm ${categoryId}`,
+        })
+      })
+
+      return Array.from(dedup.values())
     } catch (error) {
       console.error('[managerService] getCategories error:', error)
       throw error
@@ -186,7 +664,13 @@ const managerService = {
 
   createImportReceipt: async (payload) => {
     try {
-      const response = await api.post(`${MANAGER_BASE}/import-receipts`, payload)
+      const body = {
+        source: String(payload?.source ?? payload?.fromTo ?? '').trim(),
+        receive_address: String(payload?.receive_address ?? payload?.receiveAddress ?? '').trim(),
+        items: normalizeReceiptItemsInput(payload?.items),
+      }
+
+      const response = await api.post('/Manager/import-receipts', body)
       return unwrapApiData(response)
     } catch (error) {
       console.error('[managerService] createImportReceipt error:', error)
@@ -196,10 +680,58 @@ const managerService = {
 
   getImportReceipts: async () => {
     try {
-      const response = await api.get(`${MANAGER_BASE}/import-receipts`)
-      return normalizeArray(unwrapApiData(response))
+      try {
+        const managerResponse = await api.get('/Manager/import-receipts', {
+          params: { type: 'import' },
+        })
+        const managerRows = normalizeArray(unwrapApiData(managerResponse)).map(normalizeImportReceiptFromManager)
+        if (managerRows.length > 0) {
+          return managerRows
+        }
+      } catch (managerError) {
+        if (!isNotFoundError(managerError)) {
+          throw managerError
+        }
+      }
+
+      const [response, supplies] = await Promise.all([
+        api.get('/StockHistory', { params: { type: 'IN' } }),
+        managerService.getSupplies().catch(() => []),
+      ])
+
+      const supplyNameMap = toSupplyNameMap(supplies)
+      const rows = normalizeArray(unwrapApiData(response)).map(normalizeStockEntry)
+      return rows.map((entry) => normalizeImportReceipt(entry, supplyNameMap))
     } catch (error) {
       console.error('[managerService] getImportReceipts error:', error)
+      throw error
+    }
+  },
+
+  getExportReceipts: async () => {
+    try {
+      try {
+        const managerResponse = await api.get('/Manager/export-receipts')
+        const managerRows = normalizeArray(unwrapApiData(managerResponse)).map(normalizeExportReceiptFromManager)
+        if (managerRows.length > 0) {
+          return managerRows
+        }
+      } catch (managerError) {
+        if (!isNotFoundError(managerError)) {
+          throw managerError
+        }
+      }
+
+      const [response, supplies] = await Promise.all([
+        api.get('/StockHistory', { params: { type: 'OUT' } }),
+        managerService.getSupplies().catch(() => []),
+      ])
+
+      const supplyNameMap = toSupplyNameMap(supplies)
+      const rows = normalizeArray(unwrapApiData(response)).map(normalizeStockEntry)
+      return rows.map((entry) => normalizeExportReceipt(entry, supplyNameMap))
+    } catch (error) {
+      console.error('[managerService] getExportReceipts error:', error)
       throw error
     }
   },
@@ -207,24 +739,38 @@ const managerService = {
   getErrorMessage: (error) => {
     const status = error?.response?.status
     const data = error?.response?.data
+    const serverMessage =
+      data?.message ||
+      data?.Message ||
+      data?.title ||
+      data?.error ||
+      data?.detail
+
+    if (!status) {
+      return serverMessage || error?.message || 'Không thể kết nối đến máy chủ API.'
+    }
 
     if (status === 401) {
-      return 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'
+      return serverMessage || 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'
     }
 
     if (status === 403) {
-      return 'Bạn không có quyền truy cập chức năng này.'
+      return serverMessage || 'Bạn không có quyền truy cập chức năng này.'
     }
 
     if (status === 404) {
-      return 'Không tìm thấy dữ liệu.'
+      return serverMessage || 'Không tìm thấy dữ liệu.'
+    }
+
+    if (status === 501) {
+      return serverMessage || 'API chưa được backend hỗ trợ.'
     }
 
     if (status >= 500) {
-      return 'Hệ thống đang gặp lỗi. Vui lòng thử lại sau.'
+      return serverMessage || 'Hệ thống đang gặp lỗi. Vui lòng thử lại sau.'
     }
 
-    return data?.message || data?.Message || 'Có lỗi xảy ra. Vui lòng thử lại.'
+    return serverMessage || 'Có lỗi xảy ra. Vui lòng thử lại.'
   },
 }
 

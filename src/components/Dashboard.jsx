@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeftOnRectangleIcon, ArrowRightOnRectangleIcon, UserCircleIcon } from '@heroicons/react/24/outline';
 import authService from '../services/authService';
@@ -7,12 +7,6 @@ import RequestForm from './RequestForm';
 import ViewRequest from './ViewRequest';
 import './Dashboard.css';
 
-const MOCK_STATS = {
-  receivedRequests: 12,
-  rescuedPeople: 34,
-  supportedCount: 26,
-  safeCount: 18,
-};
 function Dashboard() {
   const navigate = useNavigate();
   const [showStats, setShowStats] = useState(true);
@@ -42,22 +36,40 @@ function Dashboard() {
     ADMIN: 'Quản trị viên',
   };
   const roleLabel = roleLabelMap[roleKey] || currentUser?.role || '-';
-  const buildHistoryItem = (requestItem, fallback = {}) => {
+  const dashboardStats = useMemo(() => {
+    const receivedRequests = requestHistory.length;
+    const rescuedPeople = requestHistory.reduce((sum, item) => {
+      const raw = item?.totalPeople ?? item?.numberOfPeople ?? 0;
+      const value = Number(raw);
+      return Number.isFinite(value) ? sum + value : sum;
+    }, 0);
+    const supportedCount = requestHistory.filter((item) => rescueRequestService.isTerminalStatus(item?.status)).length;
+    const safeCount = requestHistory.filter((item) => {
+      const normalized = rescueRequestService.normalizeStatus(item?.status);
+      return normalized === 'CONFIRMED' || normalized === 'COMPLETED';
+    }).length;
+
+    return {
+      receivedRequests,
+      rescuedPeople,
+      supportedCount,
+      safeCount,
+    };
+  }, [requestHistory]);
+
+  const buildHistoryItem = (requestItem) => {
     if (!requestItem) {
       return null;
     }
 
-    const formatted = rescueRequestService.toRequestFormData({
-      ...requestItem,
-      ...fallback,
-    });
+    const formatted = rescueRequestService.toRequestFormData(requestItem);
 
     return {
       ...formatted,
-      submittedDate: requestItem?.createdAt || fallback?.submittedDate || new Date().toISOString(),
-      requestId: requestItem?.requestId ?? fallback?.requestId ?? formatted?.requestId ?? null,
-      accessCode: requestItem?.accessCode ?? fallback?.accessCode ?? formatted?.accessCode ?? null,
-      status: requestItem?.status || fallback?.status || formatted?.status || 'Pending',
+      submittedDate: requestItem?.createdAt || formatted?.submittedDate || null,
+      requestId: requestItem?.requestId ?? formatted?.requestId ?? null,
+      accessCode: requestItem?.accessCode ?? formatted?.accessCode ?? null,
+      status: requestItem?.status || formatted?.status || 'Pending',
     };
   };
 
@@ -218,7 +230,7 @@ function Dashboard() {
           setHasActiveRequest(hasOpenRequest);
         } else {
           const latestRequest = await rescueRequestService.getTrackedGuestRequestStatus();
-          const historyItem = buildHistoryItem(latestRequest, requestData);
+          const historyItem = buildHistoryItem(latestRequest);
           if (historyItem) {
             setRequestHistory([historyItem]);
             setHasActiveRequest(!rescueRequestService.isTerminalStatus(historyItem?.status));
@@ -229,19 +241,8 @@ function Dashboard() {
         }
       } catch (error) {
         console.error('Error reloading request history:', error);
-        const fallbackHistoryItem = buildHistoryItem(requestData, {
-          requestId: requestData?.requestId ?? null,
-          accessCode: requestData?.accessCode ?? null,
-          submittedDate: requestData?.submittedDate || new Date().toISOString(),
-        });
-
-        if (fallbackHistoryItem) {
-          setRequestHistory([fallbackHistoryItem]);
-          setHasActiveRequest(!rescueRequestService.isTerminalStatus(fallbackHistoryItem?.status));
-        } else {
-          setRequestHistory([]);
-          setHasActiveRequest(false);
-        }
+        setRequestHistory([]);
+        setHasActiveRequest(false);
       } finally {
         setIsLoadingHistory(false);
       }
@@ -411,22 +412,22 @@ function Dashboard() {
         <div className="stats-bar">
           <div className="stat-item">
             <div className="stat-icon">🕐</div>
-            <div className="stat-number">{MOCK_STATS.receivedRequests}</div>
+            <div className="stat-number">{dashboardStats.receivedRequests}</div>
             <div className="stat-label">Các yêu cầu đã nhận</div>
           </div>
           <div className="stat-item">
             <div className="stat-icon">👥</div>
-            <div className="stat-number">{MOCK_STATS.rescuedPeople}</div>
+            <div className="stat-number">{dashboardStats.rescuedPeople}</div>
             <div className="stat-label">Người được cứu trợ</div>
           </div>
           <div className="stat-item">
             <div className="stat-icon">❤️</div>
-            <div className="stat-number">{MOCK_STATS.supportedCount}</div>
+            <div className="stat-number">{dashboardStats.supportedCount}</div>
             <div className="stat-label">Đã hỗ trợ</div>
           </div>
           <div className="stat-item">
             <div className="stat-icon">😊</div>
-            <div className="stat-number">{MOCK_STATS.safeCount}</div>
+            <div className="stat-number">{dashboardStats.safeCount}</div>
             <div className="stat-label">Báo an toàn</div>
           </div>
         </div>
@@ -449,52 +450,13 @@ function Dashboard() {
           referrerPolicy="no-referrer-when-downgrade"
         ></iframe>
         
-        {/* Map Controls */}
-        {/* <div className="map-controls">
-          <div className="level-control">
-            <span>Mức 1</span>
-            <div className="level-bar"></div>
-            <span>Mức 5</span>
-          </div>
-          <div className="level-dropdown">
-            <button 
-              className="level-dropdown-btn" 
-              onClick={() => setShowLevelDropdown(!showLevelDropdown)}
-            >
-              <span className={showLevelDropdown ? "dropdown-arrow up" : "dropdown-arrow down"}>▼</span>
-            </button>
-            {showLevelDropdown && (
-              <div className="level-dropdown-menu">
-                <div className="level-option" onClick={() => { setSelectedLevel('Mức 5 - Rất cao'); setShowLevelDropdown(false); }}>
-                  <span className="level-indicator level-5-bg"></span>
-                  <span>Mức 5 - Rất cao</span>
-                </div>
-                <div className="level-option" onClick={() => { setSelectedLevel('Mức 4 - Cao'); setShowLevelDropdown(false); }}>
-                  <span className="level-indicator level-4-bg"></span>
-                  <span>Mức 4 - Cao</span>
-                </div>
-                <div className="level-option" onClick={() => { setSelectedLevel('Mức 3 - Trung bình'); setShowLevelDropdown(false); }}>
-                  <span className="level-indicator level-3-bg"></span>
-                  <span>Mức 3 - Trung bình</span>
-                </div>
-                <div className="level-option" onClick={() => { setSelectedLevel('Mức 2 - Thấp'); setShowLevelDropdown(false); }}>
-                  <span className="level-indicator level-2-bg"></span>
-                  <span>Mức 2 - Thấp</span>
-                </div>
-                <div className="level-option" onClick={() => { setSelectedLevel('Mức 1 - Rất thấp'); setShowLevelDropdown(false); }}>
-                  <span className="level-indicator level-1-bg"></span>
-                  <span>Mức 1 - Rất thấp</span>
-                </div>
-              </div>
-            )}
-          </div>
-        </div> */}
+      
       </div>
 
       {/* Bottom Navigation */}
       <nav className="bottom-nav">
         {/* <button className="nav-item">Thông Tin</button> */}
-        <button className="nav-item">Khảo Sát</button>
+        <button className="nav-item">Hướng dẫn</button>
         <button className="nav-item">Liên Hệ</button>
       </nav>
     </div>
