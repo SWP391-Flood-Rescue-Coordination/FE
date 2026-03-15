@@ -1727,6 +1727,13 @@
   font-size: 13px;
 }
 
+.admin-cell-note {
+  margin-top: 6px;
+  color: #b45309;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .admin-inline-tag {
   display: inline-flex;
   width: fit-content;

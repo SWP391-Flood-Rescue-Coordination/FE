@@ -177,9 +177,8 @@ function ManagerSuppliesPage() {
   if (isLoading) {
     return (
       <div className="manager-supplies-page">
-        <button className="back-button" onClick={handleBack}>
+        <button className="back-button" onClick={handleBack} aria-label="Quay lại" title="Quay lại">
           <span className="arrow-icon">←</span>
-          Quay lại 
         </button>
         <div className="page-loading">
           <div className="loading-spinner"></div>
@@ -191,9 +190,8 @@ function ManagerSuppliesPage() {
 
   return (
     <div className="manager-supplies-page">
-      <button className="back-button" onClick={handleBack}>
+      <button className="back-button" onClick={handleBack} aria-label="Quay lại" title="Quay lại">
         <span className="arrow-icon">←</span>
-        Quay lại 
       </button>
       <header className="page-header">
         <h1>

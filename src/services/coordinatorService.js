@@ -1,33 +1,24 @@
 import api from './api'
 
-const COORDINATOR_BASE = '/Coordinator'
 const REQUEST_BASE = '/RescueRequest'
 const TEAM_BASE = '/rescue-team/status'
+const PRIORITY_LEVELS = [
+  { priorityLevelId: 1, priorityName: 'Cao' },
+  { priorityLevelId: 2, priorityName: 'Trung bình' },
+  { priorityLevelId: 3, priorityName: 'Thấp' },
+]
 
 const unwrapApiData = (response) => {
   if (response?.data?.data !== undefined) {
     return response.data.data
   }
+  if (response?.data?.Data !== undefined) {
+    return response.data.Data
+  }
   return response?.data
 }
 
 const normalizeArray = (value) => (Array.isArray(value) ? value : [])
-
-const getRescueTeamsWithFallback = async (params) => {
-  const endpoints = ['/rescue-team/status', '/rescue-team', '/Coordinator/status-with-teams']
-  let lastError = null
-
-  for (const endpoint of endpoints) {
-    try {
-      const response = await api.get(endpoint, { params })
-      return normalizeArray(unwrapApiData(response))
-    } catch (error) {
-      lastError = error
-    }
-  }
-
-  throw lastError
-}
 
 const STATUS_TO_API_VALUE = {
   PENDING: 'Pending',
@@ -79,13 +70,13 @@ const coordinatorService = {
   },
 
   getPriorityLevels: async () => {
-    const response = await api.get(`${COORDINATOR_BASE}/priority-levels`)
-    return normalizeArray(unwrapApiData(response))
+    return PRIORITY_LEVELS
   },
 
   getRescueTeams: async (status = '') => {
     const params = status ? { status: String(status).trim().toUpperCase() } : undefined
-    return getRescueTeamsWithFallback(params)
+    const response = await api.get(TEAM_BASE, { params })
+    return normalizeArray(unwrapApiData(response))
   },
 
   getVehicles: async (status = '') => {
@@ -96,7 +87,8 @@ const coordinatorService = {
 
   getAvailableRescueTeams: async (status = '') => {
     const params = status ? { status: String(status).trim().toUpperCase() } : undefined
-    return getRescueTeamsWithFallback(params)
+    const response = await api.get(TEAM_BASE, { params })
+    return normalizeArray(unwrapApiData(response))
   },
 
   getAvailableVehicles: async () => {

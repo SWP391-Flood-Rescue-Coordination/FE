@@ -23,6 +23,7 @@ function Dashboard() {
   const [currentUser, setCurrentUser] = useState(() => authService.getUserInfo());
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [remoteDashboardStats, setRemoteDashboardStats] = useState(null);
   const userMenuRef = useRef(null);
 
   const isAuthenticated = authService.isAuthenticated() && Boolean(currentUser);
@@ -36,7 +37,7 @@ function Dashboard() {
     ADMIN: 'Quản trị viên',
   };
   const roleLabel = roleLabelMap[roleKey] || currentUser?.role || '-';
-  const dashboardStats = useMemo(() => {
+  const fallbackDashboardStats = useMemo(() => {
     const receivedRequests = requestHistory.length;
     const rescuedPeople = requestHistory.reduce((sum, item) => {
       const raw = item?.totalPeople ?? item?.numberOfPeople ?? 0;
@@ -56,6 +57,7 @@ function Dashboard() {
       safeCount,
     };
   }, [requestHistory]);
+  const dashboardStats = remoteDashboardStats || fallbackDashboardStats;
 
   const buildHistoryItem = (requestItem) => {
     if (!requestItem) {
@@ -104,6 +106,25 @@ function Dashboard() {
 
     loadRequestHistory();
   }, [isAuthenticated, roleKey]);
+
+  useEffect(() => {
+    const loadDashboardStatistics = async () => {
+      try {
+        const stats = await rescueRequestService.getCitizenDashboardStatistics();
+        setRemoteDashboardStats({
+          receivedRequests: Number(stats?.receivedRequests ?? 0),
+          rescuedPeople: Number(stats?.rescuedPeople ?? 0),
+          supportedCount: Number(stats?.supportedRequests ?? 0),
+          safeCount: Number(stats?.safeReports ?? 0),
+        });
+      } catch (error) {
+        console.error('Error loading dashboard statistics:', error);
+        setRemoteDashboardStats(null);
+      }
+    };
+
+    loadDashboardStatistics();
+  }, []);
 
   useEffect(() => {
     const handleOutsideClick = (event) => {
@@ -245,6 +266,18 @@ function Dashboard() {
         setHasActiveRequest(false);
       } finally {
         setIsLoadingHistory(false);
+      }
+
+      try {
+        const stats = await rescueRequestService.getCitizenDashboardStatistics();
+        setRemoteDashboardStats({
+          receivedRequests: Number(stats?.receivedRequests ?? 0),
+          rescuedPeople: Number(stats?.rescuedPeople ?? 0),
+          supportedCount: Number(stats?.supportedRequests ?? 0),
+          safeCount: Number(stats?.safeReports ?? 0),
+        });
+      } catch (error) {
+        console.error('Error reloading dashboard statistics:', error);
       }
     }
   };

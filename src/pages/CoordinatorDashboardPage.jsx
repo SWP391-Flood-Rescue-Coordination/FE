@@ -1,14 +1,17 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useRef } from 'react'
 import {
   ArrowLeftOnRectangleIcon,
   ArrowPathIcon,
   CheckCircleIcon,
   ClockIcon,
   TruckIcon,
+  UserCircleIcon,
   UserGroupIcon,
   WrenchScrewdriverIcon,
 } from '@heroicons/react/24/outline'
+import authService from '../services/authService'
 import coordinatorService from '../services/coordinatorService'
 import CoordinatorRequestsPage from './CoordinatorRequestsPage'
 import './CoordinatorDashboardPage.css'
@@ -30,6 +33,14 @@ const normalizeStatus = (value) =>
     .replace(/[\s-]+/g, '_')
 
 const normalizeCancelledStatus = (status) => (status === 'CANCELED' ? 'CANCELLED' : status)
+
+const ROLE_LABEL_MAP = {
+  COORDINATOR: 'Điều phối viên',
+  RESCUE_TEAM: 'Đội cứu hộ',
+  MANAGER: 'Quản lý',
+  ADMIN: 'Quản trị viên',
+  CITIZEN: 'Công dân',
+}
 
 const createInitialStatusSummary = () =>
   REQUEST_STATUS_ITEMS.reduce(
@@ -60,6 +71,10 @@ function CoordinatorDashboardPage() {
   const [requestStatusSummary, setRequestStatusSummary] = useState(createInitialStatusSummary())
   const [teamSummary, setTeamSummary] = useState({ total: 0, inProgress: 0, available: 0 })
   const [vehicleSummary, setVehicleSummary] = useState({ available: 0, inUse: 0, maintenance: 0 })
+  const [currentUser, setCurrentUser] = useState(() => authService.getUserInfo())
+  const [showUserMenu, setShowUserMenu] = useState(false)
+  const userMenuRef = useRef(null)
+  const roleLabel = ROLE_LABEL_MAP[String(currentUser?.role ?? '').toUpperCase()] || currentUser?.role || '-'
 
   const fetchDashboardStats = useCallback(async () => {
     setIsLoading(true)
@@ -122,6 +137,19 @@ function CoordinatorDashboardPage() {
   useEffect(() => {
     fetchDashboardStats()
   }, [fetchDashboardStats])
+
+  useEffect(() => {
+    const handleOutsideClick = (event) => {
+      if (!userMenuRef.current?.contains(event.target)) {
+        setShowUserMenu(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleOutsideClick)
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick)
+    }
+  }, [])
 
   const totalRequests = useMemo(
     () => REQUEST_STATUS_ITEMS.reduce((total, item) => total + (requestStatusSummary[item.key] ?? 0), 0),
@@ -209,10 +237,14 @@ function CoordinatorDashboardPage() {
   }
 
   const handleLogout = () => {
-    localStorage.removeItem('accessToken')
-    localStorage.removeItem('refreshToken')
-    localStorage.removeItem('user')
+    authService.logout()
+    setCurrentUser(null)
+    setShowUserMenu(false)
     navigate('/login', { replace: true })
+  }
+
+  const handleToggleUserMenu = () => {
+    setShowUserMenu((prev) => !prev)
   }
 
   return (
@@ -220,6 +252,37 @@ function CoordinatorDashboardPage() {
       <header className="coordinator-home-header">
         <h1>Hệ Thống Quản Lí Cứu Hộ Cứu Trợ Lũ Lụt</h1>
         <div className="coordinator-home-actions">
+          <div className="coordinator-home-user-group" ref={userMenuRef}>
+            <button
+              type="button"
+              className="coordinator-home-icon-button"
+              onClick={handleToggleUserMenu}
+              aria-label="Thông tin người dùng"
+            >
+              <UserCircleIcon className="coordinator-header-icon" />
+            </button>
+            {showUserMenu && (
+              <div className="coordinator-home-user-menu">
+                <h3>Thông tin tài khoản</h3>
+                <div className="coordinator-home-user-row">
+                  <span>Tên tài khoản</span>
+                  <strong>{currentUser?.username || '-'}</strong>
+                </div>
+                <div className="coordinator-home-user-row">
+                  <span>Họ tên</span>
+                  <strong>{currentUser?.fullName || '-'}</strong>
+                </div>
+                <div className="coordinator-home-user-row">
+                  <span>Email</span>
+                  <strong>{currentUser?.email || '-'}</strong>
+                </div>
+                <div className="coordinator-home-user-row">
+                  <span>Vai trò</span>
+                  <strong>{roleLabel}</strong>
+                </div>
+              </div>
+            )}
+          </div>
           <button type="button" className="coordinator-home-logout" onClick={handleLogout} aria-label="Đăng xuất">
             <ArrowLeftOnRectangleIcon className="coordinator-header-icon" />
           </button>

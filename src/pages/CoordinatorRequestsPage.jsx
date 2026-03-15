@@ -1,5 +1,7 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { ArrowLeftOnRectangleIcon, UserCircleIcon } from '@heroicons/react/24/outline'
+import authService from '../services/authService'
 import coordinatorService from '../services/coordinatorService'
 import './CoordinatorRequestsPage.css'
 
@@ -35,6 +37,13 @@ const STATUS_LABEL_MAP = {
 
 const ASSIGN_MAX_VEHICLES = 100
 const ASSIGNMENT_CACHE_KEY = 'coordinatorRequestAssignments'
+const ROLE_LABEL_MAP = {
+  COORDINATOR: 'Điều phối viên',
+  RESCUE_TEAM: 'Đội cứu hộ',
+  MANAGER: 'Quản lý',
+  ADMIN: 'Quản trị viên',
+  CITIZEN: 'Công dân',
+}
 
 const normalizeIdText = (value) => {
   if (value === null || value === undefined || value === '') {
@@ -143,13 +152,13 @@ const normalizeCancelledStatus = (status) => {
 const getPriorityInfo = (priorityLevelId, priorityRaw) => {
   const numericId = Number(priorityLevelId)
   if (!Number.isNaN(numericId)) {
-    if (numericId === 3) {
+    if (numericId === 1) {
       return { key: 'HIGH', label: 'Cao' }
     }
     if (numericId === 2) {
       return { key: 'MEDIUM', label: 'Trung bình' }
     }
-    if (numericId === 1) {
+    if (numericId === 3) {
       return { key: 'LOW', label: 'Thấp' }
     }
   }
@@ -246,13 +255,13 @@ const normalizePriorityLabel = (rawLabel, id) => {
 
   const numericId = Number(id)
   if (!Number.isNaN(numericId)) {
-    if (numericId === 3) {
+    if (numericId === 1) {
       return 'Cao'
     }
     if (numericId === 2) {
       return 'Trung bình'
     }
-    if (numericId === 1) {
+    if (numericId === 3) {
       return 'Thấp'
     }
     return `Mức ${numericId}`
@@ -344,8 +353,12 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
 
   const [errorMessage, setErrorMessage] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
+  const [currentUser, setCurrentUser] = useState(() => authService.getUserInfo())
+  const [showUserMenu, setShowUserMenu] = useState(false)
 
   const priorityFilterRef = useRef(null)
+  const userMenuRef = useRef(null)
+  const roleLabel = ROLE_LABEL_MAP[String(currentUser?.role ?? '').toUpperCase()] || currentUser?.role || '-'
 
   const setActionLoading = (requestId, actionName, value) => {
     const key = `${requestId}:${actionName}`
@@ -488,9 +501,14 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
   useEffect(() => {
     const handleOutsideClick = (event) => {
       const clickedPriorityFilter = priorityFilterRef.current?.contains(event.target)
+      const clickedUserMenu = userMenuRef.current?.contains(event.target)
 
       if (!clickedPriorityFilter) {
         setIsPriorityFilterOpen(false)
+      }
+
+      if (!clickedUserMenu) {
+        setShowUserMenu(false)
       }
     }
 
@@ -690,10 +708,14 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
   }
 
   const handleLogout = () => {
-    localStorage.removeItem('accessToken')
-    localStorage.removeItem('refreshToken')
-    localStorage.removeItem('user')
+    authService.logout()
+    setCurrentUser(null)
+    setShowUserMenu(false)
     navigate('/login', { replace: true })
+  }
+
+  const handleToggleUserMenu = () => {
+    setShowUserMenu((prev) => !prev)
   }
 
   const closeFilterMenus = () => {
@@ -1026,9 +1048,46 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
           <button type="button" className="coordinator-nav-btn" onClick={() => navigate('/rescue-coordinator')}>
             Tổng quan
           </button>
-          <button type="button" className="coordinator-btn-login" onClick={handleLogout}>
-            Đăng xuất
-          </button>
+          <div className="coordinator-auth-user-group" ref={userMenuRef}>
+            <button
+              type="button"
+              className="coordinator-icon-button"
+              onClick={handleToggleUserMenu}
+              aria-label="Thông tin người dùng"
+            >
+              <UserCircleIcon className="coordinator-header-icon" />
+            </button>
+            <button
+              type="button"
+              className="coordinator-icon-button logout"
+              onClick={handleLogout}
+              aria-label="Đăng xuất"
+            >
+              <ArrowLeftOnRectangleIcon className="coordinator-header-icon" />
+            </button>
+
+            {showUserMenu && (
+              <div className="coordinator-user-menu-card">
+                <h3>Thông tin tài khoản</h3>
+                <div className="coordinator-user-info-row">
+                  <span>Tên tài khoản</span>
+                  <strong>{currentUser?.username || '-'}</strong>
+                </div>
+                <div className="coordinator-user-info-row">
+                  <span>Họ tên</span>
+                  <strong>{currentUser?.fullName || '-'}</strong>
+                </div>
+                <div className="coordinator-user-info-row">
+                  <span>Email</span>
+                  <strong>{currentUser?.email || '-'}</strong>
+                </div>
+                <div className="coordinator-user-info-row">
+                  <span>Vai trò</span>
+                  <strong>{roleLabel}</strong>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
