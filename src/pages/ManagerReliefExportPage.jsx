@@ -13,6 +13,52 @@ import authService from '../services/authService'
 import managerService from '../services/managerService'
 import './ManagerReliefExportPage.css'
 
+const DEFAULT_RECIPIENTS = [
+  {
+    id: 'ward-01',
+    name: 'UBND Phường 22',
+    type: 'Phường',
+    region: 'Bình Thạnh, TP.HCM',
+    address: '105 Nguyễn Hữu Cảnh, Phường 22, Bình Thạnh, TP.HCM',
+  },
+  {
+    id: 'ward-02',
+    name: 'Điểm tiếp nhận Phường 2',
+    type: 'Phường',
+    region: 'Tân Bình, TP.HCM',
+    address: '15 Hồng Hà, Phường 2, Tân Bình, TP.HCM',
+  },
+  {
+    id: 'ward-03',
+    name: 'Ban điều phối Phường 9',
+    type: 'Phường',
+    region: 'Phú Nhuận, TP.HCM',
+    address: '82 Hoàng Văn Thụ, Phường 9, Phú Nhuận, TP.HCM',
+  },
+  {
+    id: 'ward-04',
+    name: 'UBND Phường Bến Nghé',
+    type: 'Phường',
+    region: 'Quận 1, TP.HCM',
+    address: '45 Lê Duẩn, Phường Bến Nghé, Quận 1, TP.HCM',
+  },
+  {
+    id: 'ward-05',
+    name: 'Điểm tập kết Phường 12',
+    type: 'Phường',
+    region: 'Quận 3, TP.HCM',
+    address: '214 Nam Kỳ Khởi Nghĩa, Phường 12, Quận 3, TP.HCM',
+  },
+  {
+    id: 'ward-06',
+    name: 'Ban cứu trợ Bình Hưng',
+    type: 'Khu vực',
+    region: 'Bình Chánh, TP.HCM',
+    address: '28 Phạm Hùng, xã Bình Hưng, Bình Chánh, TP.HCM',
+  },
+]
+
+
 const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value, key)
 
 const normalizeTextId = (value, fallback = '') => String(value ?? fallback).trim()
@@ -81,41 +127,26 @@ function ManagerReliefExportPage() {
     setIsLoading(true)
 
     try {
-      const [recipientResult, supplyResult] = await Promise.allSettled([
-        managerService.getRecipientUnits(),
-        managerService.getSupplies(),
-      ])
+      // Use hardcoded DEFAULT_RECIPIENTS instead of API call
+      const normalizedRecipients = DEFAULT_RECIPIENTS
+        .map(normalizeRecipient)
+        .filter((item) => item.id && item.name)
+      setRecipientOptions(normalizedRecipients)
 
-      const hasUnauthorized = [recipientResult, supplyResult].some(
-        (result) => result.status === 'rejected' && result.reason?.response?.status === 401,
-      )
-
-      if (hasUnauthorized) {
-        navigate('/login', { replace: true })
-        return
-      }
-
-      if (recipientResult.status === 'fulfilled') {
-        const normalizedRecipients = recipientResult.value
-          .map(normalizeRecipient)
-          .filter((item) => item.id && item.name)
-        setRecipientOptions(normalizedRecipients)
-      } else {
-        setRecipientOptions([])
-      }
-
-      if (supplyResult.status === 'fulfilled') {
-        const normalizedSupplies = supplyResult.value
+      // Fetch supplies from API
+      try {
+        const supplyResult = await managerService.getSupplies()
+        const normalizedSupplies = supplyResult
           .map(normalizeSupply)
           .filter((item) => item.id && item.name)
         setSupplies(normalizedSupplies)
-      } else {
+      } catch (error) {
+        if (error?.response?.status === 401) {
+          navigate('/login', { replace: true })
+          return
+        }
         setSupplies([])
-      }
-
-      const hasRejected = [recipientResult, supplyResult].some((result) => result.status === 'rejected')
-      if (hasRejected) {
-        setErrorMessage('Không thể tải đầy đủ dữ liệu từ hệ thống. Vui lòng thử lại.')
+        setErrorMessage('Không thể tải danh sách vật tư từ hệ thống. Vui lòng thử lại.')
       }
     } finally {
       setIsLoading(false)
