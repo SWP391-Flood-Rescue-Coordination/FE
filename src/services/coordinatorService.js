@@ -1,6 +1,8 @@
 import api from './api'
 
 const COORDINATOR_BASE = '/Coordinator'
+const REQUEST_BASE = '/RescueRequest'
+const TEAM_BASE = '/rescue-team/status'
 
 const unwrapApiData = (response) => {
   if (response?.data?.data !== undefined) {
@@ -10,6 +12,22 @@ const unwrapApiData = (response) => {
 }
 
 const normalizeArray = (value) => (Array.isArray(value) ? value : [])
+
+const getRescueTeamsWithFallback = async (params) => {
+  const endpoints = ['/rescue-team/status', '/rescue-team', '/Coordinator/status-with-teams']
+  let lastError = null
+
+  for (const endpoint of endpoints) {
+    try {
+      const response = await api.get(endpoint, { params })
+      return normalizeArray(unwrapApiData(response))
+    } catch (error) {
+      lastError = error
+    }
+  }
+
+  throw lastError
+}
 
 const STATUS_TO_API_VALUE = {
   PENDING: 'Pending',
@@ -56,7 +74,7 @@ const coordinatorService = {
     if (priorityId !== null && priorityId !== undefined && priorityId !== '') {
       params.priorityId = Number(priorityId)
     }
-    const response = await api.get(`${COORDINATOR_BASE}/all-requests`, { params })
+    const response = await api.get(`${REQUEST_BASE}`, { params })
     return normalizeArray(unwrapApiData(response))
   },
 
@@ -66,9 +84,8 @@ const coordinatorService = {
   },
 
   getRescueTeams: async (status = '') => {
-    const params = status ? { status } : undefined
-    const response = await api.get(`${COORDINATOR_BASE}/teams`, { params })
-    return normalizeArray(unwrapApiData(response))
+    const params = status ? { status: String(status).trim().toUpperCase() } : undefined
+    return getRescueTeamsWithFallback(params)
   },
 
   getVehicles: async (status = '') => {
@@ -79,8 +96,7 @@ const coordinatorService = {
 
   getAvailableRescueTeams: async (status = '') => {
     const params = status ? { status: String(status).trim().toUpperCase() } : undefined
-    const response = await api.get(`${COORDINATOR_BASE}/status-with-teams`, { params })
-    return normalizeArray(unwrapApiData(response))
+    return getRescueTeamsWithFallback(params)
   },
 
   getAvailableVehicles: async () => {
@@ -93,7 +109,7 @@ const coordinatorService = {
       status: 'Verified',
       priorityLevelId: Number(priorityLevelId),
     }
-    const response = await api.put(`${COORDINATOR_BASE}/update-request/${requestId}`, payload)
+    const response = await api.put(`${REQUEST_BASE}/${requestId}/set-priority-and-verify`, payload)
     return unwrapApiData(response)
   },
 

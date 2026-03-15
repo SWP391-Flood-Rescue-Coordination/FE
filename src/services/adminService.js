@@ -1,7 +1,7 @@
 import api from './api'
 
-const ADMIN_BASE = '/Admin'
-const TEAM_BASE = '/Coordinator'
+const ADMIN_BASE = '/UserInfo'
+const TEAM_BASE = '/rescue-team/status'
 
 const ROLE_LABEL_MAP = {
   ADMIN: 'Quản trị viên',
@@ -44,6 +44,22 @@ const unwrapApiData = (response) => {
 
 const normalizeArray = (value) => (Array.isArray(value) ? value : [])
 
+const getRescueTeamsWithFallback = async (params) => {
+  const endpoints = ['/rescue-team/status', '/rescue-team', '/Coordinator/status-with-teams']
+  let lastError = null
+
+  for (const endpoint of endpoints) {
+    try {
+      const response = await api.get(endpoint, { params })
+      return normalizeArray(unwrapApiData(response))
+    } catch (error) {
+      lastError = error
+    }
+  }
+
+  throw lastError
+}
+
 const normalizeRole = (value) =>
   String(value ?? '')
     .trim()
@@ -71,7 +87,7 @@ const toVehicleApiStatusValue = (status) => {
 const adminService = {
   getUsers: async (userId = null) => {
     const params = userId ? { userId: Number(userId) } : undefined
-    const response = await api.get(`${ADMIN_BASE}/users`, { params })
+    const response = await api.get(`${ADMIN_BASE}`, { params })
     return normalizeArray(unwrapApiData(response))
   },
 
@@ -95,8 +111,7 @@ const adminService = {
 
   getRescueTeams: async (status = '') => {
     const params = status ? { status: String(status).trim().toUpperCase() } : undefined
-    const response = await api.get(`${TEAM_BASE}/status-with-teams`, { params })
-    return normalizeArray(unwrapApiData(response))
+    return getRescueTeamsWithFallback(params)
   },
 
   getVehicles: async (status = '') => {
@@ -107,14 +122,14 @@ const adminService = {
   },
 
   updateUserRole: async (userId, role) => {
-    const response = await api.put(`${ADMIN_BASE}/users/${userId}/role`, {
+    const response = await api.put(`${ADMIN_BASE}/${userId}/role`, {
       role: normalizeRole(role),
     })
     return response?.data ?? {}
   },
 
   updateUserStatus: async (userId, isActive) => {
-    const response = await api.put(`${ADMIN_BASE}/users/${userId}/status`, {
+    const response = await api.put(`${ADMIN_BASE}/${userId}/status`, {
       isActive: Boolean(isActive),
     })
     return response?.data ?? {}
