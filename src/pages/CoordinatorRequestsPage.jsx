@@ -1,6 +1,7 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeftOnRectangleIcon, UserCircleIcon } from '@heroicons/react/24/outline'
+import { BsIncognito } from 'react-icons/bs'
 import authService from '../services/authService'
 import coordinatorService from '../services/coordinatorService'
 import './CoordinatorRequestsPage.css'
@@ -582,6 +583,36 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
     }
   }
 
+  const handleMarkDuplicate = async (request) => {
+    const requestId = request.request_id
+    const isPending = request.status === 'PENDING'
+
+    if (!isPending) {
+      return
+    }
+
+    setErrorMessage('')
+    setSuccessMessage('')
+    setActionLoading(requestId, 'duplicate', true)
+
+    try {
+      await coordinatorService.markRequestDuplicate(requestId)
+      setSuccessMessage(`Đã chuyển yêu cầu #${requestId} sang trạng thái trùng lặp.`)
+      setVerifyEditMap((prev) => ({
+        ...prev,
+        [requestId]: false,
+      }))
+      await reloadAll()
+    } catch (error) {
+      const result = handleApiError(error, 'Yêu cầu đã được xử lý bởi người khác.')
+      if (result.shouldReload) {
+        await reloadAll()
+      }
+    } finally {
+      setActionLoading(requestId, 'duplicate', false)
+    }
+  }
+
   const openAssignModal = (request) => {
     if (!request?.request_id || request.status !== 'VERIFIED') {
       return
@@ -677,11 +708,11 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
         ),
       )
 
-      setSuccessMessage(`Phan cong yeu cau #${requestId} thanh cong.`)
+      setSuccessMessage(`Phân công yêu cầu #${requestId} thành công.`)
       closeAssignModal()
       await reloadAll()
     } catch (error) {
-      const result = handleApiError(error, 'Phan cong that bai, vui long kiem tra lai request/team/xe kha dung.')
+      const result = handleApiError(error, 'Phân công thất bại, vui lòng kiểm tra lại yêu cầu/đội/xe khả dụng.')
       if (result.shouldReload) {
         await reloadAll()
       }
@@ -717,7 +748,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
 
         <div className="assign-modal-top-grid">
           <div className="assign-modal-field">
-            <label htmlFor="assign-team">Đội cứu hộ rảnh (chọn 1)</label>
+            <label htmlFor="assign-team">Đội cứu hộ sẵn sàng</label>
             <select
               id="assign-team"
               value={assignTeamId}
@@ -881,22 +912,32 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
                 const isVerifyEditing = Boolean(verifyEditMap[requestId])
 
                 const verifyLoading = hasValidRequestId ? isActionLoading(requestId, 'verify') : false
+                const duplicateLoading = hasValidRequestId ? isActionLoading(requestId, 'duplicate') : false
                 const assignLoading = hasValidRequestId ? isActionLoading(requestId, 'assign') : false
                 const selectedPriority = selectedPriorityByRequest[requestId] || ''
                 const assignmentFromCache = assignmentByRequestId[String(requestId)]
                 const assignment = assignmentFromCache || request.assignment || null
                 const assignedTeamText = assignment?.teamName || (assignment?.teamId ? `Đội #${assignment.teamId}` : null)
-                const assignedVehicleText =
+                const assignedVehicleItems =
                   assignment?.vehicleLabels?.length > 0
-                    ? assignment.vehicleLabels.join(', ')
+                    ? assignment.vehicleLabels
                     : assignment?.vehicleIds?.length > 0
-                      ? assignment.vehicleIds.map((id) => `Xe #${id}`).join(', ')
-                      : null
+                      ? assignment.vehicleIds.map((id) => `Xe #${id}`)
+                      : []
+                const hasCitizenId = request.citizen_id !== null && request.citizen_id !== undefined && String(request.citizen_id).trim() !== '' && String(request.citizen_id).trim() !== '-'
 
                 return (
                   <tr key={requestKey}>
                     <td>{request.request_id ?? '-'}</td>
-                    <td>{request.citizen_id ?? '-'}</td>
+                    <td>
+                      {hasCitizenId ? (
+                        request.citizen_id
+                      ) : (
+                        <span className="coordinator-inline-badge anonymous" title="Ẩn danh" aria-label="Ẩn danh">
+                          <BsIncognito className="coordinator-inline-badge-icon" />
+                        </span>
+                      )}
+                    </td>
                     <td>{request.phone || '-'}</td>
                     <td className="description-cell">{request.description || '-'}</td>
                     <td>{formatLocation(request.latitude, request.longitude)}</td>
@@ -934,22 +975,48 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
                     <td>{formatDateTime(request.updated_at)}</td>
                     <td>{request.updated_by ?? '-'}</td>
                     <td>{assignedTeamText || '-'}</td>
-                    <td>{assignedVehicleText || '-'}</td>
                     <td>
-                      <button
-                        type="button"
-                        className="action-button verify-button"
-                        onClick={() => handleVerify(request)}
-                        disabled={
-                          !hasValidRequestId ||
-                          !isPending ||
-                          verifyLoading ||
-                          assignLoading ||
-                          (isVerifyEditing && !selectedPriority)
-                        }
-                      >
-                        {verifyLoading ? 'Đang xác thực...' : isVerifyEditing ? 'Xác nhận' : 'Xác thực'}
-                      </button>
+                      {assignedVehicleItems.length > 0 ? (
+                        <div className="coordinator-tag-list">
+                          {assignedVehicleItems.map((vehicleLabel) => (
+                            <span key={`${requestKey}-${vehicleLabel}`} className="coordinator-inline-badge vehicle-tag">
+                              {vehicleLabel}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        '-'
+                      )}
+                    </td>
+                    <td className="verify-action-cell">
+                      <div className="action-button-group">
+                        <button
+                          type="button"
+                          className="action-button verify-button"
+                          onClick={() => handleVerify(request)}
+                          disabled={
+                            !hasValidRequestId ||
+                            !isPending ||
+                            verifyLoading ||
+                            duplicateLoading ||
+                            assignLoading ||
+                            (isVerifyEditing && !selectedPriority)
+                          }
+                        >
+                          {verifyLoading ? 'Đang xác thực...' : isVerifyEditing ? 'Xác nhận' : 'Xác thực'}
+                        </button>
+
+                        {isPending && (
+                          <button
+                            type="button"
+                            className="action-button duplicate-button"
+                            onClick={() => handleMarkDuplicate(request)}
+                            disabled={!hasValidRequestId || verifyLoading || duplicateLoading || assignLoading}
+                          >
+                            {duplicateLoading ? 'Đang xử lý...' : 'Trùng lặp'}
+                          </button>
+                        )}
+                      </div>
                     </td>
                     <td>
                       <button

@@ -104,6 +104,13 @@ const coordinatorService = {
     return unwrapApiData(response)
   },
 
+  markRequestDuplicate: async (requestId) => {
+    const response = await api.put(`${REQUEST_BASE}/${requestId}/status`, {
+      status: 'Duplicate',
+    })
+    return unwrapApiData(response)
+  },
+
   assignRequest: async (requestId, teamId, vehicleIds, estimatedTime) => {
     const vehicleIdsString = Array.isArray(vehicleIds)
       ? vehicleIds.map((id) => Number(id)).filter((id) => Number.isFinite(id)).join(',')
