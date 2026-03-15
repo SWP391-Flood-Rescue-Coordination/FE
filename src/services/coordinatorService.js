@@ -30,6 +30,7 @@ const STATUS_TO_API_VALUE = {
   CANCELLED: 'Cancelled',
   CANCELED: 'Cancelled',
   DUPLICATE: 'Duplicate',
+  DUPLICATED: 'Duplicate',
 }
 
 const toApiStatusValue = (status) => {
@@ -69,9 +70,7 @@ const coordinatorService = {
     return normalizeArray(unwrapApiData(response))
   },
 
-  getPriorityLevels: async () => {
-    return PRIORITY_LEVELS
-  },
+  getPriorityLevels: async () => PRIORITY_LEVELS,
 
   getRescueTeams: async (status = '') => {
     const params = status ? { status: String(status).trim().toUpperCase() } : undefined

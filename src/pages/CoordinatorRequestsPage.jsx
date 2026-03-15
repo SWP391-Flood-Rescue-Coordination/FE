@@ -7,31 +7,22 @@ import './CoordinatorRequestsPage.css'
 
 const STATUS_OPTIONS = [
   { value: '', label: 'Tất cả trạng thái' },
-  { value: 'PENDING', label: 'Chờ tiếp nhận' },
+  { value: 'PENDING', label: 'Mới tạo' },
   { value: 'VERIFIED', label: 'Đã xác minh' },
   { value: 'ASSIGNED', label: 'Đã phân công' },
   { value: 'CONFIRMED', label: 'Đã xác nhận' },
-  { value: 'IN_PROGRESS', label: 'Đang xử lý' },
   { value: 'COMPLETED', label: 'Hoàn tất' },
-  { value: 'CANCELLED', label: 'Đã hủy' },
+  { value: 'CANCELLED', label: 'Hủy' },
   { value: 'DUPLICATE', label: 'Trùng lặp' },
 ]
 
-const PRIORITY_OPTIONS = [
-  { value: '', label: 'Tất cả mức ưu tiên' },
-  { value: 'HIGH', label: 'Cao' },
-  { value: 'MEDIUM', label: 'Trung bình' },
-  { value: 'LOW', label: 'Thấp' },
-]
-
 const STATUS_LABEL_MAP = {
-  PENDING: 'Chờ tiếp nhận',
+  PENDING: 'Mới tạo',
   VERIFIED: 'Đã xác minh',
   ASSIGNED: 'Đã phân công',
   CONFIRMED: 'Đã xác nhận',
-  IN_PROGRESS: 'Đang xử lý',
   COMPLETED: 'Hoàn tất',
-  CANCELLED: 'Đã hủy',
+  CANCELLED: 'Hủy',
   DUPLICATE: 'Trùng lặp',
 }
 
@@ -142,9 +133,12 @@ const getStatusText = (status) => {
     .replace(/[\s-]+/g, '_')
 }
 
-const normalizeCancelledStatus = (status) => {
+const normalizeRequestStatusKey = (status) => {
   if (status === 'CANCELED') {
     return 'CANCELLED'
+  }
+  if (status === 'DUPLICATED') {
+    return 'DUPLICATE'
   }
   return status
 }
@@ -229,7 +223,7 @@ const normalizeRequest = (item) => {
     priority_level_id: priorityLevelId,
     priority_key: priorityInfo.key,
     priority_label: priorityInfo.label,
-    status: normalizeCancelledStatus(getStatusText(item.status)),
+    status: normalizeRequestStatusKey(getStatusText(item.status)),
     created_at: item.created_at ?? item.createdAt ?? null,
     updated_at: item.updated_at ?? item.updatedAt ?? null,
     updated_by: item.updated_by ?? item.updatedBy ?? null,
@@ -313,7 +307,7 @@ const normalizeVehicle = (item) => ({
   status: getStatusText(item.status),
 })
 
-const getStatusLabel = (status) => STATUS_LABEL_MAP[normalizeCancelledStatus(status)] || status || '-'
+const getStatusLabel = (status) => STATUS_LABEL_MAP[normalizeRequestStatusKey(status)] || status || '-'
 
 const buildApiMessage = (error) => {
   const data = error?.response?.data
@@ -336,8 +330,6 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
   const [vehicles, setVehicles] = useState([])
 
   const [statusFilter, setStatusFilter] = useState(normalizedExternalStatus)
-  const [priorityFilter, setPriorityFilter] = useState('')
-  const [isPriorityFilterOpen, setIsPriorityFilterOpen] = useState(false)
   const [isListLoading, setIsListLoading] = useState(false)
   const [actionLoadingMap, setActionLoadingMap] = useState({})
   const [verifyEditMap, setVerifyEditMap] = useState({})
@@ -356,7 +348,6 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
   const [currentUser, setCurrentUser] = useState(() => authService.getUserInfo())
   const [showUserMenu, setShowUserMenu] = useState(false)
 
-  const priorityFilterRef = useRef(null)
   const userMenuRef = useRef(null)
   const roleLabel = ROLE_LABEL_MAP[String(currentUser?.role ?? '').toUpperCase()] || currentUser?.role || '-'
 
@@ -409,7 +400,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
     setIsListLoading(true)
     setErrorMessage('')
     try {
-      const data = await coordinatorService.getRescueRequests(statusFilter)
+      const data = await coordinatorService.getRescueRequests('')
       const normalizedRequests = data.map(normalizeRequest)
       setRequests(normalizedRequests)
       setAssignmentByRequestId((prev) => {
@@ -430,7 +421,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
     } finally {
       setIsListLoading(false)
     }
-  }, [handleApiError, statusFilter])
+  }, [handleApiError])
 
   const fetchOptionData = useCallback(async () => {
     setErrorMessage('')
@@ -500,12 +491,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
 
   useEffect(() => {
     const handleOutsideClick = (event) => {
-      const clickedPriorityFilter = priorityFilterRef.current?.contains(event.target)
       const clickedUserMenu = userMenuRef.current?.contains(event.target)
-
-      if (!clickedPriorityFilter) {
-        setIsPriorityFilterOpen(false)
-      }
 
       if (!clickedUserMenu) {
         setShowUserMenu(false)
@@ -527,7 +513,9 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
   }, [assignmentByRequestId])
 
   const displayedRequests = useMemo(() => {
-    const filtered = priorityFilter ? requests.filter((item) => item.priority_key === priorityFilter) : requests
+    const filtered = statusFilter
+      ? requests.filter((item) => normalizeRequestStatusKey(item.status) === statusFilter)
+      : requests
 
     const sorted = [...filtered]
     sorted.sort((a, b) => {
@@ -536,7 +524,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
       return dateB - dateA
     })
     return sorted
-  }, [requests, priorityFilter])
+  }, [requests, statusFilter])
 
   const handlePriorityChange = (requestId, value) => {
     setSelectedPriorityByRequest((prev) => ({
@@ -702,11 +690,6 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
     }
   }
 
-  const handleSelectPriorityFilter = (value) => {
-    setPriorityFilter(value)
-    setIsPriorityFilterOpen(false)
-  }
-
   const handleLogout = () => {
     authService.logout()
     setCurrentUser(null)
@@ -716,10 +699,6 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
 
   const handleToggleUserMenu = () => {
     setShowUserMenu((prev) => !prev)
-  }
-
-  const closeFilterMenus = () => {
-    setIsPriorityFilterOpen(false)
   }
 
   const assignModalRequestId = assignTargetRequest?.request_id ?? null
@@ -852,7 +831,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
 
   const requestTableSection = (
     <section className="coordinator-table-container">
-      <div className="coordinator-table-scroll" onScroll={closeFilterMenus}>
+      <div className="coordinator-table-scroll">
         <table className="coordinator-table">
           <thead>
             <tr>
@@ -862,38 +841,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
               <th>Mô tả</th>
               <th>Vị trí</th>
               <th>Địa chỉ</th>
-              <th>
-                <div className="header-filter-wrap">
-                  <span>Mức ưu tiên</span>
-                  <div className="table-filter-wrap" ref={priorityFilterRef}>
-                    <button
-                      type="button"
-                      className={`table-filter-button ${priorityFilter ? 'active' : ''}`}
-                      onClick={() => {
-                        setIsPriorityFilterOpen((prev) => !prev)
-                      }}
-                      disabled={isListLoading}
-                      aria-label="Lọc theo mức ưu tiên"
-                    >
-                      ▾
-                    </button>
-                    {isPriorityFilterOpen && (
-                      <div className="table-filter-dropdown">
-                        {PRIORITY_OPTIONS.map((option) => (
-                          <button
-                            key={option.value || 'ALL'}
-                            type="button"
-                            className={`table-filter-option ${priorityFilter === option.value ? 'selected' : ''}`}
-                            onClick={() => handleSelectPriorityFilter(option.value)}
-                          >
-                            {option.label}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </th>
+              <th>Mức ưu tiên</th>
               <th className="status-header-cell">
                 Trạng thái
               </th>

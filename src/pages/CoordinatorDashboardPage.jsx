@@ -17,13 +17,13 @@ import CoordinatorRequestsPage from './CoordinatorRequestsPage'
 import './CoordinatorDashboardPage.css'
 
 const REQUEST_STATUS_ITEMS = [
-  { key: 'PENDING', label: 'Chờ tiếp nhận', statusText: 'Pending', color: '#dc2626', textColor: '#ffffff' },
-  { key: 'VERIFIED', label: 'Đã xác minh', statusText: 'Verified', color: '#ef4444', textColor: '#ffffff' },
-  { key: 'ASSIGNED', label: 'Đang xử lý', statusText: 'Assigned', color: '#fca5a5', textColor: '#111827' },
-  { key: 'CONFIRMED', label: 'Đã xác nhận', statusText: 'Confirmed', color: '#bfdbfe', textColor: '#0f172a' },
-  { key: 'COMPLETED', label: 'Hoàn tất', statusText: 'Completed', color: '#ffffff', textColor: '#111827' },
-  { key: 'CANCELLED', label: 'Đã hủy', statusText: 'Cancelled', color: '#93c5fd', textColor: '#0f172a' },
-  { key: 'DUPLICATE', label: 'Trùng lặp', statusText: 'Duplicate', color: '#1e3a8a', textColor: '#ffffff' },
+  { key: 'PENDING', label: 'Mới tạo', statusText: 'Pending' },
+  { key: 'VERIFIED', label: 'Đã xác minh', statusText: 'Verified' },
+  { key: 'ASSIGNED', label: 'Đã phân công', statusText: 'Assigned' },
+  { key: 'CONFIRMED', label: 'Đã xác nhận', statusText: 'Confirmed' },
+  { key: 'COMPLETED', label: 'Hoàn tất', statusText: 'Completed' },
+  { key: 'CANCELLED', label: 'Hủy', statusText: 'Cancelled' },
+  { key: 'DUPLICATE', label: 'Trùng lặp', statusText: 'Duplicate' },
 ]
 
 const normalizeStatus = (value) =>
@@ -32,7 +32,17 @@ const normalizeStatus = (value) =>
     .toUpperCase()
     .replace(/[\s-]+/g, '_')
 
-const normalizeCancelledStatus = (status) => (status === 'CANCELED' ? 'CANCELLED' : status)
+const normalizeRequestStatusKey = (status) => {
+  if (status === 'CANCELED') {
+    return 'CANCELLED'
+  }
+
+  if (status === 'DUPLICATED') {
+    return 'DUPLICATE'
+  }
+
+  return status
+}
 
 const ROLE_LABEL_MAP = {
   COORDINATOR: 'Điều phối viên',
@@ -54,12 +64,20 @@ const createInitialStatusSummary = () =>
 const buildRequestStatusSummary = (requestItems) => {
   const summary = createInitialStatusSummary()
   requestItems.forEach((item) => {
-    const status = normalizeCancelledStatus(normalizeStatus(item.status))
+    const status = normalizeRequestStatusKey(normalizeStatus(item.status))
     if (summary[status] !== undefined) {
       summary[status] += 1
     }
   })
   return summary
+}
+
+const toBarHeightPercent = (value, maxValue) => {
+  if (!maxValue) {
+    return 0
+  }
+
+  return Math.max((value / maxValue) * 100, value > 0 ? 12 : 0)
 }
 
 function CoordinatorDashboardPage() {
@@ -156,54 +174,20 @@ function CoordinatorDashboardPage() {
     [requestStatusSummary],
   )
 
-  const statusSegments = useMemo(() => {
-    if (totalRequests <= 0) {
-      return []
-    }
+  const maxStatusCount = useMemo(
+    () => Math.max(...REQUEST_STATUS_ITEMS.map((item) => requestStatusSummary[item.key] ?? 0), 0),
+    [requestStatusSummary],
+  )
 
-    return REQUEST_STATUS_ITEMS.map((item) => {
-      const count = requestStatusSummary[item.key] ?? 0
-      if (count <= 0) {
-        return null
-      }
-
-      return {
+  const requestChartItems = useMemo(
+    () =>
+      REQUEST_STATUS_ITEMS.map((item) => ({
         ...item,
-        count,
-        widthPercent: (count / totalRequests) * 100,
-      }
-    }).filter(Boolean)
-  }, [requestStatusSummary, totalRequests])
-
-  const progressGradient = useMemo(() => {
-    if (statusSegments.length === 0) {
-      return ''
-    }
-
-    if (statusSegments.length === 1) {
-      return `${statusSegments[0].color} 0%, ${statusSegments[0].color} 100%`
-    }
-
-    const blendWidth = 0.8
-    let accumulated = 0
-    const stops = [`${statusSegments[0].color} 0%`]
-
-    for (let index = 0; index < statusSegments.length - 1; index += 1) {
-      accumulated += statusSegments[index].widthPercent
-      const boundary = Math.min(100, Math.max(0, accumulated))
-      const fromStop = Math.max(0, boundary - blendWidth)
-      const toStop = Math.min(100, boundary + blendWidth)
-      const currentColor = statusSegments[index].color
-      const nextColor = statusSegments[index + 1].color
-
-      stops.push(`${currentColor} ${fromStop}%`)
-      stops.push(`${nextColor} ${toStop}%`)
-    }
-
-    const lastColor = statusSegments[statusSegments.length - 1].color
-    stops.push(`${lastColor} 100%`)
-    return stops.join(', ')
-  }, [statusSegments])
+        count: requestStatusSummary[item.key] ?? 0,
+        heightPercent: toBarHeightPercent(requestStatusSummary[item.key] ?? 0, maxStatusCount),
+      })),
+    [maxStatusCount, requestStatusSummary],
+  )
 
   const topMetricCards = useMemo(
     () => [
@@ -232,7 +216,7 @@ function CoordinatorDashboardPage() {
   }
 
   const handleSelectStatusSegment = (statusKey) => {
-    setRequestsStatusFilter(statusKey)
+    setRequestsStatusFilter((prev) => (prev === statusKey ? '' : statusKey))
     window.setTimeout(scrollToRequestTable, 80)
   }
 
@@ -298,28 +282,47 @@ function CoordinatorDashboardPage() {
             <strong>Tổng: {isLoading ? '...' : totalRequests}</strong>
           </div>
 
-          <div
-            className={`coordinator-status-track ${statusSegments.length === 0 ? 'is-empty' : ''}`}
-            style={progressGradient ? { backgroundImage: `linear-gradient(90deg, ${progressGradient})` } : undefined}
-          >
-            {statusSegments.length === 0 && <div className="coordinator-status-empty">Chưa có yêu cầu để hiển thị thanh tiến độ.</div>}
-
-            {statusSegments.map((item) => (
-              <button
-                key={item.key}
-                type="button"
-                className="coordinator-status-segment"
-                style={{ width: `${item.widthPercent}%`, color: item.textColor }}
-                onClick={() => handleSelectStatusSegment(item.key)}
-                disabled={isLoading}
-                title={`${item.statusText}: ${item.count}`}
-              >
-                <span className="segment-main-label">{item.label}</span>
-                <span className="segment-sub-label">{item.statusText}</span>
-                <strong className="segment-count">{isLoading ? '...' : item.count}</strong>
-              </button>
-            ))}
-          </div>
+          {totalRequests <= 0 && !isLoading ? (
+            <div className="coordinator-status-empty">Chưa có yêu cầu để hiển thị biểu đồ trạng thái.</div>
+          ) : (
+            <div className="coordinator-request-chart-wrap">
+              <div className="coordinator-request-chart-axis">
+                <span>{isLoading ? '...' : maxStatusCount}</span>
+                <span>{isLoading ? '...' : Math.round(maxStatusCount / 2)}</span>
+                <span>0</span>
+              </div>
+              <div className="coordinator-request-chart">
+                {requestChartItems.map((item) => (
+                  <button
+                    key={item.key}
+                    type="button"
+                    className={`coordinator-request-bar-card ${requestsStatusFilter === item.key ? 'active' : ''}`}
+                    onClick={() => handleSelectStatusSegment(item.key)}
+                    disabled={isLoading}
+                    aria-pressed={requestsStatusFilter === item.key}
+                    title={`${item.statusText}: ${item.count}`}
+                  >
+                    <strong className="coordinator-request-bar-value">{isLoading ? '...' : item.count}</strong>
+                    <div className="coordinator-request-bar-stage">
+                      <span className="coordinator-request-bar-gridline top" />
+                      <span className="coordinator-request-bar-gridline middle" />
+                      <span className="coordinator-request-bar-gridline base" />
+                      <div className="coordinator-request-bar-anchor">
+                        <div
+                          className={`coordinator-request-bar ${item.key.toLowerCase()}`}
+                          style={{ height: `${item.heightPercent}%` }}
+                        />
+                      </div>
+                    </div>
+                    <div className="coordinator-request-bar-label">
+                      <span className={`coordinator-request-bar-code ${item.key.toLowerCase()}`}>{item.statusText}</span>
+                      <strong>{item.label}</strong>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
 
         <section className="coordinator-metrics-wrap">

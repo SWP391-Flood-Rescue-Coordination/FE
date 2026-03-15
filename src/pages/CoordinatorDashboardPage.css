@@ -167,68 +167,223 @@
   color: #1f2937;
 }
 
-.coordinator-status-track {
-  display: flex;
-  width: 100%;
-  min-height: 96px;
-  border-radius: 999px;
-  overflow: hidden;
-  border: 1px solid #cbd5e1;
-  background-repeat: no-repeat;
-  background-size: 100% 100%;
-}
-
-.coordinator-status-track.is-empty {
-  background: #f8fafc;
-}
-
 .coordinator-status-empty {
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
+  min-height: 160px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 16px;
+  background: #f8fafc;
   color: #64748b;
   font-weight: 600;
 }
 
-.coordinator-status-segment {
-  border: none;
-  background: transparent;
-  padding: 10px 8px;
+.coordinator-request-chart-wrap {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 14px;
+}
+
+.coordinator-request-chart-axis {
+  min-height: 280px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  min-width: 118px;
-  cursor: pointer;
-  transition: backdrop-filter 0.2s ease, background-color 0.2s ease;
-}
-
-.coordinator-status-segment:hover {
-  backdrop-filter: brightness(1.04);
-  background-color: rgba(255, 255, 255, 0.08);
-}
-
-.coordinator-status-segment:disabled {
-  cursor: wait;
-}
-
-.segment-main-label {
+  justify-content: space-between;
+  color: #667085;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
+  padding-bottom: 74px;
+}
+
+.coordinator-request-chart {
+  min-height: 280px;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.coordinator-request-bar-card {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 10px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
   text-align: center;
 }
 
-.segment-sub-label {
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.35px;
+.coordinator-request-bar-card:disabled {
+  cursor: wait;
 }
 
-.segment-count {
-  font-size: 20px;
-  line-height: 1;
+.coordinator-request-bar-card:focus-visible {
+  outline: none;
+}
+
+.coordinator-request-bar-card.active .coordinator-request-bar {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.14);
+}
+
+.coordinator-request-bar-value {
+  align-self: end;
+  text-align: center;
+  color: #111827;
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.coordinator-request-bar-stage {
+  position: relative;
+  min-height: 200px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.coordinator-request-bar-anchor {
+  position: relative;
+  z-index: 1;
+  width: min(78px, 100%);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.coordinator-request-bar-gridline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed #dbe5f1;
+}
+
+.coordinator-request-bar-gridline.top {
+  top: 0;
+}
+
+.coordinator-request-bar-gridline.middle {
+  top: 50%;
+}
+
+.coordinator-request-bar-gridline.base {
+  bottom: 0;
+  border-top-style: solid;
+}
+
+.coordinator-request-bar {
+  width: 100%;
+  min-height: 10px;
+  border-radius: 14px 14px 8px 8px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+}
+
+.coordinator-request-bar-card:hover .coordinator-request-bar,
+.coordinator-request-bar-card:focus-visible .coordinator-request-bar {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+}
+
+.coordinator-request-bar.pending {
+  background: linear-gradient(180deg, #fecaca 0%, #ef4444 100%);
+}
+
+.coordinator-request-bar.verified {
+  background: linear-gradient(180deg, #fee2e2 0%, #f97316 100%);
+}
+
+.coordinator-request-bar.assigned {
+  background: linear-gradient(180deg, #ffedd5 0%, #fb923c 100%);
+}
+
+.coordinator-request-bar.confirmed {
+  background: linear-gradient(180deg, #dbeafe 0%, #60a5fa 100%);
+}
+
+.coordinator-request-bar.completed {
+  background: linear-gradient(180deg, #dcfce7 0%, #22c55e 100%);
+}
+
+.coordinator-request-bar.cancelled {
+  background: linear-gradient(180deg, #e5e7eb 0%, #94a3b8 100%);
+}
+
+.coordinator-request-bar.duplicate {
+  background: linear-gradient(180deg, #ede9fe 0%, #8b5cf6 100%);
+}
+
+.coordinator-request-bar-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.coordinator-request-bar-code {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 58px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  border: 1px solid #d7dee8;
+  background: #f4f6f8;
+  color: #475467;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.coordinator-request-bar-code.pending {
+  border-color: #fca5a5;
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.coordinator-request-bar-code.verified {
+  border-color: #fdba74;
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+.coordinator-request-bar-code.assigned {
+  border-color: #fed7aa;
+  background: #fff7ed;
+  color: #ea580c;
+}
+
+.coordinator-request-bar-code.confirmed {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.coordinator-request-bar-code.completed {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.coordinator-request-bar-code.cancelled {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+  color: #475569;
+}
+
+.coordinator-request-bar-code.duplicate {
+  border-color: #ddd6fe;
+  background: #f5f3ff;
+  color: #7c3aed;
+}
+
+.coordinator-request-bar-label strong {
+  color: #111827;
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 .coordinator-metrics-wrap {
@@ -299,16 +454,12 @@
 }
 
 @media (max-width: 1180px) {
-  .coordinator-status-track {
-    border-radius: 14px;
-    min-height: 0;
-    flex-wrap: wrap;
+  .coordinator-request-chart {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
-  .coordinator-status-segment {
-    min-width: 33.33%;
-    flex: 1 1 33.33%;
-    height: 100px;
+  .coordinator-request-chart-axis {
+    padding-bottom: 68px;
   }
 
   .coordinator-metrics-row.top,
@@ -346,9 +497,19 @@
     position: static;
   }
 
-  .coordinator-status-segment {
-    min-width: 50%;
-    flex-basis: 50%;
+  .coordinator-request-chart-wrap {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .coordinator-request-chart-axis {
+    min-height: auto;
+    padding-bottom: 0;
+    flex-direction: row;
+  }
+
+  .coordinator-request-chart {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -362,9 +523,8 @@
     right: -8px;
   }
 
-  .coordinator-status-segment {
-    min-width: 100%;
-    flex-basis: 100%;
+  .coordinator-request-chart {
+    grid-template-columns: 1fr;
   }
 
   .coordinator-metrics-row.top,
