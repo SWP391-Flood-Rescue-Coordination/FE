@@ -18,96 +18,6 @@ import authService from '../services/authService'
 import managerService from '../services/managerService'
 import './ManagerImportReceiptsListPage.css'
 
-const DEFAULT_IMPORT_RECEIPTS = [
-  {
-    receiptId: 1,
-    type: 'import',
-    source: 'Công ty TNHH Vật tư Cứu hộ Á Châu',
-    receiveAddress: '123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP.HCM',
-    createdAt: '2026-03-05T10:30:00',
-    createdBy: 'admin',
-    totalItems: 3,
-    items: [
-      { itemName: 'Nước uống', categoryName: 'Nhu yếu phẩm', quantity: 100, unit: 'chai' },
-      { itemName: 'Mì gói', categoryName: 'Thực phẩm', quantity: 200, unit: 'gói' },
-      { itemName: 'Áo mưa', categoryName: 'Quần áo', quantity: 50, unit: 'cái' },
-    ]
-  },
-  {
-    receiptId: 2,
-    type: 'import',
-    source: 'Công ty CP Thiết bị An toàn Việt Nam',
-    receiveAddress: '456 Võ Văn Tần, Phường 6, Quận 3, TP.HCM',
-    createdAt: '2026-03-07T14:15:00',
-    createdBy: 'manager',
-    totalItems: 2,
-    items: [
-      { itemName: 'Chăn màn', categoryName: 'Sinh hoạt', quantity: 80, unit: 'cái' },
-      { itemName: 'Thuốc men', categoryName: 'Y tế', quantity: 150, unit: 'hộp' },
-    ]
-  },
-  {
-    receiptId: 3,
-    type: 'import',
-    source: 'Công ty TNHH Trang thiết bị Y tế Medico',
-    receiveAddress: '789 Điện Biên Phủ, Phường 25, Bình Thạnh, TP.HCM',
-    createdAt: '2026-03-08T09:00:00',
-    createdBy: 'admin',
-    totalItems: 4,
-    items: [
-      { itemName: 'Nước uống', categoryName: 'Nhu yếu phẩm', quantity: 300, unit: 'chai' },
-      { itemName: 'Mì gói', categoryName: 'Thực phẩm', quantity: 500, unit: 'gói' },
-      { itemName: 'Bánh mì', categoryName: 'Thực phẩm', quantity: 200, unit: 'ổ' },
-      { itemName: 'Khẩu trang', categoryName: 'Y tế', quantity: 1000, unit: 'cái' },
-    ]
-  },
-]
-
-const DEFAULT_EXPORT_RECEIPTS = [
-  {
-    receiptId: 101,
-    type: 'export',
-    destination: 'Đội Cứu Hộ Alpha',
-    recipientAddress: '12 Đường Trần Hưng Đạo, Quận 1, TP.HCM',
-    createdAt: '2026-03-10T08:45:00',
-    createdBy: 'manager',
-    totalItems: 3,
-    items: [
-      { itemName: 'Nước uống', categoryName: 'Nhu yếu phẩm', quantity: 50, unit: 'chai' },
-      { itemName: 'Mì gói', categoryName: 'Thực phẩm', quantity: 100, unit: 'gói' },
-      { itemName: 'Khăn mặt', categoryName: 'Sinh hoạt', quantity: 30, unit: 'cái' },
-    ]
-  },
-  {
-    receiptId: 102,
-    type: 'export',
-    destination: 'Đội Cứu Hộ Beta',
-    recipientAddress: '456 Đường Lý Thái Tổ, Quận 10, TP.HCM',
-    createdAt: '2026-03-11T13:20:00',
-    createdBy: 'admin',
-    totalItems: 2,
-    items: [
-      { itemName: 'Thuốc men', categoryName: 'Y tế', quantity: 60, unit: 'hộp' },
-      { itemName: 'Chăn màn', categoryName: 'Sinh hoạt', quantity: 40, unit: 'cái' },
-    ]
-  },
-  {
-    receiptId: 103,
-    type: 'export',
-    destination: 'Trung Tâm Cứu Trợ Gamma',
-    recipientAddress: '789 Đường Nguyễn Thị Minh Khai, Quận 3, TP.HCM',
-    createdAt: '2026-03-09T10:00:00',
-    createdBy: 'manager',
-    totalItems: 4,
-    items: [
-      { itemName: 'Nước uống', categoryName: 'Nhu yếu phẩm', quantity: 200, unit: 'chai' },
-      { itemName: 'Mì gói', categoryName: 'Thực phẩm', quantity: 300, unit: 'gói' },
-      { itemName: 'Áo mưa', categoryName: 'Quần áo', quantity: 50, unit: 'cái' },
-      { itemName: 'Khẩu trang', categoryName: 'Y tế', quantity: 500, unit: 'cái' },
-    ]
-  },
-]
-
 function ManagerImportReceiptsListPage() {
   const navigate = useNavigate()
 
@@ -136,18 +46,36 @@ function ManagerImportReceiptsListPage() {
       let data = []
 
       if (activeTab === 'all') {
-        // Use hardcoded data for both import and export receipts
-        const markedImport = DEFAULT_IMPORT_RECEIPTS.map(r => ({ ...r, type: 'import' }))
-        const markedExport = DEFAULT_EXPORT_RECEIPTS.map(r => ({ ...r, type: 'export' }))
+        // Fetch both import and export receipts from API
+        const [importResult, exportResult] = await Promise.allSettled([
+          managerService.getImportReceipts(),
+          managerService.getExportReceipts(),
+        ])
+
+        const markedImport = 
+          importResult.status === 'fulfilled' && Array.isArray(importResult.value)
+            ? importResult.value.map(r => ({ ...r, type: 'import' }))
+            : []
+
+        const markedExport = 
+          exportResult.status === 'fulfilled' && Array.isArray(exportResult.value)
+            ? exportResult.value.map(r => ({ ...r, type: 'export' }))
+            : []
         
         // Combine and sort by date
         data = [...markedImport, ...markedExport].sort((a, b) => 
           new Date(b.createdAt) - new Date(a.createdAt)
         )
+
+        if (importResult.status === 'rejected' || exportResult.status === 'rejected') {
+          setErrorMessage('Không thể tải đầy đủ dữ liệu từ hệ thống.')
+        }
       } else if (activeTab === 'import') {
-        data = DEFAULT_IMPORT_RECEIPTS.map(r => ({ ...r, type: 'import' }))
+        const result = await managerService.getImportReceipts()
+        data = Array.isArray(result) ? result.map(r => ({ ...r, type: 'import' })) : []
       } else {
-        data = DEFAULT_EXPORT_RECEIPTS.map(r => ({ ...r, type: 'export' }))
+        const result = await managerService.getExportReceipts()
+        data = Array.isArray(result) ? result.map(r => ({ ...r, type: 'export' })) : []
       }
       
       setReceipts(data)
