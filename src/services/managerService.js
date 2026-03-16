@@ -394,25 +394,11 @@ const managerService = {
 
   getSupplies: async () => {
     try {
-      try {
-        const managerResponse = await api.get('/Manager/supplies')
-        const managerItems = unwrapApiData(managerResponse)
-        const normalizedManagerItems = normalizeArray(managerItems).map(normalizeSupply)
-        if (normalizedManagerItems.length > 0) {
-          return normalizedManagerItems
-        }
-      } catch (managerError) {
-        if (!isNotFoundError(managerError)) {
-          throw managerError
-        }
-      }
-
-      const fallbackResponse = await api.get('/ReliefItem/low-stock', {
+      const response = await api.get('/ReliefItem/low-stock', {
         params: { n: MAX_RELIEF_ITEM_THRESHOLD },
       })
-
-      const payload = fallbackResponse?.data
-      const items = payload?.items ?? payload?.Items ?? unwrapApiData(fallbackResponse)
+      const payload = response?.data
+      const items = payload?.items ?? payload?.Items ?? unwrapApiData(response)
       return normalizeArray(items).map(normalizeSupply)
     } catch (error) {
       console.error('[managerService] getSupplies error:', error)
@@ -608,17 +594,8 @@ const managerService = {
           .filter((item) => Number.isFinite(item.item_id) && Number.isFinite(item.quantity) && item.quantity > 0),
       }
 
-      try {
-        const response = await api.post('/Manager/export-receipts', body)
-        return unwrapApiData(response)
-      } catch (exportError) {
-        if (!isNotFoundError(exportError)) {
-          throw exportError
-        }
-
-        const fallbackResponse = await api.post('/StockHistory/export', body)
-        return unwrapApiData(fallbackResponse)
-      }
+      const response = await api.post('/ReliefItem/export', body)
+      return unwrapApiData(response)
     } catch (error) {
       console.error('[managerService] createReliefExportOrder error:', error)
       throw error
@@ -666,11 +643,11 @@ const managerService = {
     try {
       const body = {
         source: String(payload?.source ?? payload?.fromTo ?? '').trim(),
-        receive_address: String(payload?.receive_address ?? payload?.receiveAddress ?? '').trim(),
+        location: String(payload?.receive_address ?? payload?.receiveAddress ?? payload?.location ?? '').trim(),
         items: normalizeReceiptItemsInput(payload?.items),
       }
 
-      const response = await api.post('/Manager/import-receipts', body)
+      const response = await api.post('/ReliefItem/import', body)
       return unwrapApiData(response)
     } catch (error) {
       console.error('[managerService] createImportReceipt error:', error)
@@ -680,25 +657,10 @@ const managerService = {
 
   getImportReceipts: async () => {
     try {
-      try {
-        const managerResponse = await api.get('/Manager/import-receipts', {
-          params: { type: 'import' },
-        })
-        const managerRows = normalizeArray(unwrapApiData(managerResponse)).map(normalizeImportReceiptFromManager)
-        if (managerRows.length > 0) {
-          return managerRows
-        }
-      } catch (managerError) {
-        if (!isNotFoundError(managerError)) {
-          throw managerError
-        }
-      }
-
       const [response, supplies] = await Promise.all([
         api.get('/StockHistory', { params: { type: 'IN' } }),
         managerService.getSupplies().catch(() => []),
       ])
-
       const supplyNameMap = toSupplyNameMap(supplies)
       const rows = normalizeArray(unwrapApiData(response)).map(normalizeStockEntry)
       return rows.map((entry) => normalizeImportReceipt(entry, supplyNameMap))
@@ -710,23 +672,10 @@ const managerService = {
 
   getExportReceipts: async () => {
     try {
-      try {
-        const managerResponse = await api.get('/Manager/export-receipts')
-        const managerRows = normalizeArray(unwrapApiData(managerResponse)).map(normalizeExportReceiptFromManager)
-        if (managerRows.length > 0) {
-          return managerRows
-        }
-      } catch (managerError) {
-        if (!isNotFoundError(managerError)) {
-          throw managerError
-        }
-      }
-
       const [response, supplies] = await Promise.all([
         api.get('/StockHistory', { params: { type: 'OUT' } }),
         managerService.getSupplies().catch(() => []),
       ])
-
       const supplyNameMap = toSupplyNameMap(supplies)
       const rows = normalizeArray(unwrapApiData(response)).map(normalizeStockEntry)
       return rows.map((entry) => normalizeExportReceipt(entry, supplyNameMap))
