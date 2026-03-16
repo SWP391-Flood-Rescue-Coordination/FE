@@ -403,6 +403,27 @@
   height: 1rem;
 }
 
+.supply-card .btn-set-min {
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  color: #92400e;
+  padding: 0.625rem 1.25rem;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.supply-card .btn-set-min:hover {
+  background: #f59e0b;
+  color: white;
+}
+
 /* Modal */
 .modal-overlay {
   position: fixed;
@@ -452,6 +473,30 @@
   font-size: 0.9rem;
 }
 
+.modal-content .input-with-unit {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.modal-content .input-with-unit input {
+  flex: 1;
+}
+
+.modal-content .input-with-unit .unit {
+  color: #6b7280;
+  font-size: 0.9rem;
+  font-weight: 600;
+  min-width: 50px;
+}
+
+.modal-content small {
+  display: block;
+  margin-top: 0.5rem;
+  color: #6b7280;
+  font-size: 0.85rem;
+}
+
 .modal-content input,
 .modal-content select {
   width: 100%;
@@ -495,14 +540,17 @@
 }
 
 .modal-actions button.primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #dc2626;
   border: none;
-  color: white;
+  color: #fff;
+  box-shadow: none;
 }
 
 .modal-actions button.primary:hover {
-  opacity: 0.9;
-  transform: translateY(-2px);
+  background: #b91c1c;
+  color: #fff;
+  opacity: 1;
+  transform: none;
 }
 
 /* Responsive */

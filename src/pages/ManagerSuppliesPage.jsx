@@ -25,6 +25,7 @@ function ManagerSuppliesPage() {
   const [errorMessage, setErrorMessage] = useState('')
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showSetMinModal, setShowSetMinModal] = useState(false)
   const [selectedSupply, setSelectedSupply] = useState(null)
   
   const [formData, setFormData] = useState({
@@ -34,6 +35,7 @@ function ManagerSuppliesPage() {
     unit: '',
     minQuantity: '',
   })
+  const [minValue, setMinValue] = useState('')
 
   const fetchSupplies = useCallback(async () => {
     setIsLoading(true)
@@ -118,6 +120,33 @@ function ManagerSuppliesPage() {
       minQuantity: supply.minQuantity || '',
     })
     setShowEditModal(true)
+  }
+
+  const handleSetMinimum = (supply) => {
+    setSelectedSupply(supply)
+    setMinValue(String(supply.minQuantity || ''))
+    setShowSetMinModal(true)
+  }
+
+  const handleSubmitSetMin = async (e) => {
+    e.preventDefault()
+    
+    const newMin = Number(minValue)
+    if (isNaN(newMin) || newMin < 0) {
+      alert('Vui lòng nhập giá trị hợp lệ!')
+      return
+    }
+
+    try {
+      await managerService.updateSupply(selectedSupply.supplyId, {
+        minQuantity: newMin,
+      })
+      alert('Cập nhật mức tối thiểu thành công!')
+      setShowSetMinModal(false)
+      fetchSupplies()
+    } catch (error) {
+      alert('Lỗi: ' + managerService.getErrorMessage(error))
+    }
   }
 
   const handleDeleteSupply = async (supplyId) => {
@@ -308,6 +337,17 @@ function ManagerSuppliesPage() {
                     </span>
                   </div>
                 </div>
+
+                {/* Action Buttons */}
+                <div className="supply-actions">
+                  <button 
+                    className="btn-set-min"
+                    onClick={() => handleSetMinimum(supply)}
+                    title="Đặt mức tối thiểu"
+                  >
+                    Đặt Mức Tối Thiểu
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -443,6 +483,40 @@ function ManagerSuppliesPage() {
                 </button>
                 <button type="submit" className="primary">
                   Lưu thay đổi
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Set Minimum Modal */}
+      {showSetMinModal && selectedSupply && (
+        <div className="modal-overlay" onClick={() => setShowSetMinModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h2>Đặt mức tối thiểu - {selectedSupply.name}</h2>
+            <form onSubmit={handleSubmitSetMin}>
+              <div className="form-group">
+                <label>Mức tối thiểu mới *</label>
+                <div className="input-with-unit">
+                  <input
+                    type="number"
+                    value={minValue}
+                    onChange={(e) => setMinValue(e.target.value)}
+                    required
+                    min="0"
+                    placeholder="Nhập giá trị"
+                  />
+                  <span className="unit">{selectedSupply.unit}</span>
+                </div>
+                <small>Giá trị hiện tại: {selectedSupply.minQuantity} {selectedSupply.unit}</small>
+              </div>
+              <div className="modal-actions">
+                <button type="button" onClick={() => setShowSetMinModal(false)}>
+                  Hủy
+                </button>
+                <button type="submit" className="primary">
+                  Cập nhật
                 </button>
               </div>
             </form>
