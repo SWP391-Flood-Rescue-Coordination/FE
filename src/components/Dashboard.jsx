@@ -1,68 +1,99 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeftOnRectangleIcon, ArrowRightOnRectangleIcon, UserCircleIcon } from '@heroicons/react/24/outline';
-import authService from '../services/authService';
-import rescueRequestService from '../services/rescueRequestService';
-import RequestForm from './RequestForm';
-import ViewRequest from './ViewRequest';
-import './Dashboard.css';
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { ArrowLeftOnRectangleIcon, ArrowRightOnRectangleIcon, UserCircleIcon } from '@heroicons/react/24/outline'
+import authService from '../services/authService'
+import rescueRequestService from '../services/rescueRequestService'
+import RequestForm from './RequestForm'
+import ViewRequest from './ViewRequest'
+import './Dashboard.css'
+
+const ROLE_LABEL_MAP = {
+  CITIZEN: 'Công dân',
+  COORDINATOR: 'Điều phối viên',
+  RESCUE_COORDINATOR: 'Điều phối viên',
+  RESCUE_TEAM: 'Đội cứu hộ',
+  MANAGER: 'Quản lý',
+  ADMIN: 'Quản trị viên',
+}
+
+const REQUEST_STATUS_META = {
+  PENDING: { label: 'Đang chờ duyệt', className: 'pending' },
+  VERIFIED: { label: 'Đã xác minh', className: 'verified' },
+  ASSIGNED: { label: 'Đã phân công', className: 'assigned' },
+  IN_PROGRESS: { label: 'Đang cứu hộ', className: 'in-progress' },
+  CONFIRMED: { label: 'Đã xác nhận', className: 'confirmed' },
+  COMPLETED: { label: 'Đã hoàn thành', className: 'completed' },
+  CANCELLED: { label: 'Đã hủy', className: 'cancelled' },
+  CANCELED: { label: 'Đã hủy', className: 'cancelled' },
+  DUPLICATE: { label: 'Trùng lặp', className: 'duplicate' },
+  DUPLICATED: { label: 'Trùng lặp', className: 'duplicate' },
+}
+
+const getRequestStatusMeta = (status) => {
+  const normalized = rescueRequestService.normalizeStatus(status)
+  return REQUEST_STATUS_META[normalized] || {
+    label: String(status ?? 'Không xác định'),
+    className: 'pending',
+  }
+}
 
 function Dashboard() {
-  const navigate = useNavigate();
-  const [showStats, setShowStats] = useState(true);
-  const [showRequestForm, setShowRequestForm] = useState(false);
-  const [showViewRequest, setShowViewRequest] = useState(false);
-  const [requestHistory, setRequestHistory] = useState([]);
-  const [selectedRequest, setSelectedRequest] = useState(null);
-  const [selectedRequestId, setSelectedRequestId] = useState(null);
-  const [showLevelDropdown, setShowLevelDropdown] = useState(false);
-  const [selectedLevel, setSelectedLevel] = useState('Mức 1 - Mức 5');
-  const [showStatusDetail, setShowStatusDetail] = useState(false);
-  const [isPreparingRequestForm, setIsPreparingRequestForm] = useState(false);
-  const [hasActiveRequest, setHasActiveRequest] = useState(false);
-  const [currentUser, setCurrentUser] = useState(() => authService.getUserInfo());
-  const [showUserMenu, setShowUserMenu] = useState(false);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-  const userMenuRef = useRef(null);
+  const navigate = useNavigate()
+  const [showStats, setShowStats] = useState(true)
+  const [showRequestForm, setShowRequestForm] = useState(false)
+  const [showViewRequest, setShowViewRequest] = useState(false)
+  const [requestHistory, setRequestHistory] = useState([])
+  const [selectedRequest, setSelectedRequest] = useState(null)
+  const [selectedRequestId, setSelectedRequestId] = useState(null)
+  const [showStatusDetail, setShowStatusDetail] = useState(false)
+  const [isPreparingRequestForm, setIsPreparingRequestForm] = useState(false)
+  const [hasActiveRequest, setHasActiveRequest] = useState(false)
+  const [currentUser, setCurrentUser] = useState(() => authService.getUserInfo())
+  const [showUserMenu, setShowUserMenu] = useState(false)
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false)
+  const [remoteDashboardStats, setRemoteDashboardStats] = useState(null)
+  const userMenuRef = useRef(null)
 
-  const isAuthenticated = authService.isAuthenticated() && Boolean(currentUser);
-  const roleKey = String(currentUser?.role ?? '').toUpperCase();
-  const roleLabelMap = {
-    CITIZEN: 'Công dân',
-    COORDINATOR: 'Điều phối viên',
-    RESCUE_COORDINATOR: 'Điều phối viên',
-    RESCUE_TEAM: 'Đội cứu hộ',
-    MANAGER: 'Quản lý',
-    ADMIN: 'Quản trị viên',
-  };
-  const roleLabel = roleLabelMap[roleKey] || currentUser?.role || '-';
-  const dashboardStats = useMemo(() => {
-    const receivedRequests = requestHistory.length;
+  const isAuthenticated = authService.isAuthenticated() && Boolean(currentUser)
+  const roleKey = String(currentUser?.role ?? '').toUpperCase()
+  const roleLabel = ROLE_LABEL_MAP[roleKey] || currentUser?.role || '-'
+  const latestRequest = requestHistory[0] ?? null
+  const latestRequestStatusMeta = latestRequest ? getRequestStatusMeta(latestRequest.status) : null
+
+  const fallbackDashboardStats = useMemo(() => {
+    const receivedRequests = requestHistory.length
     const rescuedPeople = requestHistory.reduce((sum, item) => {
-      const raw = item?.totalPeople ?? item?.numberOfPeople ?? 0;
-      const value = Number(raw);
-      return Number.isFinite(value) ? sum + value : sum;
-    }, 0);
-    const supportedCount = requestHistory.filter((item) => rescueRequestService.isTerminalStatus(item?.status)).length;
+      const raw = item?.totalPeople ?? item?.numberOfPeople ?? 0
+      const value = Number(raw)
+      return Number.isFinite(value) ? sum + value : sum
+    }, 0)
+    const supportedCount = requestHistory.filter((item) => rescueRequestService.isTerminalStatus(item?.status)).length
     const safeCount = requestHistory.filter((item) => {
-      const normalized = rescueRequestService.normalizeStatus(item?.status);
-      return normalized === 'CONFIRMED' || normalized === 'COMPLETED';
-    }).length;
+      const normalized = rescueRequestService.normalizeStatus(item?.status)
+      return normalized === 'CONFIRMED' || normalized === 'COMPLETED'
+    }).length
 
     return {
       receivedRequests,
       rescuedPeople,
       supportedCount,
       safeCount,
-    };
-  }, [requestHistory]);
+    }
+  }, [requestHistory])
+
+  const dashboardStats = remoteDashboardStats || fallbackDashboardStats
+  const primaryButtonLabel = isPreparingRequestForm
+    ? 'Đang tải...'
+    : hasActiveRequest
+      ? latestRequestStatusMeta?.label || 'Đang chờ xử lý'
+      : 'Tạo yêu cầu'
 
   const buildHistoryItem = (requestItem) => {
     if (!requestItem) {
-      return null;
+      return null
     }
 
-    const formatted = rescueRequestService.toRequestFormData(requestItem);
+    const formatted = rescueRequestService.toRequestFormData(requestItem)
 
     return {
       ...formatted,
@@ -70,208 +101,236 @@ function Dashboard() {
       requestId: requestItem?.requestId ?? formatted?.requestId ?? null,
       accessCode: requestItem?.accessCode ?? formatted?.accessCode ?? null,
       status: requestItem?.status || formatted?.status || 'Pending',
-    };
-  };
+    }
+  }
 
-  // Load request history from backend
   useEffect(() => {
     const loadRequestHistory = async () => {
-      setIsLoadingHistory(true);
+      setIsLoadingHistory(true)
       try {
-        const isCitizen = isAuthenticated && roleKey === 'CITIZEN';
+        const isCitizen = isAuthenticated && roleKey === 'CITIZEN'
 
         if (isCitizen) {
-          const requests = await rescueRequestService.getMyRequests();
-          const history = requests
-            .map((item) => buildHistoryItem(item))
-            .filter(Boolean);
-          setRequestHistory(history);
-          return;
+          const requests = await rescueRequestService.getMyRequests()
+          const history = requests.map((item) => buildHistoryItem(item)).filter(Boolean)
+          setRequestHistory(history)
+          return
         }
 
-        const guestTrackedRequest = await rescueRequestService.getTrackedGuestRequestStatus();
-        const historyItem = buildHistoryItem(guestTrackedRequest);
-        setRequestHistory(historyItem ? [historyItem] : []);
+        const guestTrackedRequest = await rescueRequestService.getTrackedGuestRequestStatus()
+        const historyItem = buildHistoryItem(guestTrackedRequest)
+        setRequestHistory(historyItem ? [historyItem] : [])
       } catch (error) {
         if (error?.response?.status !== 404) {
-          console.error('Error loading request history:', error);
+          console.error('Error loading request history:', error)
         }
-        setRequestHistory([]);
+        setRequestHistory([])
       } finally {
-        setIsLoadingHistory(false);
+        setIsLoadingHistory(false)
       }
-    };
+    }
 
-    loadRequestHistory();
-  }, [isAuthenticated, roleKey]);
+    loadRequestHistory()
+  }, [isAuthenticated, roleKey])
+
+  useEffect(() => {
+    const loadDashboardStatistics = async () => {
+      try {
+        const stats = await rescueRequestService.getCitizenDashboardStatistics()
+        setRemoteDashboardStats({
+          receivedRequests: Number(stats?.receivedRequests ?? 0),
+          rescuedPeople: Number(stats?.rescuedPeople ?? 0),
+          supportedCount: Number(stats?.supportedRequests ?? 0),
+          safeCount: Number(stats?.safeReports ?? 0),
+        })
+      } catch (error) {
+        console.error('Error loading dashboard statistics:', error)
+        setRemoteDashboardStats(null)
+      }
+    }
+
+    loadDashboardStatistics()
+  }, [])
 
   useEffect(() => {
     const handleOutsideClick = (event) => {
       if (!userMenuRef.current?.contains(event.target)) {
-        setShowUserMenu(false);
+        setShowUserMenu(false)
       }
-    };
+    }
 
-    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('mousedown', handleOutsideClick)
     return () => {
-      document.removeEventListener('mousedown', handleOutsideClick);
-    };
-  }, []);
-
-  const handleToggleUserMenu = () => {
-    setShowUserMenu((prev) => !prev);
-  };
-
-  const handleLogout = () => {
-    authService.logout();
-    setCurrentUser(null);
-    setShowUserMenu(false);
-    navigate('/login');
-  };
+      document.removeEventListener('mousedown', handleOutsideClick)
+    }
+  }, [])
 
   useEffect(() => {
-    let isMounted = true;
-    let intervalId = null;
+    let isMounted = true
+    let intervalId = null
 
     const syncActiveRequestStatus = async () => {
-      const isCitizen = isAuthenticated && roleKey === 'CITIZEN';
+      const isCitizen = isAuthenticated && roleKey === 'CITIZEN'
 
       if (!isAuthenticated) {
         if (isMounted) {
-          setIsPreparingRequestForm(true);
+          setIsPreparingRequestForm(true)
         }
 
         try {
-          const guestTrackedRequest = await rescueRequestService.getTrackedGuestRequestStatus();
+          const guestTrackedRequest = await rescueRequestService.getTrackedGuestRequestStatus()
           const hasOpenGuestRequest = guestTrackedRequest
             ? !rescueRequestService.isTerminalStatus(guestTrackedRequest?.status)
-            : false;
+            : false
 
           if (isMounted) {
-            setHasActiveRequest(hasOpenGuestRequest);
+            setHasActiveRequest(hasOpenGuestRequest)
           }
         } catch {
           if (isMounted) {
-            setHasActiveRequest(false);
+            setHasActiveRequest(false)
           }
         } finally {
           if (isMounted) {
-            setIsPreparingRequestForm(false);
+            setIsPreparingRequestForm(false)
           }
         }
-        return;
+        return
       }
 
       if (!isCitizen) {
         if (isMounted) {
-          setHasActiveRequest(false);
-          setIsPreparingRequestForm(false);
+          setHasActiveRequest(false)
+          setIsPreparingRequestForm(false)
         }
-        return;
+        return
       }
 
       if (isMounted) {
-        setIsPreparingRequestForm(true);
+        setIsPreparingRequestForm(true)
       }
 
       try {
-        const myRequests = await rescueRequestService.getMyRequests();
-        const hasOpenRequest = myRequests.some((item) => !rescueRequestService.isTerminalStatus(item?.status));
+        const myRequests = await rescueRequestService.getMyRequests()
+        const hasOpenRequest = myRequests.some((item) => !rescueRequestService.isTerminalStatus(item?.status))
 
         if (isMounted) {
-          setHasActiveRequest(hasOpenRequest);
+          setHasActiveRequest(hasOpenRequest)
         }
       } catch {
         if (isMounted) {
-          setHasActiveRequest(false);
+          setHasActiveRequest(false)
         }
       } finally {
         if (isMounted) {
-          setIsPreparingRequestForm(false);
+          setIsPreparingRequestForm(false)
         }
       }
-    };
+    }
 
-    syncActiveRequestStatus();
+    syncActiveRequestStatus()
 
     if (isAuthenticated && roleKey === 'CITIZEN') {
-      intervalId = window.setInterval(syncActiveRequestStatus, 30000);
+      intervalId = window.setInterval(syncActiveRequestStatus, 30000)
     }
 
     return () => {
-      isMounted = false;
+      isMounted = false
       if (intervalId) {
-        window.clearInterval(intervalId);
+        window.clearInterval(intervalId)
       }
-    };
-  }, [isAuthenticated, roleKey]);
+    }
+  }, [isAuthenticated, roleKey])
+
+  const handleToggleUserMenu = () => {
+    setShowUserMenu((prev) => !prev)
+  }
+
+  const handleLogout = () => {
+    authService.logout()
+    setCurrentUser(null)
+    setShowUserMenu(false)
+    navigate('/login')
+  }
 
   const handleOpenRequestForm = () => {
     if (hasActiveRequest || isPreparingRequestForm) {
-      return;
+      return
     }
-    setShowRequestForm(true);
-  };
+    setShowRequestForm(true)
+  }
 
   const handleCloseRequestForm = async (requestData) => {
-    setShowRequestForm(false);
-    
-    if (requestData) {
-      setIsLoadingHistory(true);
-      try {
-        const isCitizen = authService.isAuthenticated() && roleKey === 'CITIZEN';
-        if (isCitizen) {
-          const requests = await rescueRequestService.getMyRequests();
-          const history = requests
-            .map((item) => buildHistoryItem(item))
-            .filter(Boolean);
-          setRequestHistory(history);
-          const hasOpenRequest = requests.some((item) => !rescueRequestService.isTerminalStatus(item?.status));
-          setHasActiveRequest(hasOpenRequest);
-        } else {
-          const latestRequest = await rescueRequestService.getTrackedGuestRequestStatus();
-          const historyItem = buildHistoryItem(latestRequest);
-          if (historyItem) {
-            setRequestHistory([historyItem]);
-            setHasActiveRequest(!rescueRequestService.isTerminalStatus(historyItem?.status));
-          } else {
-            setRequestHistory([]);
-            setHasActiveRequest(false);
-          }
-        }
-      } catch (error) {
-        console.error('Error reloading request history:', error);
-        setRequestHistory([]);
-        setHasActiveRequest(false);
-      } finally {
-        setIsLoadingHistory(false);
-      }
+    setShowRequestForm(false)
+
+    if (!requestData) {
+      return
     }
-  };
+
+    setIsLoadingHistory(true)
+    try {
+      const isCitizen = authService.isAuthenticated() && roleKey === 'CITIZEN'
+      if (isCitizen) {
+        const requests = await rescueRequestService.getMyRequests()
+        const history = requests.map((item) => buildHistoryItem(item)).filter(Boolean)
+        setRequestHistory(history)
+        const hasOpenRequest = requests.some((item) => !rescueRequestService.isTerminalStatus(item?.status))
+        setHasActiveRequest(hasOpenRequest)
+      } else {
+        const guestRequest = await rescueRequestService.getTrackedGuestRequestStatus()
+        const historyItem = buildHistoryItem(guestRequest)
+        if (historyItem) {
+          setRequestHistory([historyItem])
+          setHasActiveRequest(!rescueRequestService.isTerminalStatus(historyItem?.status))
+        } else {
+          setRequestHistory([])
+          setHasActiveRequest(false)
+        }
+      }
+    } catch (error) {
+      console.error('Error reloading request history:', error)
+      setRequestHistory([])
+      setHasActiveRequest(false)
+    } finally {
+      setIsLoadingHistory(false)
+    }
+
+    try {
+      const stats = await rescueRequestService.getCitizenDashboardStatistics()
+      setRemoteDashboardStats({
+        receivedRequests: Number(stats?.receivedRequests ?? 0),
+        rescuedPeople: Number(stats?.rescuedPeople ?? 0),
+        supportedCount: Number(stats?.supportedRequests ?? 0),
+        safeCount: Number(stats?.safeReports ?? 0),
+      })
+    } catch (error) {
+      console.error('Error reloading dashboard statistics:', error)
+    }
+  }
 
   return (
     <div className="dashboard">
-      {/* Header */}
       <header className="dashboard-header">
         <h1>Hệ Thống Quản Lí Cứu Hộ Cứu Trợ Lũ Lụt</h1>
         <div className="header-buttons">
-          <button className="btn-primary" onClick={handleOpenRequestForm} disabled={isPreparingRequestForm || hasActiveRequest}>
-            {isPreparingRequestForm ? 'Đang t' : hasActiveRequest ? 'Đang chờ xử lý' : 'Tạo yêu cầu'}
+          <button
+            className="btn-primary"
+            onClick={handleOpenRequestForm}
+            disabled={isPreparingRequestForm || hasActiveRequest}
+          >
+            {primaryButtonLabel}
           </button>
+
           <div className="view-request-wrapper">
-            <button 
-              className="btn-secondary" 
+            <button
+              className="btn-secondary"
               onClick={() => setShowStatusDetail(true)}
+              disabled={requestHistory.length === 0}
             >
               Xem yêu cầu
             </button>
-            {requestHistory.length > 0 && (
-              <div className="status-popup">
-                <div className={`status-icon ${requestHistory[0].status === 'approved' ? 'approved' : 'pending'}`}></div>
-                <span className="status-title">{requestHistory[0].status === 'approved' ? 'Đã duyệt' : 'Đang chờ duyệt'}</span>
-              </div>
-            )}
           </div>
+
           {isAuthenticated ? (
             <div className="auth-user-group" ref={userMenuRef}>
               <button
@@ -299,7 +358,7 @@ function Dashboard() {
                     <strong>{currentUser?.username || '-'}</strong>
                   </div>
                   <div className="user-info-row">
-                    <span>Họ Tên</span>
+                    <span>Họ tên</span>
                     <strong>{currentUser?.fullName || '-'}</strong>
                   </div>
                   <div className="user-info-row">
@@ -322,25 +381,24 @@ function Dashboard() {
         </div>
       </header>
 
-      {/* Request Form Popup */}
       {showRequestForm && <RequestForm onClose={handleCloseRequestForm} />}
 
-      {/* View Request Popup */}
-      {showViewRequest && (selectedRequestId || selectedRequest) && <ViewRequest 
-        requestId={selectedRequestId} 
-        requestData={selectedRequest}
-        onClose={() => {
-          setShowViewRequest(false);
-          setShowStatusDetail(false);
-          setSelectedRequestId(null);
-          setSelectedRequest(null);
-        }} 
-      />}
+      {showViewRequest && (selectedRequestId || selectedRequest) && (
+        <ViewRequest
+          requestId={selectedRequestId}
+          requestData={selectedRequest}
+          onClose={() => {
+            setShowViewRequest(false)
+            setShowStatusDetail(false)
+            setSelectedRequestId(null)
+            setSelectedRequest(null)
+          }}
+        />
+      )}
 
-      {/* Request History Detail Popup */}
       {showStatusDetail && (
         <div className="detail-overlay" onClick={() => setShowStatusDetail(false)}>
-          <div className="detail-popup" onClick={(e) => e.stopPropagation()}>
+          <div className="detail-popup" onClick={(event) => event.stopPropagation()}>
             <div className="detail-header">
               <h3>Lịch sử yêu cầu</h3>
               <button className="close-btn" onClick={() => setShowStatusDetail(false)}>×</button>
@@ -351,55 +409,41 @@ function Dashboard() {
                 <span className="detail-col-status">Trạng thái</span>
               </div>
               {isLoadingHistory ? (
-                <div className="empty-message">
-                  Đang tải...
-                </div>
+                <div className="empty-message">Đang tải...</div>
               ) : requestHistory.length === 0 ? (
-                <div className="empty-message">
-                  Chưa có yêu cầu nào được gửi
-                </div>
+                <div className="empty-message">Chưa có yêu cầu nào được gửi</div>
               ) : (
                 requestHistory.map((request, index) => {
-                  const requestDate = new Date(request.submittedDate);
-                  const statusNormalized = rescueRequestService.normalizeStatus(request.status);
-                  const statusClass = rescueRequestService.isTerminalStatus(request.status) ? 'completed' : 'pending';
-                  const statusLabel = {
-                    'PENDING': 'Đang chờ xử lý',
-                    'VERIFIED': 'Đã xác minh',
-                    'ASSIGNED': 'Đã phân công',
-                    'IN_PROGRESS': 'Đang cứu hộ',
-                    'CONFIRMED': 'Đã xác nhận',
-                    'COMPLETED': 'Đã hoàn thành',
-                    'CANCELLED': 'Đã hủy',
-                    'DUPLICATE': 'Trùng lặp'
-                  }[statusNormalized] || request.status;
-                  
+                  const requestDate = new Date(request.submittedDate)
+                  const statusMeta = getRequestStatusMeta(request.status)
+                  const statusClass = rescueRequestService.isTerminalStatus(request.status) ? 'completed' : 'pending'
+
                   return (
-                    <div 
-                      key={request.requestId || index} 
-                      className="detail-item" 
+                    <div
+                      key={request.requestId || index}
+                      className="detail-item"
                       onClick={() => {
-                        setSelectedRequest(request);
-                        setSelectedRequestId(request.requestId ?? null);
-                        setShowStatusDetail(false);
-                        setShowViewRequest(true);
+                        setSelectedRequest(request)
+                        setSelectedRequestId(request.requestId ?? null)
+                        setShowStatusDetail(false)
+                        setShowViewRequest(true)
                       }}
                     >
                       <span className="detail-date">
                         {requestDate.toLocaleString('vi-VN', {
-                          day: '2-digit', 
-                          month: '2-digit', 
-                          year: 'numeric', 
-                          hour: '2-digit', 
-                          minute: '2-digit', 
-                          hour12: false
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: false,
                         })} CH
                       </span>
                       <span className={`detail-status ${statusClass}`}>
-                        {statusLabel}
+                        {statusMeta.label}
                       </span>
                     </div>
-                  );
+                  )
                 })
               )}
             </div>
@@ -407,7 +451,6 @@ function Dashboard() {
         </div>
       )}
 
-      {/* Statistics Bar */}
       {showStats && (
         <div className="stats-bar">
           <div className="stat-item">
@@ -432,13 +475,11 @@ function Dashboard() {
           </div>
         </div>
       )}
-      
-      {/* Toggle Button */}
+
       <button className="stats-toggle" onClick={() => setShowStats(!showStats)}>
-        <span className={showStats ? "arrow-up" : "arrow-down"}>▲</span>
+        <span className={showStats ? 'arrow-up' : 'arrow-down'}>▲</span>
       </button>
 
-      {/* Map Container */}
       <div className="map-container">
         <iframe
           src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d31355.545089644873!2d106.68353449999999!3d10.7626!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31752f38f9ed887b%3A0x14aded124064dcfa!2zVHLGsOG7nW5nIMSQ4bqhaSBo4buNYyBWxINuIEzDom5n!5e0!3m2!1svi!2s!4v1738166000000!5m2!1svi!2s"
@@ -448,21 +489,15 @@ function Dashboard() {
           allowFullScreen=""
           loading="lazy"
           referrerPolicy="no-referrer-when-downgrade"
-        ></iframe>
-        
-      
+        />
       </div>
 
-      {/* Bottom Navigation */}
       <nav className="bottom-nav">
-        {/* <button className="nav-item">Thông Tin</button> */}
         <button className="nav-item">Hướng dẫn</button>
-        <button className="nav-item">Liên Hệ</button>
+        <button className="nav-item">Liên hệ</button>
       </nav>
     </div>
-  );
+  )
 }
 
-export default Dashboard;
-
-
+export default Dashboard

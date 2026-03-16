@@ -326,9 +326,8 @@ function ManagerReliefExportPage() {
   if (isLoading) {
     return (
       <div className="manager-relief-export-page">
-        <button type="button" className="back-button" onClick={handleBack}>
+        <button type="button" className="back-button" onClick={handleBack} aria-label="Quay lại" title="Quay lại">
           <ArrowLeftIcon className="icon" />
-          Quay lại
         </button>
         <div className="page-loading">
           <div className="loading-spinner"></div>
@@ -340,9 +339,8 @@ function ManagerReliefExportPage() {
 
   return (
     <div className="manager-relief-export-page">
-      <button type="button" className="back-button" onClick={handleBack}>
+      <button type="button" className="back-button" onClick={handleBack} aria-label="Quay lại" title="Quay lại">
         <ArrowLeftIcon className="icon" />
-        Quay lại
       </button>
 
       <header className="page-header">

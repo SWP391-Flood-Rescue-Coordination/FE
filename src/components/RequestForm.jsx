@@ -38,13 +38,26 @@ function RequestForm({ onClose }) {
   const [successMessage, setSuccessMessage] = useState('')
 
   const handleConditionChange = (condition) => {
-    setFormData((prev) => ({
-      ...prev,
-      conditions: {
+    setFormData((prev) => {
+      const nextValue = !prev.conditions[condition]
+      const nextConditions = {
         ...prev.conditions,
-        [condition]: !prev.conditions[condition],
-      },
-    }))
+        [condition]: nextValue,
+      }
+
+      if (condition === 'floodUnder1m' && nextValue) {
+        nextConditions.floodOver1m = false
+      }
+
+      if (condition === 'floodOver1m' && nextValue) {
+        nextConditions.floodUnder1m = false
+      }
+
+      return {
+        ...prev,
+        conditions: nextConditions,
+      }
+    })
   }
 
   const handleClose = () => {

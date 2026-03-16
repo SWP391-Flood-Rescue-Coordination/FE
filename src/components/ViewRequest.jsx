@@ -249,12 +249,25 @@ function ViewRequest({ onClose, requestData, requestId }) {
   };
 
   const handleConditionChange = (condition) => {
-    setFormData({
-      ...formData,
-      conditions: {
-        ...formData.conditions,
-        [condition]: !formData.conditions[condition],
-      },
+    setFormData((prev) => {
+      const nextValue = !prev.conditions[condition];
+      const nextConditions = {
+        ...prev.conditions,
+        [condition]: nextValue,
+      };
+
+      if (condition === 'floodUnder1m' && nextValue) {
+        nextConditions.floodOver1m = false;
+      }
+
+      if (condition === 'floodOver1m' && nextValue) {
+        nextConditions.floodUnder1m = false;
+      }
+
+      return {
+        ...prev,
+        conditions: nextConditions,
+      };
     });
   };
 

@@ -2,6 +2,7 @@ import api from './api'
 
 const ADMIN_BASE = '/UserInfo'
 const TEAM_BASE = '/rescue-team/status'
+const RESTRICTED_ROLE_SET = new Set(['ADMIN', 'MANAGER'])
 
 const ROLE_LABEL_MAP = {
   ADMIN: 'Quản trị viên',
@@ -44,27 +45,29 @@ const unwrapApiData = (response) => {
 
 const normalizeArray = (value) => (Array.isArray(value) ? value : [])
 
-const getRescueTeamsWithFallback = async (params) => {
-  const endpoints = ['/rescue-team/status', '/rescue-team', '/Coordinator/status-with-teams']
-  let lastError = null
-
-  for (const endpoint of endpoints) {
-    try {
-      const response = await api.get(endpoint, { params })
-      return normalizeArray(unwrapApiData(response))
-    } catch (error) {
-      lastError = error
-    }
-  }
-
-  throw lastError
-}
-
 const normalizeRole = (value) =>
   String(value ?? '')
     .trim()
     .toUpperCase()
     .replace(/[\s-]+/g, '_')
+
+const isRestrictedRole = (role) => RESTRICTED_ROLE_SET.has(normalizeRole(role))
+
+const getRoleUpdateRestriction = (user, currentUserId, nextRole = null) => {
+  if (Number(user?.userId) === Number(currentUserId)) {
+    return 'Quản trị viên không thể tự thay đổi vai trò của chính mình'
+  }
+
+  if (isRestrictedRole(user?.role)) {
+    return 'Quản trị viên không thể thay đổi vai trò của người dùng có quyền Quản trị viên / Quản lý'
+  }
+
+  if (nextRole && isRestrictedRole(nextRole)) {
+    return 'Quản trị viên không thể cấp quyền Quản trị viên / Quản lý cho người dùng'
+  }
+
+  return ''
+}
 
 const toApiRequestStatusValue = (status) => {
   const normalized = String(status ?? '')
@@ -109,9 +112,16 @@ const adminService = {
     return ROLE_LABEL_MAP[normalized] || normalized
   },
 
+  isRestrictedRole,
+  isAssignableRole: (role) => !isRestrictedRole(role),
+  getRoleUpdateRestriction,
+  getAssignableRoles: (roles = []) =>
+    normalizeArray(roles).filter((role) => !isRestrictedRole(role?.value ?? role)),
+
   getRescueTeams: async (status = '') => {
     const params = status ? { status: String(status).trim().toUpperCase() } : undefined
-    return getRescueTeamsWithFallback(params)
+    const response = await api.get(TEAM_BASE, { params })
+    return normalizeArray(unwrapApiData(response))
   },
 
   getVehicles: async (status = '') => {

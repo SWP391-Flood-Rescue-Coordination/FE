@@ -102,9 +102,8 @@ function ManagerVehiclesPage() {
   if (isLoading) {
     return (
       <div className="manager-vehicles-page">
-        <button className="back-button" onClick={handleBack}>
+        <button className="back-button" onClick={handleBack} aria-label="Quay lại" title="Quay lại">
           <span className="arrow-icon">←</span>
-          Quay lại
         </button>
         <div className="page-loading">
           <div className="loading-spinner"></div>
@@ -116,9 +115,8 @@ function ManagerVehiclesPage() {
 
   return (
     <div className="manager-vehicles-page">
-      <button className="back-button" onClick={handleBack}>
+      <button className="back-button" onClick={handleBack} aria-label="Quay lại" title="Quay lại">
         <span className="arrow-icon">←</span>
-        Quay lại
       </button>
 
       <header className="page-header">

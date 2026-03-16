@@ -1,40 +1,41 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { ArrowLeftOnRectangleIcon, UserCircleIcon } from '@heroicons/react/24/outline'
+import { BsIncognito } from 'react-icons/bs'
+import authService from '../services/authService'
 import coordinatorService from '../services/coordinatorService'
 import './CoordinatorRequestsPage.css'
 
 const STATUS_OPTIONS = [
   { value: '', label: 'Tất cả trạng thái' },
-  { value: 'PENDING', label: 'Chờ tiếp nhận' },
+  { value: 'PENDING', label: 'Mới tạo' },
   { value: 'VERIFIED', label: 'Đã xác minh' },
   { value: 'ASSIGNED', label: 'Đã phân công' },
   { value: 'CONFIRMED', label: 'Đã xác nhận' },
-  { value: 'IN_PROGRESS', label: 'Đang xử lý' },
   { value: 'COMPLETED', label: 'Hoàn tất' },
-  { value: 'CANCELLED', label: 'Đã hủy' },
+  { value: 'CANCELLED', label: 'Hủy' },
   { value: 'DUPLICATE', label: 'Trùng lặp' },
 ]
 
-const PRIORITY_OPTIONS = [
-  { value: '', label: 'Tất cả mức ưu tiên' },
-  { value: 'HIGH', label: 'Cao' },
-  { value: 'MEDIUM', label: 'Trung bình' },
-  { value: 'LOW', label: 'Thấp' },
-]
-
 const STATUS_LABEL_MAP = {
-  PENDING: 'Chờ tiếp nhận',
+  PENDING: 'Mới tạo',
   VERIFIED: 'Đã xác minh',
   ASSIGNED: 'Đã phân công',
   CONFIRMED: 'Đã xác nhận',
-  IN_PROGRESS: 'Đang xử lý',
   COMPLETED: 'Hoàn tất',
-  CANCELLED: 'Đã hủy',
+  CANCELLED: 'Hủy',
   DUPLICATE: 'Trùng lặp',
 }
 
 const ASSIGN_MAX_VEHICLES = 100
 const ASSIGNMENT_CACHE_KEY = 'coordinatorRequestAssignments'
+const ROLE_LABEL_MAP = {
+  COORDINATOR: 'Điều phối viên',
+  RESCUE_TEAM: 'Đội cứu hộ',
+  MANAGER: 'Quản lý',
+  ADMIN: 'Quản trị viên',
+  CITIZEN: 'Công dân',
+}
 
 const normalizeIdText = (value) => {
   if (value === null || value === undefined || value === '') {
@@ -133,9 +134,12 @@ const getStatusText = (status) => {
     .replace(/[\s-]+/g, '_')
 }
 
-const normalizeCancelledStatus = (status) => {
+const normalizeRequestStatusKey = (status) => {
   if (status === 'CANCELED') {
     return 'CANCELLED'
+  }
+  if (status === 'DUPLICATED') {
+    return 'DUPLICATE'
   }
   return status
 }
@@ -143,13 +147,13 @@ const normalizeCancelledStatus = (status) => {
 const getPriorityInfo = (priorityLevelId, priorityRaw) => {
   const numericId = Number(priorityLevelId)
   if (!Number.isNaN(numericId)) {
-    if (numericId === 3) {
+    if (numericId === 1) {
       return { key: 'HIGH', label: 'Cao' }
     }
     if (numericId === 2) {
       return { key: 'MEDIUM', label: 'Trung bình' }
     }
-    if (numericId === 1) {
+    if (numericId === 3) {
       return { key: 'LOW', label: 'Thấp' }
     }
   }
@@ -220,7 +224,7 @@ const normalizeRequest = (item) => {
     priority_level_id: priorityLevelId,
     priority_key: priorityInfo.key,
     priority_label: priorityInfo.label,
-    status: normalizeCancelledStatus(getStatusText(item.status)),
+    status: normalizeRequestStatusKey(getStatusText(item.status)),
     created_at: item.created_at ?? item.createdAt ?? null,
     updated_at: item.updated_at ?? item.updatedAt ?? null,
     updated_by: item.updated_by ?? item.updatedBy ?? null,
@@ -246,13 +250,13 @@ const normalizePriorityLabel = (rawLabel, id) => {
 
   const numericId = Number(id)
   if (!Number.isNaN(numericId)) {
-    if (numericId === 3) {
+    if (numericId === 1) {
       return 'Cao'
     }
     if (numericId === 2) {
       return 'Trung bình'
     }
-    if (numericId === 1) {
+    if (numericId === 3) {
       return 'Thấp'
     }
     return `Mức ${numericId}`
@@ -304,7 +308,7 @@ const normalizeVehicle = (item) => ({
   status: getStatusText(item.status),
 })
 
-const getStatusLabel = (status) => STATUS_LABEL_MAP[normalizeCancelledStatus(status)] || status || '-'
+const getStatusLabel = (status) => STATUS_LABEL_MAP[normalizeRequestStatusKey(status)] || status || '-'
 
 const buildApiMessage = (error) => {
   const data = error?.response?.data
@@ -327,8 +331,6 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
   const [vehicles, setVehicles] = useState([])
 
   const [statusFilter, setStatusFilter] = useState(normalizedExternalStatus)
-  const [priorityFilter, setPriorityFilter] = useState('')
-  const [isPriorityFilterOpen, setIsPriorityFilterOpen] = useState(false)
   const [isListLoading, setIsListLoading] = useState(false)
   const [actionLoadingMap, setActionLoadingMap] = useState({})
   const [verifyEditMap, setVerifyEditMap] = useState({})
@@ -344,8 +346,11 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
 
   const [errorMessage, setErrorMessage] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
+  const [currentUser, setCurrentUser] = useState(() => authService.getUserInfo())
+  const [showUserMenu, setShowUserMenu] = useState(false)
 
-  const priorityFilterRef = useRef(null)
+  const userMenuRef = useRef(null)
+  const roleLabel = ROLE_LABEL_MAP[String(currentUser?.role ?? '').toUpperCase()] || currentUser?.role || '-'
 
   const setActionLoading = (requestId, actionName, value) => {
     const key = `${requestId}:${actionName}`
@@ -396,7 +401,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
     setIsListLoading(true)
     setErrorMessage('')
     try {
-      const data = await coordinatorService.getRescueRequests(statusFilter)
+      const data = await coordinatorService.getRescueRequests('')
       const normalizedRequests = data.map(normalizeRequest)
       setRequests(normalizedRequests)
       setAssignmentByRequestId((prev) => {
@@ -417,7 +422,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
     } finally {
       setIsListLoading(false)
     }
-  }, [handleApiError, statusFilter])
+  }, [handleApiError])
 
   const fetchOptionData = useCallback(async () => {
     setErrorMessage('')
@@ -487,10 +492,10 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
 
   useEffect(() => {
     const handleOutsideClick = (event) => {
-      const clickedPriorityFilter = priorityFilterRef.current?.contains(event.target)
+      const clickedUserMenu = userMenuRef.current?.contains(event.target)
 
-      if (!clickedPriorityFilter) {
-        setIsPriorityFilterOpen(false)
+      if (!clickedUserMenu) {
+        setShowUserMenu(false)
       }
     }
 
@@ -509,7 +514,9 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
   }, [assignmentByRequestId])
 
   const displayedRequests = useMemo(() => {
-    const filtered = priorityFilter ? requests.filter((item) => item.priority_key === priorityFilter) : requests
+    const filtered = statusFilter
+      ? requests.filter((item) => normalizeRequestStatusKey(item.status) === statusFilter)
+      : requests
 
     const sorted = [...filtered]
     sorted.sort((a, b) => {
@@ -518,7 +525,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
       return dateB - dateA
     })
     return sorted
-  }, [requests, priorityFilter])
+  }, [requests, statusFilter])
 
   const handlePriorityChange = (requestId, value) => {
     setSelectedPriorityByRequest((prev) => ({
@@ -573,6 +580,36 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
       }
     } finally {
       setActionLoading(requestId, 'verify', false)
+    }
+  }
+
+  const handleMarkDuplicate = async (request) => {
+    const requestId = request.request_id
+    const isPending = request.status === 'PENDING'
+
+    if (!isPending) {
+      return
+    }
+
+    setErrorMessage('')
+    setSuccessMessage('')
+    setActionLoading(requestId, 'duplicate', true)
+
+    try {
+      await coordinatorService.markRequestDuplicate(requestId)
+      setSuccessMessage(`Đã chuyển yêu cầu #${requestId} sang trạng thái trùng lặp.`)
+      setVerifyEditMap((prev) => ({
+        ...prev,
+        [requestId]: false,
+      }))
+      await reloadAll()
+    } catch (error) {
+      const result = handleApiError(error, 'Yêu cầu đã được xử lý bởi người khác.')
+      if (result.shouldReload) {
+        await reloadAll()
+      }
+    } finally {
+      setActionLoading(requestId, 'duplicate', false)
     }
   }
 
@@ -671,11 +708,11 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
         ),
       )
 
-      setSuccessMessage(`Phan cong yeu cau #${requestId} thanh cong.`)
+      setSuccessMessage(`Phân công yêu cầu #${requestId} thành công.`)
       closeAssignModal()
       await reloadAll()
     } catch (error) {
-      const result = handleApiError(error, 'Phan cong that bai, vui long kiem tra lai request/team/xe kha dung.')
+      const result = handleApiError(error, 'Phân công thất bại, vui lòng kiểm tra lại yêu cầu/đội/xe khả dụng.')
       if (result.shouldReload) {
         await reloadAll()
       }
@@ -684,20 +721,15 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
     }
   }
 
-  const handleSelectPriorityFilter = (value) => {
-    setPriorityFilter(value)
-    setIsPriorityFilterOpen(false)
-  }
-
   const handleLogout = () => {
-    localStorage.removeItem('accessToken')
-    localStorage.removeItem('refreshToken')
-    localStorage.removeItem('user')
+    authService.logout()
+    setCurrentUser(null)
+    setShowUserMenu(false)
     navigate('/login', { replace: true })
   }
 
-  const closeFilterMenus = () => {
-    setIsPriorityFilterOpen(false)
+  const handleToggleUserMenu = () => {
+    setShowUserMenu((prev) => !prev)
   }
 
   const assignModalRequestId = assignTargetRequest?.request_id ?? null
@@ -716,7 +748,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
 
         <div className="assign-modal-top-grid">
           <div className="assign-modal-field">
-            <label htmlFor="assign-team">Đội cứu hộ rảnh (chọn 1)</label>
+            <label htmlFor="assign-team">Đội cứu hộ sẵn sàng</label>
             <select
               id="assign-team"
               value={assignTeamId}
@@ -830,7 +862,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
 
   const requestTableSection = (
     <section className="coordinator-table-container">
-      <div className="coordinator-table-scroll" onScroll={closeFilterMenus}>
+      <div className="coordinator-table-scroll">
         <table className="coordinator-table">
           <thead>
             <tr>
@@ -840,38 +872,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
               <th>Mô tả</th>
               <th>Vị trí</th>
               <th>Địa chỉ</th>
-              <th>
-                <div className="header-filter-wrap">
-                  <span>Mức ưu tiên</span>
-                  <div className="table-filter-wrap" ref={priorityFilterRef}>
-                    <button
-                      type="button"
-                      className={`table-filter-button ${priorityFilter ? 'active' : ''}`}
-                      onClick={() => {
-                        setIsPriorityFilterOpen((prev) => !prev)
-                      }}
-                      disabled={isListLoading}
-                      aria-label="Lọc theo mức ưu tiên"
-                    >
-                      ▾
-                    </button>
-                    {isPriorityFilterOpen && (
-                      <div className="table-filter-dropdown">
-                        {PRIORITY_OPTIONS.map((option) => (
-                          <button
-                            key={option.value || 'ALL'}
-                            type="button"
-                            className={`table-filter-option ${priorityFilter === option.value ? 'selected' : ''}`}
-                            onClick={() => handleSelectPriorityFilter(option.value)}
-                          >
-                            {option.label}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </th>
+              <th>Mức ưu tiên</th>
               <th className="status-header-cell">
                 Trạng thái
               </th>
@@ -911,22 +912,32 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
                 const isVerifyEditing = Boolean(verifyEditMap[requestId])
 
                 const verifyLoading = hasValidRequestId ? isActionLoading(requestId, 'verify') : false
+                const duplicateLoading = hasValidRequestId ? isActionLoading(requestId, 'duplicate') : false
                 const assignLoading = hasValidRequestId ? isActionLoading(requestId, 'assign') : false
                 const selectedPriority = selectedPriorityByRequest[requestId] || ''
                 const assignmentFromCache = assignmentByRequestId[String(requestId)]
                 const assignment = assignmentFromCache || request.assignment || null
                 const assignedTeamText = assignment?.teamName || (assignment?.teamId ? `Đội #${assignment.teamId}` : null)
-                const assignedVehicleText =
+                const assignedVehicleItems =
                   assignment?.vehicleLabels?.length > 0
-                    ? assignment.vehicleLabels.join(', ')
+                    ? assignment.vehicleLabels
                     : assignment?.vehicleIds?.length > 0
-                      ? assignment.vehicleIds.map((id) => `Xe #${id}`).join(', ')
-                      : null
+                      ? assignment.vehicleIds.map((id) => `Xe #${id}`)
+                      : []
+                const hasCitizenId = request.citizen_id !== null && request.citizen_id !== undefined && String(request.citizen_id).trim() !== '' && String(request.citizen_id).trim() !== '-'
 
                 return (
                   <tr key={requestKey}>
                     <td>{request.request_id ?? '-'}</td>
-                    <td>{request.citizen_id ?? '-'}</td>
+                    <td>
+                      {hasCitizenId ? (
+                        request.citizen_id
+                      ) : (
+                        <span className="coordinator-inline-badge anonymous" title="Ẩn danh" aria-label="Ẩn danh">
+                          <BsIncognito className="coordinator-inline-badge-icon" />
+                        </span>
+                      )}
+                    </td>
                     <td>{request.phone || '-'}</td>
                     <td className="description-cell">{request.description || '-'}</td>
                     <td>{formatLocation(request.latitude, request.longitude)}</td>
@@ -964,22 +975,48 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
                     <td>{formatDateTime(request.updated_at)}</td>
                     <td>{request.updated_by ?? '-'}</td>
                     <td>{assignedTeamText || '-'}</td>
-                    <td>{assignedVehicleText || '-'}</td>
                     <td>
-                      <button
-                        type="button"
-                        className="action-button verify-button"
-                        onClick={() => handleVerify(request)}
-                        disabled={
-                          !hasValidRequestId ||
-                          !isPending ||
-                          verifyLoading ||
-                          assignLoading ||
-                          (isVerifyEditing && !selectedPriority)
-                        }
-                      >
-                        {verifyLoading ? 'Đang xác thực...' : isVerifyEditing ? 'Xác nhận' : 'Xác thực'}
-                      </button>
+                      {assignedVehicleItems.length > 0 ? (
+                        <div className="coordinator-tag-list">
+                          {assignedVehicleItems.map((vehicleLabel) => (
+                            <span key={`${requestKey}-${vehicleLabel}`} className="coordinator-inline-badge vehicle-tag">
+                              {vehicleLabel}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        '-'
+                      )}
+                    </td>
+                    <td className="verify-action-cell">
+                      <div className="action-button-group">
+                        <button
+                          type="button"
+                          className="action-button verify-button"
+                          onClick={() => handleVerify(request)}
+                          disabled={
+                            !hasValidRequestId ||
+                            !isPending ||
+                            verifyLoading ||
+                            duplicateLoading ||
+                            assignLoading ||
+                            (isVerifyEditing && !selectedPriority)
+                          }
+                        >
+                          {verifyLoading ? 'Đang xác thực...' : isVerifyEditing ? 'Xác nhận' : 'Xác thực'}
+                        </button>
+
+                        {isPending && (
+                          <button
+                            type="button"
+                            className="action-button duplicate-button"
+                            onClick={() => handleMarkDuplicate(request)}
+                            disabled={!hasValidRequestId || verifyLoading || duplicateLoading || assignLoading}
+                          >
+                            {duplicateLoading ? 'Đang xử lý...' : 'Trùng lặp'}
+                          </button>
+                        )}
+                      </div>
                     </td>
                     <td>
                       <button
@@ -1026,9 +1063,46 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
           <button type="button" className="coordinator-nav-btn" onClick={() => navigate('/rescue-coordinator')}>
             Tổng quan
           </button>
-          <button type="button" className="coordinator-btn-login" onClick={handleLogout}>
-            Đăng xuất
-          </button>
+          <div className="coordinator-auth-user-group" ref={userMenuRef}>
+            <button
+              type="button"
+              className="coordinator-icon-button"
+              onClick={handleToggleUserMenu}
+              aria-label="Thông tin người dùng"
+            >
+              <UserCircleIcon className="coordinator-header-icon" />
+            </button>
+            <button
+              type="button"
+              className="coordinator-icon-button logout"
+              onClick={handleLogout}
+              aria-label="Đăng xuất"
+            >
+              <ArrowLeftOnRectangleIcon className="coordinator-header-icon" />
+            </button>
+
+            {showUserMenu && (
+              <div className="coordinator-user-menu-card">
+                <h3>Thông tin tài khoản</h3>
+                <div className="coordinator-user-info-row">
+                  <span>Tên tài khoản</span>
+                  <strong>{currentUser?.username || '-'}</strong>
+                </div>
+                <div className="coordinator-user-info-row">
+                  <span>Họ tên</span>
+                  <strong>{currentUser?.fullName || '-'}</strong>
+                </div>
+                <div className="coordinator-user-info-row">
+                  <span>Email</span>
+                  <strong>{currentUser?.email || '-'}</strong>
+                </div>
+                <div className="coordinator-user-info-row">
+                  <span>Vai trò</span>
+                  <strong>{roleLabel}</strong>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 

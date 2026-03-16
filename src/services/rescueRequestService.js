@@ -470,6 +470,11 @@ const buildGuestUpdatePayload = (formData) => {
 }
 
 const rescueRequestService = {
+  getCitizenDashboardStatistics: async () => {
+    const response = await api.get('/RescueRequest/citizen-dashboard-statistics', { skipAuth: true })
+    return unwrapApiData(response)
+  },
+
   createRescueRequest: async (formData) => {
     const payload = buildCreatePayload(formData)
     const response = await api.post('/RescueRequest', payload)
