@@ -1,4 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+// Map states
+const sanitizeNumberText = (value) => String(value ?? '').replace(/[^0-9]/g, '');
 import authService from '../services/authService';
 import rescueRequestService from '../services/rescueRequestService';
 import './ViewRequest.css';
@@ -22,6 +24,7 @@ const EMPTY_FORM_DATA = {
 };
 
 function ViewRequest({ onClose, requestData, requestId }) {
+  // Map/marker refs declared once, logic handled below
   const isAuthenticated = authService.isAuthenticated();
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -99,6 +102,87 @@ function ViewRequest({ onClose, requestData, requestId }) {
     loadRequestData();
   }, [requestData, requestId, isAuthenticated]);
 
+  // --- Map and Marker Logic ---
+  const mapContainerRef = useRef(null);
+  const mapRef = useRef(null);
+  const markerRef = useRef(null);
+
+  // Initialize map only once
+  useEffect(() => {
+    if (!mapContainerRef.current || mapRef.current) return;
+    try {
+      const HCM_BOUNDS = window.L.latLngBounds(
+        [10.20, 106.20],
+        [11.20, 107.10]
+      );
+      const map = window.L.map(mapContainerRef.current, {
+        center: [10.7769, 106.7009],
+        zoom: 12,
+        maxBounds: HCM_BOUNDS,
+        maxBoundsViscosity: 1.0,
+      });
+      window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: 'OpenStreetMap',
+      }).addTo(map);
+      mapRef.current = map;
+      // Click event to select location
+      map.on('click', async (e) => {
+        const { lat, lng } = e.latlng;
+        setFormData((prev) => ({
+          ...prev,
+          location: `${lat},${lng}`,
+        }));
+        // Update marker
+        if (markerRef.current) {
+          markerRef.current.setLatLng([lat, lng]);
+        } else {
+          markerRef.current = window.L.marker([lat, lng]).addTo(map);
+        }
+        // Get address from coordinates using Nominatim
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
+          );
+          const data = await response.json();
+          if (data?.address) {
+            const address = data.address.address || data.display_name || `${lat}, ${lng}`;
+            setFormData((prev) => ({
+              ...prev,
+              address: address,
+            }));
+          }
+        } catch (error) {
+          // Fallback: use coordinates if geocoding fails
+        }
+      });
+    } catch (error) {
+      // Prevent blank form if map fails
+      console.error('Map initialization error:', error);
+    }
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+    };
+  }, []);
+
+  // Update marker and map view when location changes
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const loc = String(formData.location || '').split(',');
+    const lat = parseFloat(loc[0]);
+    const lng = parseFloat(loc[1]);
+    if (!isNaN(lat) && !isNaN(lng)) {
+      if (markerRef.current) {
+        markerRef.current.setLatLng([lat, lng]);
+      } else {
+        markerRef.current = window.L.marker([lat, lng]).addTo(mapRef.current);
+      }
+      mapRef.current.setView([lat, lng], mapRef.current.getZoom() || 12);
+    }
+  }, [formData.location]);
+
   const getStatusLabel = (status) => {
     const statusMap = {
       PENDING: 'Đang chờ xử lý',
@@ -112,6 +196,10 @@ function ViewRequest({ onClose, requestData, requestId }) {
     };
     return statusMap[rescueRequestService.normalizeStatus(status)] || status;
   };
+
+// (removed duplicate map click event and trailing code)
+
+// (removed duplicate/partial handler definitions and code fragments)
 
   const handleOpenMap = () => {
     const coordinates = rescueRequestService.parseCoordinates(formData.location);
@@ -310,6 +398,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
                 />
               </div>
 
+
               <div className="form-field">
                 <label>Vị trí</label>
                 <div className="location-group">
@@ -324,6 +413,28 @@ function ViewRequest({ onClose, requestData, requestId }) {
                     Chọn vị trí
                   </button>
                 </div>
+                <small className="request-input-hint">Nhập theo định dạng: vĩ độ,kinh độ</small>
+              </div>
+
+              {/* Interactive Map */}
+              <div className="form-field">
+                <label>Chọn vị trí trên bản đồ</label>
+                <div
+                  ref={mapContainerRef}
+                  id="map-view-request"
+                  style={{
+                    height: '400px',
+                    borderRadius: '8px',
+                    border: '1px solid #ddd',
+                    marginBottom: '10px',
+                  }}
+                  className="leaflet-container"
+                />
+                {formData.location && (
+                  <small className="request-input-hint">
+                    Vị trí đã chọn: {formData.location}
+                  </small>
+                )}
               </div>
 
               <div className="form-field">
