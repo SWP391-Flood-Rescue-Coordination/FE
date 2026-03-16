@@ -587,9 +587,9 @@ const managerService = {
   createReliefExportOrder: async (payload) => {
     try {
       const body = {
-        warehouseId: toNumber(payload?.warehouseId, 1),
-        destinationRegionId: toNumber(payload?.destinationRegionId ?? payload?.recipientUnitId),
-        notes: String(payload?.notes ?? payload?.recipientUnitName ?? '').trim(),
+        teamId: toNumber(payload?.teamId ?? payload?.recipientUnitId ?? 1),
+        destination: String(payload?.destination ?? payload?.recipientAddress ?? payload?.address ?? '').trim(),
+        note: String(payload?.notes ?? payload?.note ?? '').trim(),
         items: normalizeArray(payload?.supplyItems)
           .map((item) => ({
             itemId: toNumber(item?.supplyId ?? item?.itemId),
@@ -599,12 +599,11 @@ const managerService = {
         vehicleIds: normalizeArray(payload?.vehicleIds).map((id) => toNumber(id)).filter(Number.isFinite),
       }
 
-      console.log('[managerService] createReliefExportOrder REQUEST:', {
-        endpoint: '/manager/relief-export',
-        body,
-      })
+      console.log('[managerService] createReliefExportOrder REQUEST BODY:', JSON.stringify(body, null, 2))
+      console.log('[managerService] createReliefExportOrder Items Detail:', body.items)
+      console.log('[managerService] createReliefExportOrder VehicleIds:', body.vehicleIds)
 
-      const response = await api.post('/manager/relief-export', body)
+      const response = await api.post('/StockHistory/export', body)
       
       console.log('[managerService] createReliefExportOrder RESPONSE:', {
         status: response.status,
@@ -613,12 +612,13 @@ const managerService = {
       
       return unwrapApiData(response)
     } catch (error) {
-      console.error('[managerService] createReliefExportOrder ERROR:', {
+      console.error('[managerService] createReliefExportOrder ERROR DETAIL:', {
         status: error?.response?.status,
         statusText: error?.response?.statusText,
         data: error?.response?.data,
         message: error?.message,
         url: error?.config?.url,
+        requestBody: error?.config?.data,
       })
       throw error
     }
@@ -627,15 +627,11 @@ const managerService = {
   getCategories: async () => {
     try {
       try {
-        const response = await api.get('/manager/categories')
-        const categories = normalizeArray(unwrapApiData(response)).map(normalizeCategory)
-        const filteredCategories = categories.filter((item) => item.categoryId !== null)
-        if (filteredCategories.length > 0) {
-          return filteredCategories
-        }
+        // Endpoint không tồn tại trên backend, tạm skip
+        throw new Error('Categories endpoint not implemented yet')
       } catch (categoriesError) {
         if (!isNotFoundError(categoriesError)) {
-          throw categoriesError
+          // Ignore 404, fallback to supply deduplication
         }
       }
 
@@ -665,16 +661,16 @@ const managerService = {
     try {
       const body = {
         source: String(payload?.source ?? payload?.fromTo ?? '').trim(),
-        location: String(payload?.receive_address ?? payload?.receiveAddress ?? payload?.location ?? '').trim(),
+        note: String(payload?.receive_address ?? payload?.receiveAddress ?? payload?.location ?? payload?.note ?? '').trim(),
         items: normalizeReceiptItemsInput(payload?.items),
       }
 
       console.log('[managerService] createImportReceipt REQUEST:', {
-        endpoint: '/ReliefItem/import',
+        endpoint: '/StockHistory/import',
         body,
       })
 
-      const response = await api.post('/ReliefItem/import', body)
+      const response = await api.post('/StockHistory/import', body)
       
       console.log('[managerService] createImportReceipt RESPONSE:', {
         status: response.status,

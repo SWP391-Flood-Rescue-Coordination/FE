@@ -294,14 +294,14 @@ function ManagerReliefExportPage() {
 
     try {
       await managerService.createReliefExportOrder({
-        warehouseId: 1,
-        destinationRegionId: toNumericIfPossible(selectedRecipient.id),
-        notes: `Xuất cứu trợ cho ${selectedRecipient.name}`,
+        teamId: toNumericIfPossible(selectedRecipient.id),
+        destination: selectedRecipient.address || selectedRecipient.name,
+        note: `Xuất cứu trợ cho ${selectedRecipient.name}`,
         supplyItems: validSelectedSupplyItems.map((item) => ({
           supplyId: toNumericIfPossible(item.id),
           quantity: item.parsedQuantity,
         })),
-        vehicleIds: [],
+        vehicleIds: [1], // TODO: Thêm form chọn phương tiện - test với ID 1 tạm thời
       })
 
       setSuccessMessage('Tạo phiếu xuất kho thành công.')
