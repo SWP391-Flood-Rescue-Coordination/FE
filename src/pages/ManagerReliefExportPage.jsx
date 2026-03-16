@@ -15,42 +15,42 @@ import './ManagerReliefExportPage.css'
 
 const DEFAULT_RECIPIENTS = [
   {
-    id: 'ward-01',
+    id: 1,
     name: 'UBND Phường 22',
     type: 'Phường',
     region: 'Bình Thạnh, TP.HCM',
     address: '105 Nguyễn Hữu Cảnh, Phường 22, Bình Thạnh, TP.HCM',
   },
   {
-    id: 'ward-02',
+    id: 2,
     name: 'Điểm tiếp nhận Phường 2',
     type: 'Phường',
     region: 'Tân Bình, TP.HCM',
     address: '15 Hồng Hà, Phường 2, Tân Bình, TP.HCM',
   },
   {
-    id: 'ward-03',
+    id: 3,
     name: 'Ban điều phối Phường 9',
     type: 'Phường',
     region: 'Phú Nhuận, TP.HCM',
     address: '82 Hoàng Văn Thụ, Phường 9, Phú Nhuận, TP.HCM',
   },
   {
-    id: 'ward-04',
+    id: 4,
     name: 'UBND Phường Bến Nghé',
     type: 'Phường',
     region: 'Quận 1, TP.HCM',
     address: '45 Lê Duẩn, Phường Bến Nghé, Quận 1, TP.HCM',
   },
   {
-    id: 'ward-05',
+    id: 5,
     name: 'Điểm tập kết Phường 12',
     type: 'Phường',
     region: 'Quận 3, TP.HCM',
     address: '214 Nam Kỳ Khởi Nghĩa, Phường 12, Quận 3, TP.HCM',
   },
   {
-    id: 'ward-06',
+    id: 6,
     name: 'Ban cứu trợ Bình Hưng',
     type: 'Khu vực',
     region: 'Bình Chánh, TP.HCM',
@@ -294,14 +294,14 @@ function ManagerReliefExportPage() {
 
     try {
       await managerService.createReliefExportOrder({
-        recipientUnitId: toNumericIfPossible(selectedRecipient.id),
-        recipientUnitName: selectedRecipient.name,
-        recipientType: selectedRecipient.type,
-        recipientRegion: selectedRecipient.region,
+        warehouseId: 1,
+        destinationRegionId: toNumericIfPossible(selectedRecipient.id),
+        notes: `Xuất cứu trợ cho ${selectedRecipient.name}`,
         supplyItems: validSelectedSupplyItems.map((item) => ({
           supplyId: toNumericIfPossible(item.id),
           quantity: item.parsedQuantity,
         })),
+        vehicleIds: [],
       })
 
       setSuccessMessage('Tạo phiếu xuất kho thành công.')

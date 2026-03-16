@@ -209,16 +209,14 @@ const normalizeReceiptItemsInput = (items) =>
   normalizeArray(items)
     .map((item) => {
       const itemId = Number(item?.item_id ?? item?.itemId ?? item?.supplyId ?? item?.id)
-      const categoryId = Number(item?.category_id ?? item?.categoryId)
       const quantity = Number(item?.quantity)
 
       return {
-        item_id: Number.isFinite(itemId) ? itemId : null,
-        category_id: Number.isFinite(categoryId) ? categoryId : null,
+        itemId: Number.isFinite(itemId) ? itemId : null,
         quantity: Number.isFinite(quantity) ? quantity : null,
       }
     })
-    .filter((item) => item.item_id !== null && item.quantity !== null)
+    .filter((item) => item.itemId !== null && item.quantity !== null && item.quantity > 0)
 
 const normalizeCategory = (item) => {
   const categoryId = Number(item?.categoryId ?? item?.category_id ?? item?.id)
@@ -344,7 +342,8 @@ const managerService = {
         getStatistics(),
         api
           .get('/StockHistory', { params: { type: 'OUT' } })
-          .then((response) => normalizeArray(unwrapApiData(response)).map(normalizeStockEntry)),
+          .then((response) => normalizeArray(unwrapApiData(response)).map(normalizeStockEntry))
+          .catch(() => []),
         managerService.getAllVehicles('INUSE'),
         managerService.getSupplies(),
       ])
@@ -376,7 +375,13 @@ const managerService = {
       }
     } catch (error) {
       console.error('[managerService] getTodayStats error:', error)
-      throw error
+      return {
+        requestsServed: 0,
+        peopleHelped: 0,
+        suppliesDistributed: 0,
+        vehiclesUsed: 0,
+        consumptionRate: 0,
+      }
     }
   },
 
@@ -433,7 +438,7 @@ const managerService = {
       return Array.from(unique.values())
     } catch (error) {
       console.error('[managerService] getRecipientUnits error:', error)
-      throw error
+      return []
     }
   },
 
@@ -582,22 +587,39 @@ const managerService = {
   createReliefExportOrder: async (payload) => {
     try {
       const body = {
-        recipient_unit_id: payload?.recipientUnitId ?? null,
-        recipient_unit_name: String(payload?.recipientUnitName ?? '').trim(),
-        recipient_type: String(payload?.recipientType ?? '').trim() || null,
-        recipient_region: String(payload?.recipientRegion ?? '').trim() || null,
+        warehouseId: toNumber(payload?.warehouseId, 1),
+        destinationRegionId: toNumber(payload?.destinationRegionId ?? payload?.recipientUnitId),
+        notes: String(payload?.notes ?? payload?.recipientUnitName ?? '').trim(),
         items: normalizeArray(payload?.supplyItems)
           .map((item) => ({
-            item_id: Number(item?.supplyId),
-            quantity: Number(item?.quantity),
+            itemId: toNumber(item?.supplyId ?? item?.itemId),
+            quantity: toNumber(item?.quantity),
           }))
-          .filter((item) => Number.isFinite(item.item_id) && Number.isFinite(item.quantity) && item.quantity > 0),
+          .filter((item) => Number.isFinite(item.itemId) && Number.isFinite(item.quantity) && item.quantity > 0),
+        vehicleIds: normalizeArray(payload?.vehicleIds).map((id) => toNumber(id)).filter(Number.isFinite),
       }
 
-      const response = await api.post('/ReliefItem/export', body)
+      console.log('[managerService] createReliefExportOrder REQUEST:', {
+        endpoint: '/manager/relief-export',
+        body,
+      })
+
+      const response = await api.post('/manager/relief-export', body)
+      
+      console.log('[managerService] createReliefExportOrder RESPONSE:', {
+        status: response.status,
+        data: response.data,
+      })
+      
       return unwrapApiData(response)
     } catch (error) {
-      console.error('[managerService] createReliefExportOrder error:', error)
+      console.error('[managerService] createReliefExportOrder ERROR:', {
+        status: error?.response?.status,
+        statusText: error?.response?.statusText,
+        data: error?.response?.data,
+        message: error?.message,
+        url: error?.config?.url,
+      })
       throw error
     }
   },
@@ -605,7 +627,7 @@ const managerService = {
   getCategories: async () => {
     try {
       try {
-        const response = await api.get('/Manager/categories')
+        const response = await api.get('/manager/categories')
         const categories = normalizeArray(unwrapApiData(response)).map(normalizeCategory)
         const filteredCategories = categories.filter((item) => item.categoryId !== null)
         if (filteredCategories.length > 0) {
@@ -647,10 +669,27 @@ const managerService = {
         items: normalizeReceiptItemsInput(payload?.items),
       }
 
+      console.log('[managerService] createImportReceipt REQUEST:', {
+        endpoint: '/ReliefItem/import',
+        body,
+      })
+
       const response = await api.post('/ReliefItem/import', body)
+      
+      console.log('[managerService] createImportReceipt RESPONSE:', {
+        status: response.status,
+        data: response.data,
+      })
+      
       return unwrapApiData(response)
     } catch (error) {
-      console.error('[managerService] createImportReceipt error:', error)
+      console.error('[managerService] createImportReceipt ERROR:', {
+        status: error?.response?.status,
+        statusText: error?.response?.statusText,
+        data: error?.response?.data,
+        message: error?.message,
+        url: error?.config?.url,
+      })
       throw error
     }
   },
@@ -666,7 +705,7 @@ const managerService = {
       return rows.map((entry) => normalizeImportReceipt(entry, supplyNameMap))
     } catch (error) {
       console.error('[managerService] getImportReceipts error:', error)
-      throw error
+      return []
     }
   },
 
@@ -681,7 +720,7 @@ const managerService = {
       return rows.map((entry) => normalizeExportReceipt(entry, supplyNameMap))
     } catch (error) {
       console.error('[managerService] getExportReceipts error:', error)
-      throw error
+      return []
     }
   },
 
