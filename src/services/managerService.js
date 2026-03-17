@@ -603,7 +603,7 @@ const managerService = {
       console.log('[managerService] createReliefExportOrder Items Detail:', body.items)
       console.log('[managerService] createReliefExportOrder VehicleIds:', body.vehicleIds)
 
-      const response = await api.post('/StockHistory/export/', body)
+      const response = await api.post('/StockHistory/export', body)
       
       console.log('[managerService] createReliefExportOrder RESPONSE:', {
         status: response.status,
