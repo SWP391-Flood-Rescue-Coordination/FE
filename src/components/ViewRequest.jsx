@@ -128,31 +128,44 @@ function ViewRequest({ onClose, requestData, requestId }) {
       // Click event to select location
       map.on('click', async (e) => {
         const { lat, lng } = e.latlng;
-        setFormData((prev) => ({
-          ...prev,
-          location: `${lat},${lng}`,
-        }));
-        // Update marker
-        if (markerRef.current) {
-          markerRef.current.setLatLng([lat, lng]);
-        } else {
-          markerRef.current = window.L.marker([lat, lng]).addTo(map);
-        }
-        // Get address from coordinates using Nominatim
         try {
           const response = await fetch(
             `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
           );
           const data = await response.json();
-          if (data?.address) {
-            const address = data.address.address || data.display_name || `${lat}, ${lng}`;
+          // Kiểm tra nhiều trường trong address object
+          const addressObj = data?.address || {};
+          const addressFields = [
+            addressObj.city,
+            addressObj.state,
+            addressObj.county,
+            addressObj.town,
+            addressObj.village,
+            addressObj.suburb,
+            data?.display_name
+          ];
+          const isHCM = addressFields.some(f =>
+            typeof f === 'string' &&
+            (f.toLowerCase().includes('hồ chí minh') || f.toLowerCase().includes('ho chi minh'))
+          );
+          if (isHCM) {
             setFormData((prev) => ({
               ...prev,
-              address: address,
+              location: `${lat},${lng}`,
+              address: data.address.address || data.display_name || `${lat}, ${lng}`,
             }));
+            // Update marker
+            if (markerRef.current) {
+              markerRef.current.setLatLng([lat, lng]);
+            } else {
+              markerRef.current = window.L.marker([lat, lng]).addTo(map);
+            }
+            setErrorMessage('');
+          } else {
+            setErrorMessage('Chỉ hỗ trợ trong khu vực TP.HCM');
           }
         } catch (error) {
-          // Fallback: use coordinates if geocoding fails
+          setErrorMessage('Không thể xác định địa chỉ từ vị trí này.');
         }
       });
     } catch (error) {
