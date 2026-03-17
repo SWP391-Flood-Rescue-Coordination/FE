@@ -20,7 +20,8 @@ import './ManagerImportReceiptsListPage.css'
 
 function ManagerImportReceiptsListPage() {
   const navigate = useNavigate()
-  
+
+
   const [activeTab, setActiveTab] = useState('all') // 'all', 'import', or 'export'
   const [isLoading, setIsLoading] = useState(true)
   const [receipts, setReceipts] = useState([])
@@ -45,24 +46,36 @@ function ManagerImportReceiptsListPage() {
       let data = []
 
       if (activeTab === 'all') {
-        // Lấy cả phiếu nhập và phiếu xuất
-        const importReceipts = await managerService.getImportReceipts()
-        const exportReceipts = await managerService.getExportReceipts()
+        // Fetch both import and export receipts from API
+        const [importResult, exportResult] = await Promise.allSettled([
+          managerService.getImportReceipts(),
+          managerService.getExportReceipts(),
+        ])
 
-        // Mark import/export types
-        const markedImport = importReceipts.map(r => ({ ...r, type: 'import' }))
-        const markedExport = exportReceipts.map(r => ({ ...r, type: 'export' }))
+        const markedImport = 
+          importResult.status === 'fulfilled' && Array.isArray(importResult.value)
+            ? importResult.value.map(r => ({ ...r, type: 'import' }))
+            : []
+
+        const markedExport = 
+          exportResult.status === 'fulfilled' && Array.isArray(exportResult.value)
+            ? exportResult.value.map(r => ({ ...r, type: 'export' }))
+            : []
         
         // Combine and sort by date
         data = [...markedImport, ...markedExport].sort((a, b) => 
           new Date(b.createdAt) - new Date(a.createdAt)
         )
+
+        if (importResult.status === 'rejected' || exportResult.status === 'rejected') {
+          setErrorMessage('Không thể tải đầy đủ dữ liệu từ hệ thống.')
+        }
       } else if (activeTab === 'import') {
-        data = await managerService.getImportReceipts()
-        data = data.map(r => ({ ...r, type: 'import' }))
+        const result = await managerService.getImportReceipts()
+        data = Array.isArray(result) ? result.map(r => ({ ...r, type: 'import' })) : []
       } else {
-        data = await managerService.getExportReceipts()
-        data = data.map(r => ({ ...r, type: 'export' }))
+        const result = await managerService.getExportReceipts()
+        data = Array.isArray(result) ? result.map(r => ({ ...r, type: 'export' })) : []
       }
       
       setReceipts(data)

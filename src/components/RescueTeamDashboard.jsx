@@ -1,6 +1,9 @@
 ﻿import React, { useState, useEffect } from 'react';
 import './RescueTeamDashboard.css';
 import rescueTeamService from '../services/rescueTeamService';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeftIcon, ArrowLeftOnRectangleIcon, UserCircleIcon } from '@heroicons/react/24/outline';
+import authService from '../services/authService';
 const normalizeVietnamese = (value) =>
   String(value ?? '')
     .toLowerCase()
@@ -31,7 +34,16 @@ const normalizeOperationStatus = (status) =>
     .toUpperCase()
     .replace(/\s+/g, '_');
 
+const ROLE_LABEL_MAP = {
+  RESCUE_TEAM: 'Đội cứu hộ',
+  COORDINATOR: 'Điều phối viên',
+  MANAGER: 'Quản lý',
+  ADMIN: 'Quản trị viên',
+  CITIZEN: 'Công dân',
+};
+
 function RescueTeamDashboard() {
+  const navigate = useNavigate();
   // State: danh sách nhiệm vụ và nhiệm vụ được chọn
   const [missions, setMissions] = useState([]);
   const [selectedMission, setSelectedMission] = useState(null);
@@ -39,6 +51,10 @@ function RescueTeamDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [updating, setUpdating] = useState(false);
+  const [currentUser, setCurrentUser] = useState(() => authService.getUserInfo());
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const userMenuRef = React.useRef(null);
+  const roleLabel = ROLE_LABEL_MAP[String(currentUser?.role ?? '').toUpperCase()] || currentUser?.role || '-';
 
   // ============================================
   // Fetch missions từ API
@@ -74,6 +90,19 @@ function RescueTeamDashboard() {
     }, 30000);
     
     return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const handleOutsideClick = (event) => {
+      if (!userMenuRef.current?.contains(event.target)) {
+        setShowUserMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
   }, []);
 
   const handleSort = (key) => {
@@ -130,6 +159,17 @@ function RescueTeamDashboard() {
 
   const handleBackToList = () => {
     setSelectedMission(null);
+  };
+
+  const handleToggleUserMenu = () => {
+    setShowUserMenu((prev) => !prev);
+  };
+
+  const handleLogout = () => {
+    authService.logout();
+    setCurrentUser(null);
+    setShowUserMenu(false);
+    navigate('/login', { replace: true });
   };
 
   const handleViewMap = (mission) => {
@@ -192,6 +232,48 @@ function RescueTeamDashboard() {
       {/* Header */}
       <header className="rescue-header">
         <h1>Hệ Thống Quản Lí Cứu Hộ Cứu Trợ Lũ Lụt</h1>
+        <div className="rescue-header-actions">
+          <div className="rescue-user-group" ref={userMenuRef}>
+            <button
+              type="button"
+              className="rescue-icon-button"
+              onClick={handleToggleUserMenu}
+              aria-label="Thông tin người dùng"
+            >
+              <UserCircleIcon className="rescue-header-icon" />
+            </button>
+            <button
+              type="button"
+              className="rescue-icon-button logout"
+              onClick={handleLogout}
+              aria-label="Đăng xuất"
+            >
+              <ArrowLeftOnRectangleIcon className="rescue-header-icon" />
+            </button>
+
+            {showUserMenu && (
+              <div className="rescue-user-menu">
+                <h3>Thông tin tài khoản</h3>
+                <div className="rescue-user-row">
+                  <span>Tên tài khoản</span>
+                  <strong>{currentUser?.username || '-'}</strong>
+                </div>
+                <div className="rescue-user-row">
+                  <span>Họ tên</span>
+                  <strong>{currentUser?.fullName || '-'}</strong>
+                </div>
+                <div className="rescue-user-row">
+                  <span>Email</span>
+                  <strong>{currentUser?.email || '-'}</strong>
+                </div>
+                <div className="rescue-user-row">
+                  <span>Vai trò</span>
+                  <strong>{roleLabel}</strong>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </header>
 
       {/* Content */}
@@ -353,8 +435,10 @@ function RescueTeamDashboard() {
                     className="btn-back" 
                     onClick={handleBackToList}
                     disabled={updating}
+                    aria-label="Quay lại"
+                    title="Quay lại"
                   >
-                    Quay lại
+                    <ArrowLeftIcon className="btn-back-icon" />
                   </button>
                   
                   <button 

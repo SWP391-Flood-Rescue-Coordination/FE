@@ -1,10 +1,19 @@
 import api from './api'
 
-const COORDINATOR_BASE = '/Coordinator'
+const REQUEST_BASE = '/RescueRequest'
+const TEAM_BASE = '/rescue-team/status'
+const PRIORITY_LEVELS = [
+  { priorityLevelId: 1, priorityName: 'Cao' },
+  { priorityLevelId: 2, priorityName: 'Trung bình' },
+  { priorityLevelId: 3, priorityName: 'Thấp' },
+]
 
 const unwrapApiData = (response) => {
   if (response?.data?.data !== undefined) {
     return response.data.data
+  }
+  if (response?.data?.Data !== undefined) {
+    return response.data.Data
   }
   return response?.data
 }
@@ -21,6 +30,7 @@ const STATUS_TO_API_VALUE = {
   CANCELLED: 'Cancelled',
   CANCELED: 'Cancelled',
   DUPLICATE: 'Duplicate',
+  DUPLICATED: 'Duplicate',
 }
 
 const toApiStatusValue = (status) => {
@@ -56,18 +66,15 @@ const coordinatorService = {
     if (priorityId !== null && priorityId !== undefined && priorityId !== '') {
       params.priorityId = Number(priorityId)
     }
-    const response = await api.get(`${COORDINATOR_BASE}/all-requests`, { params })
+    const response = await api.get(`${REQUEST_BASE}`, { params })
     return normalizeArray(unwrapApiData(response))
   },
 
-  getPriorityLevels: async () => {
-    const response = await api.get(`${COORDINATOR_BASE}/priority-levels`)
-    return normalizeArray(unwrapApiData(response))
-  },
+  getPriorityLevels: async () => PRIORITY_LEVELS,
 
   getRescueTeams: async (status = '') => {
-    const params = status ? { status } : undefined
-    const response = await api.get(`${COORDINATOR_BASE}/teams`, { params })
+    const params = status ? { status: String(status).trim().toUpperCase() } : undefined
+    const response = await api.get(TEAM_BASE, { params })
     return normalizeArray(unwrapApiData(response))
   },
 
@@ -79,7 +86,7 @@ const coordinatorService = {
 
   getAvailableRescueTeams: async (status = '') => {
     const params = status ? { status: String(status).trim().toUpperCase() } : undefined
-    const response = await api.get(`${COORDINATOR_BASE}/status-with-teams`, { params })
+    const response = await api.get(TEAM_BASE, { params })
     return normalizeArray(unwrapApiData(response))
   },
 
@@ -93,7 +100,14 @@ const coordinatorService = {
       status: 'Verified',
       priorityLevelId: Number(priorityLevelId),
     }
-    const response = await api.put(`${COORDINATOR_BASE}/update-request/${requestId}`, payload)
+    const response = await api.put(`${REQUEST_BASE}/${requestId}/set-priority-and-verify`, payload)
+    return unwrapApiData(response)
+  },
+
+  markRequestDuplicate: async (requestId) => {
+    const response = await api.put(`${REQUEST_BASE}/${requestId}/status`, {
+      status: 'Duplicate',
+    })
     return unwrapApiData(response)
   },
 

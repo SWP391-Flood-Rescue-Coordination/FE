@@ -251,7 +251,7 @@ function ManagerDashboardPage() {
     return (
       <div className="manager-dashboard">
         <header className="manager-header">
-          <h1>Manager Dashboard</h1>
+          <h1>Hệ Thống Quản Lí Cứu Hộ Cứu Trợ Lũ Lụt</h1>
           <div className="header-actions">
             <button className="logout-button" onClick={handleLogout}>
               <ArrowLeftOnRectangleIcon className="icon" />
@@ -272,7 +272,7 @@ function ManagerDashboardPage() {
   return (
     <div className="manager-dashboard">
       <header className="manager-header">
-        <h1>Manager Dashboard</h1>
+        <h1>Hệ Thống Quản Lí Cứu Hộ Cứu Trợ Lũ Lụt</h1>
         <div className="header-buttons">
           <button className="btn-create-receipt" onClick={handleNavigateToImportReceipt}>
             <ClipboardDocumentListIcon className="icon" />

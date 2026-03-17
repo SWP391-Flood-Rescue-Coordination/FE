@@ -29,9 +29,8 @@ const ForgotPassword = ({ onClose, onShowLogin }) => {
     <div className="forgot-password-container">
       <div className="forgot-password-header">
         {onClose && (
-          <button className="close-button" onClick={onClose}>
+          <button className="close-button" onClick={onClose} aria-label="Về trang chủ" title="Về trang chủ">
             <span className="arrow-icon">←</span>
-            Về trang chủ
           </button>
         )}
       </div>

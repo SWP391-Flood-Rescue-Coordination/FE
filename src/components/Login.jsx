@@ -73,9 +73,8 @@ const Login = ({ onClose, onShowForgotPassword, onShowRegister, onLoginSuccess }
     <div className="login-container">
       <div className="login-header">
         {onClose && (
-          <button className="close-button" onClick={onClose} disabled={loading}>
+          <button className="close-button" onClick={onClose} disabled={loading} aria-label="Về trang chủ" title="Về trang chủ">
             <span className="arrow-icon">←</span>
-            Về trang chủ
           </button>
         )}
       </div>

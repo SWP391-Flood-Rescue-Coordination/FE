@@ -22,6 +22,7 @@ function AdminUsersPage() {
   const isAuthenticated = authService.isAuthenticated()
   const roleKey = normalizeRole(currentUser?.role)
   const hasAdminAccess = isAuthenticated && roleKey === 'ADMIN'
+  const currentUserId = Number(currentUser?.userId)
   const fallbackHomeRoute = HOME_ROUTE_BY_ROLE[roleKey] || '/'
 
   const handleUnauthorized = useCallback(
@@ -133,6 +134,13 @@ function AdminUsersPage() {
   const handleUpdateRole = async (user) => {
     const nextRole = normalizeRole(draftRoles[user.userId] || user.role)
     if (!nextRole || nextRole === normalizeRole(user.role)) {
+      return
+    }
+
+    const restriction = adminService.getRoleUpdateRestriction(user, currentUserId, nextRole)
+    if (restriction) {
+      setErrorMessage(restriction)
+      setSuccessMessage('')
       return
     }
 
@@ -267,9 +275,22 @@ function AdminUsersPage() {
 
               {displayedUsers.map((user) => {
                 const isCurrentAdmin = Number(user.userId) === Number(currentUser?.userId)
-                const selectedRole = draftRoles[user.userId] || normalizeRole(user.role)
+                const currentRole = normalizeRole(user.role)
+                const selectedRole = normalizeRole(draftRoles[user.userId] || user.role)
                 const isRoleUpdating = updatingRoleUserId === user.userId
                 const isStatusUpdating = updatingStatusUserId === user.userId
+                const roleRestriction = adminService.getRoleUpdateRestriction(user, currentUserId)
+                const selectedRoleRestriction = adminService.getRoleUpdateRestriction(user, currentUserId, selectedRole)
+                const roleOptions = roles.filter((role) => {
+                  const roleValue = normalizeRole(role.value)
+                  return roleValue === currentRole || adminService.isAssignableRole(roleValue)
+                })
+                const isRoleSelectDisabled = Boolean(roleRestriction) || isRoleUpdating || isStatusUpdating
+                const isRoleActionDisabled =
+                  isRoleUpdating ||
+                  isStatusUpdating ||
+                  selectedRole === currentRole ||
+                  Boolean(selectedRoleRestriction)
 
                 return (
                   <tr key={user.userId}>
@@ -277,7 +298,7 @@ function AdminUsersPage() {
                     <td>
                       <div className="admin-main-cell">
                         <strong>{user.username || '-'}</strong>
-                        {isCurrentAdmin && <span className="admin-inline-tag">Tài khoản hiện tại</span>}
+                        {isCurrentAdmin && <span className="admin-inline-tag">Đang đăng nhập</span>}
                       </div>
                     </td>
                     <td>{user.fullName || '-'}</td>
@@ -295,14 +316,15 @@ function AdminUsersPage() {
                             [user.userId]: event.target.value,
                           }))
                         }
-                        disabled={isRoleUpdating || isStatusUpdating}
+                        disabled={isRoleSelectDisabled}
                       >
-                        {roles.map((role) => (
+                        {roleOptions.map((role) => (
                           <option key={role.value} value={role.value}>
                             {role.label}
                           </option>
                         ))}
                       </select>
+                      {roleRestriction && <div className="admin-cell-note">{roleRestriction}</div>}
                     </td>
                     <td>
                       <span className={`admin-badge ${user.isActive ? 'active' : 'inactive'}`}>
@@ -316,7 +338,8 @@ function AdminUsersPage() {
                           type="button"
                           className="admin-primary-button small"
                           onClick={() => handleUpdateRole(user)}
-                          disabled={isRoleUpdating || isStatusUpdating || selectedRole === normalizeRole(user.role)}
+                          disabled={isRoleActionDisabled}
+                          title={selectedRoleRestriction || ''}
                         >
                           {isRoleUpdating ? 'Đang lưu...' : 'Cập nhật vai trò'}
                         </button>
