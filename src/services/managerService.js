@@ -170,7 +170,8 @@ const normalizeImportReceipt = (entry, supplyNameMap) => {
     receiptId: entry.id,
     type: 'import',
     source: entry.fromTo || 'Không rõ nguồn',
-    receiveAddress: entry.note || '',
+    note: extractNoteOnly(entry.note),
+    receiveAddress: extractAddressOnly(entry.note),
     createdAt: entry.date,
     createdBy: '-',
     totalItems: items.length,
@@ -184,12 +185,27 @@ const normalizeExportReceipt = (entry, supplyNameMap) => {
     receiptId: entry.id,
     type: 'export',
     destination: entry.fromTo || 'Không rõ đơn vị nhận',
-    recipientAddress: entry.note || '',
+    note: extractNoteOnly(entry.note),
+    recipientAddress: extractAddressOnly(entry.note),
     createdAt: entry.date,
     createdBy: '-',
     totalItems: items.length,
     items,
   }
+
+}
+
+// Helper để tách địa chỉ và ghi chú
+function extractAddressOnly(note) {
+  if (!note) return '';
+  const addressMatch = note.match(/^Địa điểm nhận: ([^|]+)\s*\|/);
+  return addressMatch ? addressMatch[1].trim() : '';
+}
+
+function extractNoteOnly(note) {
+  if (!note) return '';
+  const noteMatch = note.match(/\|\s*Ghi chú:\s*(.*)$/);
+  return noteMatch ? noteMatch[1].trim() : note;
 }
 
 const createNotImplementedError = (message) => {
@@ -661,7 +677,7 @@ const managerService = {
     try {
       const body = {
         source: String(payload?.source ?? payload?.fromTo ?? '').trim(),
-        note: String(payload?.receive_address ?? payload?.receiveAddress ?? payload?.location ?? payload?.note ?? '').trim(),
+        note: String(payload?.note ?? '').trim(),
         items: normalizeReceiptItemsInput(payload?.items),
       }
 

@@ -527,3 +527,45 @@
     gap: 0.35rem;
   }
 }
+
+.manager-relief-export-page .form-field {
+  background: transparent;
+  border: none;
+  border-radius: 16px;
+  padding: 0.95rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.manager-relief-export-page .form-field textarea {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1.1rem;
+  font-size: 1rem;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: #374151;
+  outline: none;
+  width: 100%;
+  min-height: 120px;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Style riêng cho bảng ghi chú */
+.manager-relief-export-page .note-table-container {
+  margin-top: 1.2rem;
+}
+
+.manager-relief-export-page .note-table {
+  width: 100%;
+  border-radius: 14px;
+  background: #f9fafb;
+  border: 1px solid #f1f5f9;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+}
+
+.manager-relief-export-page .note-table td {
+  font-size: 1rem;
+  color: #374151;
+  padding: 1.1rem;
+}
