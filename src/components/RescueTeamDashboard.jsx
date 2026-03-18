@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import './RescueTeamDashboard.css';
 import rescueTeamService from '../services/rescueTeamService';
 import { useNavigate } from 'react-router-dom';

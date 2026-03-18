@@ -249,6 +249,15 @@ function ViewRequest({ onClose, requestData, requestId }) {
       return;
     }
 
+    // Validate số người, người già, trẻ em
+    const totalPeople = Number.parseInt(formData.totalPeople || '0', 10);
+    const elderly = Number.parseInt(formData.elderly || '0', 10);
+    const children = Number.parseInt(formData.children || '0', 10);
+    if (totalPeople < elderly + children) {
+      setErrorMessage('Số người phải lớn hơn hoặc bằng tổng số người già và trẻ em.');
+      return;
+    }
+
     if (!isAuthenticated && !canGuestEdit) {
       setErrorMessage('Không tìm thấy mã yêu cầu để chỉnh sửa yêu cầu guest.');
       setIsEditing(false);
