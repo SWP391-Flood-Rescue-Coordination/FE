@@ -587,18 +587,21 @@ const managerService = {
   createReliefExportOrder: async (payload) => {
     try {
       const body = {
+        teamId: toNumber(payload?.teamId ?? payload?.recipientUnitId ?? 1),
         destination: String(payload?.destination ?? payload?.recipientAddress ?? payload?.address ?? '').trim(),
         note: String(payload?.notes ?? payload?.note ?? '').trim(),
-        items: normalizeArray(payload?.items ?? payload?.supplyItems)
+        items: normalizeArray(payload?.supplyItems)
           .map((item) => ({
-            itemId: toNumber(item?.itemId ?? item?.supplyId),
+            itemId: toNumber(item?.supplyId ?? item?.itemId),
             quantity: toNumber(item?.quantity),
           }))
           .filter((item) => Number.isFinite(item.itemId) && Number.isFinite(item.quantity) && item.quantity > 0),
+        vehicleIds: normalizeArray(payload?.vehicleIds).map((id) => toNumber(id)).filter(Number.isFinite),
       }
 
       console.log('[managerService] createReliefExportOrder REQUEST BODY:', JSON.stringify(body, null, 2))
       console.log('[managerService] createReliefExportOrder Items Detail:', body.items)
+      console.log('[managerService] createReliefExportOrder VehicleIds:', body.vehicleIds)
 
       const response = await api.post('/StockHistory/export', body)
       
@@ -658,8 +661,8 @@ const managerService = {
     try {
       const body = {
         source: String(payload?.source ?? payload?.fromTo ?? '').trim(),
-        note: String(payload?.note ?? payload?.receive_address ?? payload?.receiveAddress ?? payload?.location ?? '').trim(),
-        items: normalizeReceiptItemsInput(payload?.items ?? payload?.supplyItems),
+        note: String(payload?.receive_address ?? payload?.receiveAddress ?? payload?.location ?? payload?.note ?? '').trim(),
+        items: normalizeReceiptItemsInput(payload?.items),
       }
 
       console.log('[managerService] createImportReceipt REQUEST:', {

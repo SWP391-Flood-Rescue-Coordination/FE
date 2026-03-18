@@ -11,6 +11,8 @@ const INITIAL_FORM_DATA = {
   location: '',
   address: '',
   totalPeople: '',
+  elderly: '',
+  children: '',
   conditions: {
     needSupplies: false,
     houseCollapsed: false,
@@ -23,6 +25,10 @@ const INITIAL_FORM_DATA = {
 }
 
 const sanitizeNumberText = (value) => String(value ?? '').replace(/[^0-9]/g, '')
+
+function isVietnamesePhoneNumber(number) {
+  return /^(\+84|84|0)(3|5|7|8|9|1[2689])[0-9]{8}$/.test(number);
+}
 
 function RequestForm({ onClose }) {
   const [formData, setFormData] = useState(() => ({
@@ -192,6 +198,12 @@ function RequestForm({ onClose }) {
       return
     }
 
+    // Validate phone
+    if (!isVietnamesePhoneNumber(formData.phone)) {
+      setErrorMessage('Số điện thoại không hợp lệ!')
+      return
+    }
+
     const validation = rescueRequestService.validateCreatePayloadInput(formData)
     if (!validation.valid) {
       setErrorMessage(validation.message)
@@ -252,6 +264,11 @@ function RequestForm({ onClose }) {
                   onChange={(event) => {
                     const numericValue = sanitizeNumberText(event.target.value)
                     setFormData((prev) => ({ ...prev, phone: numericValue }))
+                    if (!isVietnamesePhoneNumber(numericValue)) {
+                      setErrorMessage('Số điện thoại không hợp lệ!')
+                    } else {
+                      setErrorMessage('')
+                    }
                   }}
                   disabled={isSubmitting}
                   required
@@ -260,20 +277,15 @@ function RequestForm({ onClose }) {
 
               <div className="form-field">
                 <label>Vị trí</label>
-                <div className="location-group">
-                  <input
-                    type="text"
-                    value={formData.location}
-                    onChange={(event) => setFormData((prev) => ({ ...prev, location: event.target.value }))}
-                    placeholder="Ví dụ: 10.762622,106.660172"
-                    disabled={isSubmitting}
-                    required
-                  />
-                  <button type="button" className="location-btn" disabled={isSubmitting} onClick={handleOpenMap}>
-                    Chọn vị trí
-                  </button>
-                </div>
-                <small className="request-input-hint">Nhập theo định dạng: vĩ độ,kinh độ</small>
+                <input
+                  type="text"
+                  value={formData.location}
+                  placeholder="Ví dụ: 10.762622,106.660172"
+                  disabled={true}
+                  required
+                  style={{ width: '100%', background: '#e0e3e9', color: '#555', cursor: 'not-allowed' }}
+                />
+                <small className="request-input-hint">Chỉ chọn trên bản đồ</small>
               </div>
 
               {/* Interactive Map */}
@@ -308,20 +320,52 @@ function RequestForm({ onClose }) {
                 />
               </div>
 
-              <div className="form-field people-count-field">
-                <label>Số lượng người ảnh hưởng</label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  min="0"
-                  value={formData.totalPeople}
-                  onChange={(event) => {
-                    const numericValue = sanitizeNumberText(event.target.value)
-                    setFormData((prev) => ({ ...prev, totalPeople: numericValue }))
-                  }}
-                  disabled={isSubmitting}
-                />
+              <div className="form-field people-group">
+                <div className="form-field-inline">
+                  <label>Số người</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    min="0"
+                    value={formData.totalPeople}
+                    onChange={(event) => {
+                      const numericValue = sanitizeNumberText(event.target.value)
+                      setFormData((prev) => ({ ...prev, totalPeople: numericValue }))
+                    }}
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <div className="form-field-inline">
+                  <label>Người già</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    min="0"
+                    value={formData.elderly}
+                    onChange={(event) => {
+                      const numericValue = sanitizeNumberText(event.target.value)
+                      setFormData((prev) => ({ ...prev, elderly: numericValue }))
+                    }}
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <div className="form-field-inline">
+                  <label>Trẻ em</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    min="0"
+                    value={formData.children}
+                    onChange={(event) => {
+                      const numericValue = sanitizeNumberText(event.target.value)
+                      setFormData((prev) => ({ ...prev, children: numericValue }))
+                    }}
+                    disabled={isSubmitting}
+                  />
+                </div>
               </div>
             </div>
 
@@ -402,6 +446,9 @@ function RequestForm({ onClose }) {
       </div>
     </div>
   )
+
+  
+
 }
 
 export default RequestForm

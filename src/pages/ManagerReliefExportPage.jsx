@@ -197,8 +197,9 @@ function ManagerReliefExportPage() {
         return
       }
 
-      if (!Number.isFinite(item.parsedQuantity) || item.parsedQuantity <= 0) {
-        next[key] = 'Số lượng phải lớn hơn 0.'
+      // Chỉ cho phép số nguyên dương
+      if (!Number.isFinite(item.parsedQuantity) || item.parsedQuantity <= 0 || !Number.isInteger(Number(item.rawQuantity))) {
+        next[key] = 'Sai định dạng vui lòng thử lại!'
         return
       }
 
@@ -294,16 +295,22 @@ function ManagerReliefExportPage() {
 
     try {
       await managerService.createReliefExportOrder({
+        teamId: toNumericIfPossible(selectedRecipient.id),
         destination: selectedRecipient.address || selectedRecipient.name,
         note: `Xuất cứu trợ cho ${selectedRecipient.name}`,
-        items: validSelectedSupplyItems.map((item) => ({
-          itemId: toNumericIfPossible(item.id),
+        supplyItems: validSelectedSupplyItems.map((item) => ({
+          supplyId: toNumericIfPossible(item.id),
           quantity: item.parsedQuantity,
         })),
+        vehicleIds: [1], // TODO: Thêm form chọn phương tiện - test với ID 1 tạm thời
       })
 
       setSuccessMessage('Tạo phiếu xuất kho thành công.')
-      resetForm()
+      // Reset form và chuyển trang sau 1.5 giây
+      setTimeout(() => {
+        resetForm()
+        navigate('/manager/import-receipts')
+      }, 1500)
       await fetchPageData()
     } catch (error) {
       if (error?.response?.status === 401) {
@@ -311,7 +318,11 @@ function ManagerReliefExportPage() {
         return
       }
 
-      setErrorMessage(managerService.getErrorMessage(error))
+      if (error?.response?.status === 404) {
+        setErrorMessage('API tạo phiếu xuất kho chưa sẵn sàng hoặc endpoint chưa được cấu hình.')
+      } else {
+        setErrorMessage(managerService.getErrorMessage(error))
+      }
     } finally {
       setIsSubmitting(false)
     }
@@ -346,7 +357,7 @@ function ManagerReliefExportPage() {
           Xuất kho cứu trợ
         </h1>
         <p className="page-description">
-          Chọn đơn vị nhận và danh sách vật tư trước khi gửi phiếu xuất kho.
+          Chọn đơn vị nhận, danh sách vật tư và phương tiện vận chuyển trước khi gửi phiếu xuất kho.
         </p>
       </header>
 
