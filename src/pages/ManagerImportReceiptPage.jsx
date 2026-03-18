@@ -75,7 +75,6 @@ function ManagerImportReceiptPage() {
   
   // Data from API
   const [supplies, setSupplies] = useState([])
-  const [categories, setCategories] = useState([])
   const [sourceOptions, setSourceOptions] = useState([])
   
   // Form data
@@ -84,48 +83,29 @@ function ManagerImportReceiptPage() {
   
   // Validation
   const [supplyValidationMap, setSupplyValidationMap] = useState({})
+  const [note, setNote] = useState('')
 
-  // Fetch danh sách vật tư và categories
+  // Fetch danh sách vật tư
   const fetchPageData = useCallback(async () => {
     setIsLoading(true)
     setErrorMessage('')
 
     try {
-      const [suppliesResult, categoriesResult] = await Promise.allSettled([
-        managerService.getSupplies(),
-        managerService.getCategories(),
-      ])
-
-      // Normalize supplies
-      let normalizedSupplies = []
-      if (suppliesResult.status === 'fulfilled' && Array.isArray(suppliesResult.value)) {
-        normalizedSupplies = suppliesResult.value
-          .map((item) => ({
-            id: item?.supplyId ?? item?.id,
-            name: String(item?.name ?? '').trim() || 'Không rõ tên',
-            type: String(item?.type ?? item?.categoryName ?? '').trim() || '-',
-            unit: String(item?.unit ?? '').trim() || 'cái',
-          }))
-          .filter((item) => item.id)
-      }
+      const suppliesResult = await managerService.getSupplies()
+      const normalizedSupplies = Array.isArray(suppliesResult)
+        ? suppliesResult
+            .map((item) => ({
+              id: item?.supplyId ?? item?.id,
+              name: String(item?.name ?? '').trim() || 'Không rõ tên',
+              type: String(item?.type ?? item?.categoryName ?? '').trim() || '-',
+              unit: String(item?.unit ?? '').trim() || 'cái',
+            }))
+            .filter((item) => item.id)
+        : []
       setSupplies(normalizedSupplies)
-
-      // Categories
-      if (categoriesResult.status === 'fulfilled' && Array.isArray(categoriesResult.value)) {
-        setCategories(categoriesResult.value)
-      } else {
-        setCategories([])
-      }
 
       // Use hardcoded import sources
       setSourceOptions(DEFAULT_IMPORT_SOURCES)
-
-      const hasRejected = [suppliesResult, categoriesResult].some(
-        (result) => result.status === 'rejected',
-      )
-      if (hasRejected) {
-        setErrorMessage('Không thể tải đầy đủ dữ liệu từ hệ thống. Vui lòng thử lại.')
-      }
     } catch (error) {
       console.error('Error fetching data:', error)
       setErrorMessage('Không thể tải dữ liệu. Vui lòng thử lại.')
@@ -271,10 +251,9 @@ function ManagerImportReceiptPage() {
     try {
       const payload = {
         source: selectedSource?.name || '',
-        receive_address: selectedSource?.address || '',
+        note: selectedSource?.address || '',
         items: selectedSupplyItems.map((item) => ({
-          item_id: item.id,
-          category_id: categories.find(c => c.name === item.type)?.categoryId || 1,
+          itemId: item.id,
           quantity: item.parsedQuantity,
         })),
       }
@@ -293,8 +272,7 @@ function ManagerImportReceiptPage() {
         navigate('/login', { replace: true })
         return
       }
-      const errorMsg = error?.response?.data?.message || 'Không thể tạo phiếu nhập kho. Vui lòng thử lại.'
-      setErrorMessage(errorMsg)
+      setErrorMessage(managerService.getErrorMessage(error))
     } finally {
       setIsSubmitting(false)
     }

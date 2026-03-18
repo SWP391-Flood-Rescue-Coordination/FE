@@ -294,14 +294,12 @@ function ManagerReliefExportPage() {
 
     try {
       await managerService.createReliefExportOrder({
-        teamId: toNumericIfPossible(selectedRecipient.id),
         destination: selectedRecipient.address || selectedRecipient.name,
         note: `Xuất cứu trợ cho ${selectedRecipient.name}`,
-        supplyItems: validSelectedSupplyItems.map((item) => ({
-          supplyId: toNumericIfPossible(item.id),
+        items: validSelectedSupplyItems.map((item) => ({
+          itemId: toNumericIfPossible(item.id),
           quantity: item.parsedQuantity,
         })),
-        vehicleIds: [1], // TODO: Thêm form chọn phương tiện - test với ID 1 tạm thời
       })
 
       setSuccessMessage('Tạo phiếu xuất kho thành công.')
@@ -313,11 +311,7 @@ function ManagerReliefExportPage() {
         return
       }
 
-      if (error?.response?.status === 404) {
-        setErrorMessage('API tạo phiếu xuất kho chưa sẵn sàng hoặc endpoint chưa được cấu hình.')
-      } else {
-        setErrorMessage(managerService.getErrorMessage(error))
-      }
+      setErrorMessage(managerService.getErrorMessage(error))
     } finally {
       setIsSubmitting(false)
     }
@@ -352,7 +346,7 @@ function ManagerReliefExportPage() {
           Xuất kho cứu trợ
         </h1>
         <p className="page-description">
-          Chọn đơn vị nhận, danh sách vật tư và phương tiện vận chuyển trước khi gửi phiếu xuất kho.
+          Chọn đơn vị nhận và danh sách vật tư trước khi gửi phiếu xuất kho.
         </p>
       </header>
 
