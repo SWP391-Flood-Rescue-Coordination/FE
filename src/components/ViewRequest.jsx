@@ -419,12 +419,11 @@ function ViewRequest({ onClose, requestData, requestId }) {
                 <input
                   type="text"
                   value={formData.location}
-                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  disabled={!isEditing}
+                  disabled={true}
                   required
                   style={{ width: '100%' }}
                 />
-                <small className="request-input-hint">Nhập theo định dạng: vĩ độ,kinh độ</small>
+                <small className="request-input-hint">Chỉ chọn trên bản đồ</small>
               </div>
 
               {/* Interactive Map */}
