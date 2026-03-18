@@ -627,7 +627,7 @@ const managerService = {
   getCategories: async () => {
     try {
       try {
-        // Endpoint không tồn tại trên backend, tạm skip
+        // Endpoint không tồn tại trên backend,  tạm skip
         throw new Error('Categories endpoint not implemented yet')
       } catch (categoriesError) {
         if (!isNotFoundError(categoriesError)) {

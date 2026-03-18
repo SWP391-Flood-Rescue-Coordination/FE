@@ -11,7 +11,9 @@ const EMPTY_FORM_DATA = {
   phone: '',
   location: '',
   address: '',
-  totalPeople: 0,
+  totalPeople: '',
+  elderly: '',
+  children: '',
   conditions: {
     needSupplies: false,
     houseCollapsed: false,
@@ -414,18 +416,14 @@ function ViewRequest({ onClose, requestData, requestId }) {
 
               <div className="form-field">
                 <label>Vị trí</label>
-                <div className="location-group">
-                  <input
-                    type="text"
-                    value={formData.location}
-                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                    disabled={!isEditing}
-                    required
-                  />
-                  <button type="button" className="location-btn" disabled={!isEditing} onClick={handleOpenMap}>
-                    Chọn vị trí
-                  </button>
-                </div>
+                <input
+                  type="text"
+                  value={formData.location}
+                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                  disabled={!isEditing}
+                  required
+                  style={{ width: '100%' }}
+                />
                 <small className="request-input-hint">Nhập theo định dạng: vĩ độ,kinh độ</small>
               </div>
 
@@ -462,15 +460,44 @@ function ViewRequest({ onClose, requestData, requestId }) {
               </div>
 
               <div className="form-field">
-                <label>Số người</label>
-                <input
-                  type="number"
-                  value={formData.totalPeople}
-                  onChange={(e) => setFormData({ ...formData, totalPeople: parseInt(e.target.value, 10) || 0 })}
-                  disabled={!isEditing}
-                  min="0"
-                  required
-                />
+                <div className="people-group">
+                  <div className="form-field-inline">
+                    <label>Số người</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      min="0"
+                      value={formData.totalPeople}
+                      onChange={(e) => setFormData({ ...formData, totalPeople: sanitizeNumberText(e.target.value) })}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                  <div className="form-field-inline">
+                    <label>Người già</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      min="0"
+                      value={formData.elderly}
+                      onChange={(e) => setFormData({ ...formData, elderly: sanitizeNumberText(e.target.value) })}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                  <div className="form-field-inline">
+                    <label>Trẻ em</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      min="0"
+                      value={formData.children}
+                      onChange={(e) => setFormData({ ...formData, children: sanitizeNumberText(e.target.value) })}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
 
