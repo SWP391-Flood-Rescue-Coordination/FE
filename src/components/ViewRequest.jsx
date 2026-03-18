@@ -212,9 +212,9 @@ function ViewRequest({ onClose, requestData, requestId }) {
     return statusMap[rescueRequestService.normalizeStatus(status)] || status;
   };
 
-// (removed duplicate map click event and trailing code)
-
-// (removed duplicate/partial handler definitions and code fragments)
+  const isVietnamesePhoneNumber = (number) => {
+    return /^(\+84|84|0)(3|5|7|8|9|1[2689])[0-9]{8}$/.test(number);
+  };
 
   const handleOpenMap = () => {
     const coordinates = rescueRequestService.parseCoordinates(formData.location);
@@ -240,6 +240,12 @@ function ViewRequest({ onClose, requestData, requestId }) {
     e.preventDefault();
 
     if (!isEditing) {
+      return;
+    }
+
+    // Validate phone
+    if (!isVietnamesePhoneNumber(formData.phone)) {
+      setErrorMessage('Số điện thoại không hợp lệ!');
       return;
     }
 
@@ -407,7 +413,15 @@ function ViewRequest({ onClose, requestData, requestId }) {
                 <input
                   type="tel"
                   value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  onChange={(e) => {
+                    const numericValue = sanitizeNumberText(e.target.value);
+                    setFormData({ ...formData, phone: numericValue });
+                    if (!isVietnamesePhoneNumber(numericValue)) {
+                      setErrorMessage('Số điện thoại không hợp lệ!');
+                    } else {
+                      setErrorMessage('');
+                    }
+                  }}
                   disabled={!isEditing}
                   required
                 />

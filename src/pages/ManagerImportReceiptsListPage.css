@@ -842,6 +842,25 @@
   font-weight: 800;
 }
 
+/* Note Table */
+.manager-import-receipts-list-page .note-table-container {
+  margin-top: 1.2rem;
+}
+
+.manager-import-receipts-list-page .note-table {
+  width: 100%;
+  border-radius: 16px;
+  background: #f9fafb;
+  border: 1px solid #f1f5f9;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.manager-import-receipts-list-page .note-table td {
+  font-size: 1rem;
+  color: #374151;
+  padding: 1.1rem;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .manager-import-receipts-list-page {

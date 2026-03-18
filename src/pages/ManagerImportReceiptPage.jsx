@@ -223,16 +223,14 @@ function ManagerImportReceiptPage() {
       [key]: value,
     })
     
-    // Validate
+    // Validate chỉ cho phép số nguyên dương
     const newValidation = { ...supplyValidationMap }
     const numericValue = toFiniteNumber(value)
-    
-    if (!value || !numericValue || numericValue <= 0) {
-      newValidation[key] = 'Số lượng phải lớn hơn 0'
+    if (!value || !numericValue || numericValue <= 0 || !Number.isInteger(Number(value))) {
+      newValidation[key] = 'Sai định dạng vui lòng thử lại!'
     } else {
       delete newValidation[key]
     }
-    
     setSupplyValidationMap(newValidation)
   }
 
@@ -272,6 +270,7 @@ function ManagerImportReceiptPage() {
       const payload = {
         source: selectedSource?.name || '',
         receive_address: selectedSource?.address || '',
+        note: note || '',
         items: selectedSupplyItems.map((item) => ({
           item_id: item.id,
           category_id: categories.find(c => c.name === item.type)?.categoryId || 1,
@@ -300,12 +299,14 @@ function ManagerImportReceiptPage() {
     }
   }
 
+  const [note, setNote] = useState('')
+
   if (isLoading) {
     return (
       <div className="manager-import-receipt-page">
         <button type="button" className="back-button" onClick={handleBack}>
           <ArrowLeftIcon className="icon" />
-          Quay lại
+          
         </button>
         <div className="page-loading">
           <div className="loading-spinner"></div>
@@ -319,7 +320,6 @@ function ManagerImportReceiptPage() {
     <div className="manager-import-receipt-page">
       <button type="button" className="back-button" onClick={handleBack}>
         <ArrowLeftIcon className="icon" />
-        Quay lại
       </button>
 
       <header className="page-header">
@@ -497,6 +497,19 @@ function ManagerImportReceiptPage() {
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* Ô ghi chú giống export */}
+            <label style={{fontSize: '0.98rem', color: '#111827', fontWeight: 700, marginBottom: '0.75rem', display: 'block'}}>Ghi chú (tùy chọn)</label>
+            <div className="form-field">
+              <textarea
+                rows="4"
+                value={note || ''}
+                onChange={e => setNote(e.target.value)}
+                placeholder="Nhập thêm thông tin chi tiết nếu cần..."
+                style={{ width: '100%' }}
+                disabled={isSubmitting}
+              />
             </div>
 
             <button

@@ -26,6 +26,10 @@ const INITIAL_FORM_DATA = {
 
 const sanitizeNumberText = (value) => String(value ?? '').replace(/[^0-9]/g, '')
 
+function isVietnamesePhoneNumber(number) {
+  return /^(\+84|84|0)(3|5|7|8|9|1[2689])[0-9]{8}$/.test(number);
+}
+
 function RequestForm({ onClose }) {
   const [formData, setFormData] = useState(() => ({
     ...INITIAL_FORM_DATA,
@@ -194,6 +198,12 @@ function RequestForm({ onClose }) {
       return
     }
 
+    // Validate phone
+    if (!isVietnamesePhoneNumber(formData.phone)) {
+      setErrorMessage('Số điện thoại không hợp lệ!')
+      return
+    }
+
     const validation = rescueRequestService.validateCreatePayloadInput(formData)
     if (!validation.valid) {
       setErrorMessage(validation.message)
@@ -254,6 +264,11 @@ function RequestForm({ onClose }) {
                   onChange={(event) => {
                     const numericValue = sanitizeNumberText(event.target.value)
                     setFormData((prev) => ({ ...prev, phone: numericValue }))
+                    if (!isVietnamesePhoneNumber(numericValue)) {
+                      setErrorMessage('Số điện thoại không hợp lệ!')
+                    } else {
+                      setErrorMessage('')
+                    }
                   }}
                   disabled={isSubmitting}
                   required
@@ -431,6 +446,9 @@ function RequestForm({ onClose }) {
       </div>
     </div>
   )
+
+  
+
 }
 
 export default RequestForm

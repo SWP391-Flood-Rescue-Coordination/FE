@@ -122,6 +122,7 @@ function ManagerReliefExportPage() {
   const [supplyQuantities, setSupplyQuantities] = useState({})
   const [errorMessage, setErrorMessage] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
+  const [note, setNote] = useState('')
 
   const fetchPageData = useCallback(async () => {
     setIsLoading(true)
@@ -197,8 +198,9 @@ function ManagerReliefExportPage() {
         return
       }
 
-      if (!Number.isFinite(item.parsedQuantity) || item.parsedQuantity <= 0) {
-        next[key] = 'Số lượng phải lớn hơn 0.'
+      // Chỉ cho phép số nguyên dương
+      if (!Number.isFinite(item.parsedQuantity) || item.parsedQuantity <= 0 || !Number.isInteger(Number(item.rawQuantity))) {
+        next[key] = 'Sai định dạng vui lòng thử lại!'
         return
       }
 
@@ -296,7 +298,7 @@ function ManagerReliefExportPage() {
       await managerService.createReliefExportOrder({
         teamId: toNumericIfPossible(selectedRecipient.id),
         destination: selectedRecipient.address || selectedRecipient.name,
-        note: `Xuất cứu trợ cho ${selectedRecipient.name}`,
+        note: note || `Xuất cứu trợ cho ${selectedRecipient.name}`,
         supplyItems: validSelectedSupplyItems.map((item) => ({
           supplyId: toNumericIfPossible(item.id),
           quantity: item.parsedQuantity,
@@ -305,7 +307,11 @@ function ManagerReliefExportPage() {
       })
 
       setSuccessMessage('Tạo phiếu xuất kho thành công.')
-      resetForm()
+      // Reset form và chuyển trang sau 1.5 giây
+      setTimeout(() => {
+        resetForm()
+        navigate('/manager/import-receipts')
+      }, 1500)
       await fetchPageData()
     } catch (error) {
       if (error?.response?.status === 401) {
@@ -328,7 +334,7 @@ function ManagerReliefExportPage() {
       <div className="manager-relief-export-page">
         <button type="button" className="back-button" onClick={handleBack}>
           <ArrowLeftIcon className="icon" />
-          Quay lại
+          
         </button>
         <div className="page-loading">
           <div className="loading-spinner"></div>
@@ -342,7 +348,7 @@ function ManagerReliefExportPage() {
     <div className="manager-relief-export-page">
       <button type="button" className="back-button" onClick={handleBack}>
         <ArrowLeftIcon className="icon" />
-        Quay lại
+        
       </button>
 
       <header className="page-header">
@@ -512,12 +518,25 @@ function ManagerReliefExportPage() {
               )}
             </div>
 
+            {/* Ô ghi chú giống UI RequestForm */}
+            <label style={{fontSize: '0.98rem', color: '#111827', fontWeight: 700, marginBottom: '0.75rem', display: 'block'}}>Ghi chú (tùy chọn)</label>
+            <div className="form-field">
+              <textarea
+                rows="4"
+                value={note || ''}
+                onChange={e => setNote(e.target.value)}
+                placeholder="Nhập thêm thông tin chi tiết nếu cần..."
+                style={{ width: '100%' }}
+                disabled={isSubmitting}
+              />
+            </div>
+
             <button type="button" className="submit-button" onClick={handleSubmit} disabled={!canSubmit}>
               {isSubmitting ? 'Đang tạo phiếu xuất kho...' : 'Gửi phiếu xuất kho'}
             </button>
 
             <p className="summary-note">
-              Không thể xuất kho khi chưa chọn đơn vị nhận hoặc vật tư hợp lệ.
+              
             </p>
           </section>
         </aside>

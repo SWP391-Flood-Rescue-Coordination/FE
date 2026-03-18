@@ -349,11 +349,7 @@ function ManagerImportReceiptsListPage() {
                           <span className="label">Nguồn gốc:</span>
                           <span className="value">{receipt.source}</span>
                         </div>
-
-                        <div className="receipt-info-row">
-                          <MapPinIcon className="icon-small" />
-                          <span className="value small">{receipt.receiveAddress}</span>
-                        </div>
+                        {/* Địa chỉ nhận đã ẩn khỏi danh sách */}
                       </>
                     ) : (
                       <>
@@ -361,11 +357,7 @@ function ManagerImportReceiptsListPage() {
                           <span className="label">Đơn vị nhận:</span>
                           <span className="value">{receipt.destination}</span>
                         </div>
-
-                        <div className="receipt-info-row">
-                          <MapPinIcon className="icon-small" />
-                          <span className="value small">{receipt.recipientAddress}</span>
-                        </div>
+                        {/* Địa chỉ nhận đã ẩn khỏi danh sách */}
                       </>
                     )}
 
@@ -472,6 +464,20 @@ function ManagerImportReceiptsListPage() {
                                 <td>{item.unit}</td>
                               </tr>
                             ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Bảng ghi chú */}
+                    <div className="detail-section">
+                      <h3>Ghi chú</h3>
+                      <div className="note-table-container">
+                        <table className="note-table">
+                          <tbody>
+                            <tr>
+                              <td style={{fontSize: '1rem', color: '#374151', padding: '1.1rem'}}>{selectedReceipt.note || 'Không có ghi chú.'}</td>
+                            </tr>
                           </tbody>
                         </table>
                       </div>
