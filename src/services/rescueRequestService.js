@@ -313,6 +313,10 @@ const getConfirmRescuedErrorMessage = (error) => {
     return data?.message || data?.Message || 'Khong tim thay yeu cau can xac nhan.'
   }
 
+  if (status === 410) {
+    return data?.message || data?.Message || 'Chuc nang xac nhan da duoc loai bo trong quy trinh moi.'
+  }
+
   if (status >= 500) {
     return 'He thong dang gap loi. Vui long thu lai sau.'
   }
