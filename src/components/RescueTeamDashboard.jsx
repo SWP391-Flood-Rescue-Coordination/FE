@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import './RescueTeamDashboard.css';
 import rescueTeamService from '../services/rescueTeamService';
 import { useNavigate } from 'react-router-dom';
@@ -51,6 +51,7 @@ function RescueTeamDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [updating, setUpdating] = useState(false);
+  const [updatingAction, setUpdatingAction] = useState('');
   const [currentUser, setCurrentUser] = useState(() => authService.getUserInfo());
   const [showUserMenu, setShowUserMenu] = useState(false);
   const userMenuRef = React.useRef(null);
@@ -59,15 +60,19 @@ function RescueTeamDashboard() {
   // ============================================
   // Fetch missions từ API
   // ============================================
-  const fetchMissions = async () => {
+  const fetchMissions = async ({ suppressError = false } = {}) => {
     try {
-      setError(null);
+      if (!suppressError) {
+        setError(null);
+      }
       const data = await rescueTeamService.getMyOperations();
       setMissions(data);
     } catch (err) {
       console.error('Error fetching missions:', err);
       const errorMessage = rescueTeamService.getOperationsErrorMessage(err);
-      setError(errorMessage);
+      if (!suppressError) {
+        setError(errorMessage);
+      }
       
       // Nếu 401, redirect về login
       if (err.response?.status === 401) {
@@ -177,37 +182,34 @@ function RescueTeamDashboard() {
     window.open(url, '_blank');
   };
 
-  const handleComplete = async () => {
+  const handleUpdateMission = async ({ nextStatus, confirmMessage, successMessage, actionKey }) => {
     const normalizedStatus = normalizeOperationStatus(selectedMission?.rawStatus);
-    const canComplete = normalizedStatus === 'ASSIGNED';
+    const canUpdate = normalizedStatus === 'ASSIGNED';
 
-    if (!canComplete) {
-      alert('Nhiệm vụ chưa ở trạng thái có thể xác nhận cứu hộ.');
+    if (!canUpdate) {
+      alert('Nhiệm vụ không còn ở trạng thái có thể xử lý.');
       return;
     }
 
-    if (!window.confirm('Xác nhận đội đã hoàn thành cứu hộ và chuyển yêu cầu sang trạng thái đã xác nhận?')) {
+    if (!window.confirm(confirmMessage)) {
       return;
     }
 
     setUpdating(true);
+    setUpdatingAction(actionKey);
     try {
-      // Luồng mới: Rescue Team xác nhận đã cứu hộ (Assigned -> Confirmed).
-      await rescueTeamService.updateOperationStatus(selectedMission.operationId, 'Confirmed');
+      await rescueTeamService.updateOperationStatus(selectedMission.operationId, nextStatus);
 
-      // Xóa khỏi danh sách nhiệm vụ đang xử lý của đội.
       setMissions((prev) => prev.filter((m) => m.id !== selectedMission.id));
       setSelectedMission(null);
-      alert('Đã xác nhận cứu hộ thành công! Người dân có thể xác nhận hoàn tất.');
+      alert(successMessage);
 
-      // Refresh lại danh sách
-      await fetchMissions();
+      fetchMissions({ suppressError: true });
     } catch (err) {
-      console.error('Error completing mission:', err);
+      console.error('Error updating mission:', err);
       const errorMessage = rescueTeamService.getUpdateStatusErrorMessage(err);
       alert(`Lỗi: ${errorMessage}`);
 
-      // Nếu 401, redirect về login
       if (err.response?.status === 401) {
         setTimeout(() => {
           window.location.href = '/login';
@@ -215,7 +217,26 @@ function RescueTeamDashboard() {
       }
     } finally {
       setUpdating(false);
+      setUpdatingAction('');
     }
+  };
+
+  const handleComplete = async () => {
+    await handleUpdateMission({
+      nextStatus: 'Completed',
+      confirmMessage: 'Xác nhận đội đã hoàn thành nhiệm vụ này và chuyển yêu cầu sang trạng thái hoàn tất?',
+      successMessage: 'Đã hoàn tất nhiệm vụ thành công.',
+      actionKey: 'complete',
+    });
+  };
+
+  const handleCancelMission = async () => {
+    await handleUpdateMission({
+      nextStatus: 'Cancelled',
+      confirmMessage: 'Xác nhận hủy nhiệm vụ này và chuyển yêu cầu sang trạng thái đã hủy?',
+      successMessage: 'Đã hủy nhiệm vụ thành công.',
+      actionKey: 'cancel',
+    });
   };
 
   const handleCopyCoordinates = (lat, lng) => {
@@ -441,12 +462,20 @@ function RescueTeamDashboard() {
                     <ArrowLeftIcon className="btn-back-icon" />
                   </button>
                   
+                  <button
+                    className="btn-cancel-mission"
+                    onClick={handleCancelMission}
+                    disabled={updating}
+                  >
+                    {updating && updatingAction === 'cancel' ? 'Đang xử lý...' : 'Hủy nhiệm vụ'}
+                  </button>
+
                   <button 
                     className="btn-complete" 
                     onClick={handleComplete}
                     disabled={updating}
                   >
-                    {updating ? 'Đang xử lý...' : 'Xác nhận cứu hộ'}
+                    {updating && updatingAction === 'complete' ? 'Đang xử lý...' : 'Hoàn tất nhiệm vụ'}
                   </button>
                 </div>
               </div>

@@ -359,11 +359,11 @@
   box-shadow: none;
 }
 
-/* Start Button */
-.btn-start {
+/* Cancel Mission Button */
+.btn-cancel-mission {
   flex: 1;
   padding: 18px;
-  background: linear-gradient(#007bff);
+  background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
   color: white;
   border: none;
   border-radius: 12px;
@@ -371,20 +371,19 @@
   font-weight: 700;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+  box-shadow: 0 4px 15px rgba(185, 28, 28, 0.3);
 }
 
-.btn-start:hover {
-  background: #0056b3;
+.btn-cancel-mission:hover {
   transform: translateY(-3px);
-  box-shadow: 0 8px 25px rgba(0, 123, 255, 0.4);
+  box-shadow: 0 8px 25px rgba(185, 28, 28, 0.4);
 }
 
-.btn-start:active {
+.btn-cancel-mission:active {
   transform: translateY(0);
 }
 
-.btn-start:disabled {
+.btn-cancel-mission:disabled {
   background: #cccccc;
   cursor: not-allowed;
   transform: none;
