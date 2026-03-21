@@ -238,12 +238,27 @@ function ViewRequest({ onClose, requestData, requestId }) {
     e.preventDefault();
 
     if (!isEditing) {
+
       return;
     }
 
     // Validate phone
     if (!isVietnamesePhoneNumber(formData.phone)) {
       setErrorMessage('Số điện thoại không hợp lệ!');
+      return;
+    }
+
+    // Validate people fields: totalPeople >= elderly + children
+    const totalPeople = Number.parseInt(String(formData.totalPeople ?? '').trim(), 10);
+    const elderly = Number.parseInt(String(formData.elderly ?? '').trim(), 10);
+    const children = Number.parseInt(String(formData.children ?? '').trim(), 10);
+    if (
+      Number.isFinite(totalPeople) &&
+      Number.isFinite(elderly) &&
+      Number.isFinite(children) &&
+      totalPeople < elderly + children
+    ) {
+      setErrorMessage('Số người phải lớn hơn hoặc bằng tổng số người già và trẻ em.');
       return;
     }
 
@@ -388,7 +403,6 @@ function ViewRequest({ onClose, requestData, requestId }) {
                 />
               </div>
 
-
               <div className="form-field">
                 <label>Vị trí</label>
                 <input
@@ -443,7 +457,10 @@ function ViewRequest({ onClose, requestData, requestId }) {
                       pattern="[0-9]*"
                       min="0"
                       value={formData.totalPeople}
-                      onChange={(e) => setFormData({ ...formData, totalPeople: sanitizeNumberText(e.target.value) })}
+                      onChange={isEditing ? (e) => {
+                        const numericValue = sanitizeNumberText(e.target.value);
+                        setFormData((prev) => ({ ...prev, totalPeople: numericValue }));
+                      } : undefined}
                       disabled={!isEditing}
                     />
                   </div>
@@ -455,7 +472,10 @@ function ViewRequest({ onClose, requestData, requestId }) {
                       pattern="[0-9]*"
                       min="0"
                       value={formData.elderly}
-                      onChange={(e) => setFormData({ ...formData, elderly: sanitizeNumberText(e.target.value) })}
+                      onChange={isEditing ? (e) => {
+                        const numericValue = sanitizeNumberText(e.target.value);
+                        setFormData((prev) => ({ ...prev, elderly: numericValue }));
+                      } : undefined}
                       disabled={!isEditing}
                     />
                   </div>
@@ -467,7 +487,10 @@ function ViewRequest({ onClose, requestData, requestId }) {
                       pattern="[0-9]*"
                       min="0"
                       value={formData.children}
-                      onChange={(e) => setFormData({ ...formData, children: sanitizeNumberText(e.target.value) })}
+                      onChange={isEditing ? (e) => {
+                        const numericValue = sanitizeNumberText(e.target.value);
+                        setFormData((prev) => ({ ...prev, children: numericValue }));
+                      } : undefined}
                       disabled={!isEditing}
                     />
                   </div>

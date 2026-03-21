@@ -240,6 +240,8 @@ const toRequestFormData = (requestItem) => {
     location: rawLocation || (hasCoordinates ? `${latitude},${longitude}` : ''),
     address: String(pickFirstMeaningful(requestItem?.address, requestItem?.Address) ?? '').trim(),
     totalPeople: hasMeaningfulValue(peopleValue) ? String(peopleValue).trim() : '',
+    elderly: pickFirstMeaningful(requestItem?.elderly, requestItem?.elderlyCount, requestItem?.ElderlyCount),
+    children: pickFirstMeaningful(requestItem?.children, requestItem?.childrenCount, requestItem?.ChildrenCount),
     conditions: hasConditionObject ? normalizeConditions(rawConditions) : inferConditionsFromDescription(description),
     notes: String(
       pickFirstMeaningful(
@@ -326,7 +328,14 @@ const getConfirmRescuedErrorMessage = (error) => {
 
 const buildCreatePayload = (formData) => {
   const { latitude, longitude } = parseCoordinates(formData?.location)
-  const peopleRaw = Number.parseInt(String(formData?.totalPeople ?? '').trim(), 10)
+  const totalPeople = Number.parseInt(String(formData?.totalPeople ?? '').trim(), 10)
+  const elderly = Number.parseInt(String(formData?.elderly ?? '').trim(), 10)
+  const children = Number.parseInt(String(formData?.children ?? '').trim(), 10)
+  let adultCount = null;
+  if (Number.isFinite(totalPeople) && Number.isFinite(elderly) && Number.isFinite(children)) {
+    adultCount = totalPeople - elderly - children;
+    if (adultCount < 0) adultCount = 0;
+  }
 
   return {
     title: buildTitle(formData?.conditions),
@@ -336,7 +345,9 @@ const buildCreatePayload = (formData) => {
     latitude,
     longitude,
     address: String(formData?.address ?? '').trim(),
-    numberOfPeople: Number.isFinite(peopleRaw) ? peopleRaw : null,
+    adultCount: Number.isFinite(adultCount) ? adultCount : null,
+    elderlyCount: Number.isFinite(elderly) ? elderly : null,
+    childrenCount: Number.isFinite(children) ? children : null,
   }
 }
 
@@ -355,6 +366,19 @@ const validateCreatePayloadInput = (formData) => {
   const address = String(formData?.address ?? '').trim()
   if (!address) {
     return { valid: false, message: 'Vui long nhap dia chi cu the.' }
+  }
+
+  // Validate people fields: totalPeople >= elderly + children
+  const totalPeople = Number.parseInt(String(formData?.totalPeople ?? '').trim(), 10)
+  const elderly = Number.parseInt(String(formData?.elderly ?? '').trim(), 10)
+  const children = Number.parseInt(String(formData?.children ?? '').trim(), 10)
+  if (
+    Number.isFinite(totalPeople) &&
+    Number.isFinite(elderly) &&
+    Number.isFinite(children) &&
+    totalPeople < elderly + children
+  ) {
+    return { valid: false, message: 'Số người phải lớn hơn hoặc bằng tổng số người già và trẻ em.' }
   }
 
   return { valid: true, message: '' }
