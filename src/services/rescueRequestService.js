@@ -368,6 +368,19 @@ const validateCreatePayloadInput = (formData) => {
     return { valid: false, message: 'Vui long nhap dia chi cu the.' }
   }
 
+  // Validate people fields: totalPeople >= elderly + children
+  const totalPeople = Number.parseInt(String(formData?.totalPeople ?? '').trim(), 10)
+  const elderly = Number.parseInt(String(formData?.elderly ?? '').trim(), 10)
+  const children = Number.parseInt(String(formData?.children ?? '').trim(), 10)
+  if (
+    Number.isFinite(totalPeople) &&
+    Number.isFinite(elderly) &&
+    Number.isFinite(children) &&
+    totalPeople < elderly + children
+  ) {
+    return { valid: false, message: 'Số người phải lớn hơn hoặc bằng tổng số người già và trẻ em.' }
+  }
+
   return { valid: true, message: '' }
 }
 

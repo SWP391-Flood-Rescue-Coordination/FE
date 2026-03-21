@@ -330,8 +330,8 @@ function RequestForm({ onClose }) {
                     min="0"
                     value={formData.totalPeople}
                     onChange={(event) => {
-                      const numericValue = sanitizeNumberText(event.target.value)
-                      setFormData((prev) => ({ ...prev, totalPeople: numericValue }))
+                      const numericValue = sanitizeNumberText(event.target.value);
+                      setFormData((prev) => ({ ...prev, totalPeople: numericValue }));
                     }}
                     disabled={isSubmitting}
                   />
@@ -345,8 +345,8 @@ function RequestForm({ onClose }) {
                     min="0"
                     value={formData.elderly}
                     onChange={(event) => {
-                      const numericValue = sanitizeNumberText(event.target.value)
-                      setFormData((prev) => ({ ...prev, elderly: numericValue }))
+                      const numericValue = sanitizeNumberText(event.target.value);
+                      setFormData((prev) => ({ ...prev, elderly: numericValue }));
                     }}
                     disabled={isSubmitting}
                   />
@@ -360,8 +360,8 @@ function RequestForm({ onClose }) {
                     min="0"
                     value={formData.children}
                     onChange={(event) => {
-                      const numericValue = sanitizeNumberText(event.target.value)
-                      setFormData((prev) => ({ ...prev, children: numericValue }))
+                      const numericValue = sanitizeNumberText(event.target.value);
+                      setFormData((prev) => ({ ...prev, children: numericValue }));
                     }}
                     disabled={isSubmitting}
                   />
