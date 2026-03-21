@@ -388,7 +388,6 @@ function ViewRequest({ onClose, requestData, requestId }) {
                 />
               </div>
 
-
               <div className="form-field">
                 <label>Vị trí</label>
                 <input
@@ -443,7 +442,6 @@ function ViewRequest({ onClose, requestData, requestId }) {
                       pattern="[0-9]*"
                       min="0"
                       value={formData.totalPeople}
-                      onChange={(e) => setFormData({ ...formData, totalPeople: sanitizeNumberText(e.target.value) })}
                       disabled={!isEditing}
                     />
                   </div>
@@ -455,7 +453,6 @@ function ViewRequest({ onClose, requestData, requestId }) {
                       pattern="[0-9]*"
                       min="0"
                       value={formData.elderly}
-                      onChange={(e) => setFormData({ ...formData, elderly: sanitizeNumberText(e.target.value) })}
                       disabled={!isEditing}
                     />
                   </div>
@@ -467,7 +464,6 @@ function ViewRequest({ onClose, requestData, requestId }) {
                       pattern="[0-9]*"
                       min="0"
                       value={formData.children}
-                      onChange={(e) => setFormData({ ...formData, children: sanitizeNumberText(e.target.value) })}
                       disabled={!isEditing}
                     />
                   </div>
