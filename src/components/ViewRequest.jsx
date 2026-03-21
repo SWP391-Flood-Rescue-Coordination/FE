@@ -30,23 +30,31 @@ function ViewRequest({ onClose, requestData, requestId }) {
   const isAuthenticated = authService.isAuthenticated();
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isReportingSafe, setIsReportingSafe] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [isSafeReported, setIsSafeReported] = useState(false);
   const [formData, setFormData] = useState(EMPTY_FORM_DATA);
 
   const normalizedStatus = rescueRequestService.normalizeStatus(formData.status);
   const isTerminal = rescueRequestService.isTerminalStatus(formData.status);
+  const displayNormalizedStatus =
+    normalizedStatus === 'COMPLETED' && !isSafeReported ? 'RESCUE_ARRIVED' : normalizedStatus;
+  const canAcknowledgeSafe =
+    normalizedStatus === 'COMPLETED' && !isSafeReported && !isLoading && !isReportingSafe;
 
   const canGuestEdit = useMemo(
     () => !isAuthenticated && Boolean(formData?.requestId),
     [isAuthenticated, formData?.requestId],
   );
 
-  const canStartEdit = !isTerminal && !isLoading;
+  const canStartEdit = normalizedStatus === 'PENDING' && !isLoading && !isReportingSafe;
 
   useEffect(() => {
     const loadRequestData = async () => {
       setIsLoading(true);
       setErrorMessage('');
+      setSuccessMessage('');
 
       try {
         let sourceData = null;
@@ -73,22 +81,32 @@ function ViewRequest({ onClose, requestData, requestId }) {
 
         if (!sourceData) {
           setFormData(EMPTY_FORM_DATA);
+          setIsSafeReported(false);
           setErrorMessage('Không tìm thấy yêu cầu cứu hộ nào.');
           return;
         }
 
         const formatted = rescueRequestService.toRequestFormData(sourceData);
+        const resolvedRequestIdForState =
+          formatted?.requestId ?? sourceData?.requestId ?? requestId ?? null;
+        const resolvedStatus = rescueRequestService.normalizeStatus(formatted?.status);
         setFormData({
           ...EMPTY_FORM_DATA,
           ...formatted,
-          requestId: formatted?.requestId ?? sourceData?.requestId ?? requestId ?? null,
+          requestId: resolvedRequestIdForState,
           accessCode: formatted?.accessCode ?? sourceData?.accessCode ?? null,
           conditions: {
             ...EMPTY_FORM_DATA.conditions,
             ...(formatted?.conditions || {}),
           },
         });
+        setIsSafeReported(
+          resolvedStatus === 'COMPLETED'
+            ? rescueRequestService.isSafeReportAcknowledged(resolvedRequestIdForState)
+            : false,
+        );
       } catch (error) {
+        setIsSafeReported(false);
         if (error?.response?.status === 404) {
           setErrorMessage('Không tìm thấy yêu cầu cứu hộ nào.');
         } else {
@@ -203,6 +221,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
       ASSIGNED: 'Đã phân công',
       IN_PROGRESS: 'Đang cứu hộ',
       CONFIRMED: 'Đã xác nhận',
+      RESCUE_ARRIVED: 'Đội cứu hộ đã đến',
       COMPLETED: 'Đã hoàn thành',
       CANCELLED: 'Đã hủy',
       DUPLICATE: 'Trùng lặp',
@@ -323,14 +342,54 @@ function ViewRequest({ onClose, requestData, requestId }) {
     e.preventDefault();
 
     if (!canStartEdit) {
-      if (isTerminal) {
-        setErrorMessage('Yêu cầu đã ở trạng thái kết thúc, không thể chỉnh sửa.');
-      }
       return;
     }
 
     setErrorMessage('');
+    setSuccessMessage('');
     setIsEditing(true);
+  };
+
+  const handleReportSafe = async () => {
+    if (!canAcknowledgeSafe) {
+      return;
+    }
+
+    const requestIdValue = formData.requestId;
+    if (!requestIdValue) {
+      setErrorMessage('Không tìm thấy yêu cầu để báo an toàn.');
+      return;
+    }
+
+    setIsReportingSafe(true);
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    try {
+      if (isAuthenticated) {
+        await rescueRequestService.confirmRescued(requestIdValue);
+      } else {
+        const phone = String(formData.phone ?? '').trim();
+        if (!phone) {
+          setErrorMessage('Không tìm thấy số điện thoại để báo an toàn.');
+          return;
+        }
+
+        await rescueRequestService.confirmRescuedAsGuest(requestIdValue, phone);
+      }
+
+      if (!rescueRequestService.markSafeReportAcknowledged(requestIdValue)) {
+        setErrorMessage('Không thể ghi nhận báo an toàn cho yêu cầu này.');
+        return;
+      }
+
+      setIsSafeReported(true);
+      setSuccessMessage('Báo an toàn thành công. Yêu cầu đã được đánh dấu hoàn tất.');
+    } catch (error) {
+      setErrorMessage(rescueRequestService.getConfirmRescuedErrorMessage(error));
+    } finally {
+      setIsReportingSafe(false);
+    }
   };
 
   const handleConditionChange = (condition) => {
@@ -356,7 +415,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
     });
   };
 
-  const editButtonDisabled = isEditing ? isLoading : !canStartEdit;
+  const editButtonDisabled = isEditing ? isLoading || isReportingSafe : !canStartEdit;
 
   return (
     <div className="request-overlay">
@@ -375,9 +434,15 @@ function ViewRequest({ onClose, requestData, requestId }) {
           </div>
         )}
 
+        {successMessage && (
+          <div className="request-feedback request-feedback-success">
+            {successMessage}
+          </div>
+        )}
+
         {!isLoading && formData.status && (
-          <div className={`status-banner status-${normalizedStatus.toLowerCase()}`}>
-            <strong>Trạng thái:</strong> {getStatusLabel(formData.status)}
+          <div className={`status-banner status-${displayNormalizedStatus.toLowerCase()}`}>
+            <strong>Trạng thái:</strong> {getStatusLabel(displayNormalizedStatus)}
           </div>
         )}
 
@@ -564,6 +629,15 @@ function ViewRequest({ onClose, requestData, requestId }) {
 
           <div className="form-actions">
             <button
+              type="button"
+              className="confirm-btn"
+              onClick={handleReportSafe}
+              disabled={!canAcknowledgeSafe}
+            >
+              Báo an toàn
+            </button>
+
+            <button
               type={isEditing ? 'submit' : 'button'}
               className={`submit-btn ${editButtonDisabled ? 'disabled' : ''}`}
               onClick={handleEditClick}
@@ -572,7 +646,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
               {isEditing ? 'Lưu thay đổi' : 'Chỉnh sửa'}
             </button>
 
-            <button type="button" className="cancel-btn" onClick={onClose} disabled={isLoading}>
+            <button type="button" className="cancel-btn" onClick={onClose} disabled={isLoading || isReportingSafe}>
               Đóng
             </button>
           </div>

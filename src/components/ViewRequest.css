@@ -42,11 +42,35 @@
 }
 
 .confirm-btn {
+  flex: 1;
+  padding: 14px;
   background-color: #16a34a;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
 }
 
 .confirm-btn:hover:not(:disabled) {
   background-color: #15803d;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(21, 128, 61, 0.35);
+}
+
+.confirm-btn:disabled {
+  background-color: #e5e5e5;
+  color: #999;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.confirm-btn:disabled:hover {
+  background-color: #e5e5e5;
+  transform: none;
+  box-shadow: none;
 }
 
 /* Status Banner */
@@ -93,6 +117,12 @@
 }
 
 .status-confirmed {
+  background-color: #ffedd5;
+  color: #9a3412;
+  border: 1px solid #fdba74;
+}
+
+.status-rescue_arrived {
   background-color: #ffedd5;
   color: #9a3412;
   border: 1px solid #fdba74;

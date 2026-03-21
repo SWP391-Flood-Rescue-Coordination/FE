@@ -57,6 +57,7 @@ function Dashboard() {
   const isAuthenticated = authService.isAuthenticated() && Boolean(currentUser)
   const roleKey = String(currentUser?.role ?? '').toUpperCase()
   const roleLabel = ROLE_LABEL_MAP[roleKey] || currentUser?.role || '-'
+  const isCitizen = isAuthenticated && roleKey === 'CITIZEN'
   const latestRequest = requestHistory[0] ?? null
   const latestRequestStatusMeta = latestRequest ? getRequestStatusMeta(latestRequest.status) : null
 
@@ -108,8 +109,6 @@ function Dashboard() {
     const loadRequestHistory = async () => {
       setIsLoadingHistory(true)
       try {
-        const isCitizen = isAuthenticated && roleKey === 'CITIZEN'
-
         if (isCitizen) {
           const requests = await rescueRequestService.getMyRequests()
           const history = requests.map((item) => buildHistoryItem(item)).filter(Boolean)
@@ -131,7 +130,7 @@ function Dashboard() {
     }
 
     loadRequestHistory()
-  }, [isAuthenticated, roleKey])
+  }, [isAuthenticated, isCitizen])
 
   useEffect(() => {
     const loadDashboardStatistics = async () => {
@@ -170,8 +169,6 @@ function Dashboard() {
     let intervalId = null
 
     const syncActiveRequestStatus = async () => {
-      const isCitizen = isAuthenticated && roleKey === 'CITIZEN'
-
       if (!isAuthenticated) {
         if (isMounted) {
           setIsPreparingRequestForm(true)
@@ -230,7 +227,7 @@ function Dashboard() {
 
     syncActiveRequestStatus()
 
-    if (isAuthenticated && roleKey === 'CITIZEN') {
+    if (isCitizen) {
       intervalId = window.setInterval(syncActiveRequestStatus, 30000)
     }
 
@@ -240,7 +237,7 @@ function Dashboard() {
         window.clearInterval(intervalId)
       }
     }
-  }, [isAuthenticated, roleKey])
+  }, [isAuthenticated, isCitizen])
 
   const handleToggleUserMenu = () => {
     setShowUserMenu((prev) => !prev)

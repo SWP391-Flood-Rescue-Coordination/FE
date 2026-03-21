@@ -11,6 +11,7 @@ const CONDITION_DESCRIPTION_MAP = {
 const TERMINAL_STATUSES = new Set(['COMPLETED', 'CANCELLED', 'CANCELED', 'DUPLICATE', 'DUPLICATED'])
 const GUEST_REQUEST_TRACKING_KEY = 'guestRescueRequestTracking'
 const GUEST_REQUEST_DETAILS_KEY = 'guestRescueRequestDetails'
+const SAFE_REPORT_ACK_KEY = 'rescueRequestSafeReportAck'
 
 const normalizeText = (value) => String(value ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 
@@ -300,7 +301,7 @@ const getConfirmRescuedErrorMessage = (error) => {
     if (validationMessages.length > 0) {
       return validationMessages.join(' ')
     }
-    return data?.message || data?.Message || 'Khong the xac nhan yeu cau nay.'
+    return data?.message || data?.Message || 'Khong the bao an toan cho yeu cau nay.'
   }
 
   if (status === 401) {
@@ -308,22 +309,22 @@ const getConfirmRescuedErrorMessage = (error) => {
   }
 
   if (status === 403) {
-    return data?.message || data?.Message || 'Ban khong co quyen xac nhan yeu cau nay.'
+    return data?.message || data?.Message || 'Ban khong co quyen bao an toan cho yeu cau nay.'
   }
 
   if (status === 404) {
-    return data?.message || data?.Message || 'Khong tim thay yeu cau can xac nhan.'
+    return data?.message || data?.Message || 'Khong tim thay yeu cau can bao an toan.'
   }
 
   if (status === 410) {
-    return data?.message || data?.Message || 'Chuc nang xac nhan da duoc loai bo trong quy trinh moi.'
+    return data?.message || data?.Message || 'Chuc nang bao an toan tam thoi khong kha dung.'
   }
 
   if (status >= 500) {
     return 'He thong dang gap loi. Vui long thu lai sau.'
   }
 
-  return data?.message || data?.Message || data?.title || 'Khong the xac nhan da duoc cuu ho.'
+  return data?.message || data?.Message || data?.title || 'Khong the bao an toan luc nay.'
 }
 
 const buildCreatePayload = (formData) => {
@@ -462,6 +463,43 @@ const storeGuestDetails = (details) => {
 
 const clearGuestDetails = () => {
   localStorage.removeItem(GUEST_REQUEST_DETAILS_KEY)
+}
+
+const parseSafeReportAck = (rawValue) => {
+  if (!rawValue) {
+    return {}
+  }
+
+  try {
+    const parsed = JSON.parse(rawValue)
+    return parsed && typeof parsed === 'object' ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+const getSafeReportAckMap = () => parseSafeReportAck(localStorage.getItem(SAFE_REPORT_ACK_KEY))
+
+const markSafeReportAcknowledged = (requestId) => {
+  const normalizedRequestId = toNullableInteger(requestId)
+  if (!normalizedRequestId) {
+    return false
+  }
+
+  const ackMap = getSafeReportAckMap()
+  ackMap[String(normalizedRequestId)] = true
+  localStorage.setItem(SAFE_REPORT_ACK_KEY, JSON.stringify(ackMap))
+  return true
+}
+
+const isSafeReportAcknowledged = (requestId) => {
+  const normalizedRequestId = toNullableInteger(requestId)
+  if (!normalizedRequestId) {
+    return false
+  }
+
+  const ackMap = getSafeReportAckMap()
+  return Boolean(ackMap[String(normalizedRequestId)])
 }
 
 const buildGuestDetailsFromForm = (formData, requestId = null, status = 'Pending', accessCode = null) => {
@@ -637,6 +675,8 @@ const rescueRequestService = {
   getGuestDetails,
   storeGuestDetails,
   clearGuestDetails,
+  markSafeReportAcknowledged,
+  isSafeReportAcknowledged,
 
   parseCoordinates,
   normalizeStatus,
