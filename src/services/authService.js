@@ -138,8 +138,8 @@ const authService = {
       return { valid: false, message: 'Email không đúng định dạng.' }
     }
 
-    if (passwordValue.length < 6 || passwordValue.length > 20) {
-      return { valid: false, message: 'Mật khẩu phải từ 6 đến 20 ký tự.' }
+    if (passwordValue.length < 5 || passwordValue.length > 20) {
+      return { valid: false, message: 'Mật khẩu phải từ 5 đến 20 ký tự.' }
     }
 
     if (passwordValue !== confirmPasswordValue) {

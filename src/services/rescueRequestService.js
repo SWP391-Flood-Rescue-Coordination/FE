@@ -673,6 +673,12 @@ const rescueRequestService = {
     return result
   },
 
+  updateMyRequest: async (requestId, formData) => {
+    const payload = buildGuestUpdatePayload(formData)
+    const response = await api.put(`/RescueRequest/${requestId}/update`, payload)
+    return response?.data ?? {}
+  },
+
   confirmRescued: async (requestId) => {
     const response = await api.put(`/RescueRequest/${requestId}/confirm-rescued`)
     return response?.data ?? {}

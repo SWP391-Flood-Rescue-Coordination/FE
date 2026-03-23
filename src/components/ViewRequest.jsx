@@ -287,7 +287,8 @@ function ViewRequest({ onClose, requestData, requestId }) {
       return;
     }
 
-    if (isAuthenticated && !canGuestEdit) {
+    if (isAuthenticated && !formData.requestId) {
+      setErrorMessage('Không tìm thấy yêu cầu để cập nhật.');
       // Luồng đã đăng nhập hiện chưa có API sửa riêng.
       // Giữ UI chỉnh sửa bình thường và đóng chế độ sửa tại FE.
       setIsEditing(false);
@@ -299,18 +300,22 @@ function ViewRequest({ onClose, requestData, requestId }) {
     setSuccessMessage('');
 
     try {
-      const updateResult = await rescueRequestService.updateGuestRequest(
-        formData.requestId,
-        formData,
-        formData.accessCode,
-      );
+      const updateResult = isAuthenticated
+        ? await rescueRequestService.updateMyRequest(formData.requestId, formData)
+        : await rescueRequestService.updateGuestRequest(
+            formData.requestId,
+            formData,
+            formData.accessCode,
+          );
 
       if (!updateResult?.success) {
         setErrorMessage(updateResult?.message || 'Không thể cập nhật yêu cầu.');
         return;
       }
 
-      const refreshed = await rescueRequestService.getTrackedGuestRequestStatus();
+      const refreshed = isAuthenticated
+        ? await rescueRequestService.getRequestById(formData.requestId)
+        : await rescueRequestService.getTrackedGuestRequestStatus();
       const formatted = rescueRequestService.toRequestFormData({
         ...refreshed,
         accessCode: formData.accessCode,

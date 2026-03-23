@@ -151,7 +151,7 @@ const Register = ({ onClose, onShowLogin }) => {
             <input
               type="password"
               id="password"
-              placeholder="Nhập mật khẩu (6-20 ký tự)"
+              placeholder="Nhập mật khẩu (5-20 ký tự)"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
