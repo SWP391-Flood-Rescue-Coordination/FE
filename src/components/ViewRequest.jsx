@@ -269,12 +269,12 @@ function ViewRequest({ onClose, requestData, requestId }) {
 
     // Validate people fields: totalPeople >= elderly + children
     const totalPeople = Number.parseInt(String(formData.totalPeople ?? '').trim(), 10);
-    const elderly = Number.parseInt(String(formData.elderly ?? '').trim(), 10);
-    const children = Number.parseInt(String(formData.children ?? '').trim(), 10);
+    const elderlyRaw = Number.parseInt(String(formData.elderly ?? '').trim(), 10);
+    const childrenRaw = Number.parseInt(String(formData.children ?? '').trim(), 10);
+    const elderly = Number.isFinite(elderlyRaw) ? elderlyRaw : 0;
+    const children = Number.isFinite(childrenRaw) ? childrenRaw : 0;
     if (
       Number.isFinite(totalPeople) &&
-      Number.isFinite(elderly) &&
-      Number.isFinite(children) &&
       totalPeople < elderly + children
     ) {
       setErrorMessage('Số người phải lớn hơn hoặc bằng tổng số người già và trẻ em.');
@@ -296,6 +296,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
 
     setIsLoading(true);
     setErrorMessage('');
+    setSuccessMessage('');
 
     try {
       const updateResult = await rescueRequestService.updateGuestRequest(
@@ -327,6 +328,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
       }));
 
       setIsEditing(false);
+      setSuccessMessage('Lưu thay đổi thành công.');
     } catch (error) {
       setErrorMessage(error?.response?.data?.message || 'Không thể cập nhật yêu cầu. Vui lòng thử lại.');
     } finally {

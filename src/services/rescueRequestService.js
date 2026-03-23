@@ -86,6 +86,30 @@ const toNullableInteger = (value) => {
   return Number.isFinite(numeric) ? numeric : null
 }
 
+const parsePeopleCounts = (formData) => {
+  const totalPeople = toNullableInteger(String(formData?.totalPeople ?? '').trim())
+  const elderlyRaw = toNullableInteger(String(formData?.elderly ?? '').trim())
+  const childrenRaw = toNullableInteger(String(formData?.children ?? '').trim())
+  const hasPeopleInput = totalPeople !== null || elderlyRaw !== null || childrenRaw !== null
+  const elderlyCount = elderlyRaw ?? (hasPeopleInput ? 0 : null)
+  const childrenCount = childrenRaw ?? (hasPeopleInput ? 0 : null)
+
+  let adultCount = null
+  if (totalPeople !== null) {
+    adultCount = totalPeople - elderlyCount - childrenCount
+    if (adultCount < 0) {
+      adultCount = 0
+    }
+  }
+
+  return {
+    totalPeople,
+    adultCount,
+    elderlyCount,
+    childrenCount,
+  }
+}
+
 const mergeGuestRequestData = (apiData, cachedDetails, tracking) => {
   const source = apiData && typeof apiData === 'object' ? apiData : {}
   const cached = cachedDetails && typeof cachedDetails === 'object' ? cachedDetails : {}
@@ -341,14 +365,7 @@ const getConfirmRescuedErrorMessage = (error) => {
 
 const buildCreatePayload = (formData) => {
   const { latitude, longitude } = parseCoordinates(formData?.location)
-  const totalPeople = Number.parseInt(String(formData?.totalPeople ?? '').trim(), 10)
-  const elderly = Number.parseInt(String(formData?.elderly ?? '').trim(), 10)
-  const children = Number.parseInt(String(formData?.children ?? '').trim(), 10)
-  let adultCount = null;
-  if (Number.isFinite(totalPeople) && Number.isFinite(elderly) && Number.isFinite(children)) {
-    adultCount = totalPeople - elderly - children;
-    if (adultCount < 0) adultCount = 0;
-  }
+  const { totalPeople, adultCount, elderlyCount, childrenCount } = parsePeopleCounts(formData)
 
   return {
     title: buildTitle(formData?.conditions),
@@ -358,9 +375,10 @@ const buildCreatePayload = (formData) => {
     latitude,
     longitude,
     address: String(formData?.address ?? '').trim(),
-    adultCount: Number.isFinite(adultCount) ? adultCount : null,
-    elderlyCount: Number.isFinite(elderly) ? elderly : null,
-    childrenCount: Number.isFinite(children) ? children : null,
+    numberOfPeople: totalPeople,
+    adultCount,
+    elderlyCount,
+    childrenCount,
   }
 }
 
@@ -383,12 +401,12 @@ const validateCreatePayloadInput = (formData) => {
 
   // Validate people fields: totalPeople >= elderly + children
   const totalPeople = Number.parseInt(String(formData?.totalPeople ?? '').trim(), 10)
-  const elderly = Number.parseInt(String(formData?.elderly ?? '').trim(), 10)
-  const children = Number.parseInt(String(formData?.children ?? '').trim(), 10)
+  const elderlyRaw = Number.parseInt(String(formData?.elderly ?? '').trim(), 10)
+  const childrenRaw = Number.parseInt(String(formData?.children ?? '').trim(), 10)
+  const elderly = Number.isFinite(elderlyRaw) ? elderlyRaw : 0
+  const children = Number.isFinite(childrenRaw) ? childrenRaw : 0
   if (
     Number.isFinite(totalPeople) &&
-    Number.isFinite(elderly) &&
-    Number.isFinite(children) &&
     totalPeople < elderly + children
   ) {
     return { valid: false, message: 'Số người phải lớn hơn hoặc bằng tổng số người già và trẻ em.' }
@@ -516,7 +534,7 @@ const isSafeReportAcknowledged = (requestId) => {
 
 const buildGuestDetailsFromForm = (formData, requestId = null, status = 'Pending', accessCode = null) => {
   const { latitude, longitude } = parseCoordinates(formData?.location)
-  const peopleRaw = Number.parseInt(String(formData?.totalPeople ?? '').trim(), 10)
+  const { totalPeople, adultCount, elderlyCount, childrenCount } = parsePeopleCounts(formData)
 
   return {
     requestId,
@@ -525,7 +543,11 @@ const buildGuestDetailsFromForm = (formData, requestId = null, status = 'Pending
     latitude,
     longitude,
     address: String(formData?.address ?? '').trim(),
-    numberOfPeople: Number.isFinite(peopleRaw) ? peopleRaw : null,
+    numberOfPeople: totalPeople,
+    numberOfAffectedPeople: totalPeople,
+    adultCount,
+    elderlyCount,
+    childrenCount,
     description: buildDescription(formData?.notes, formData?.conditions),
     status,
     updatedAt: new Date().toISOString(),
@@ -534,7 +556,7 @@ const buildGuestDetailsFromForm = (formData, requestId = null, status = 'Pending
 
 const buildGuestUpdatePayload = (formData) => {
   const { latitude, longitude } = parseCoordinates(formData?.location)
-  const peopleRaw = Number.parseInt(String(formData?.totalPeople ?? '').trim(), 10)
+  const { totalPeople, adultCount, elderlyCount, childrenCount } = parsePeopleCounts(formData)
 
   return {
     title: buildTitle(formData?.conditions),
@@ -543,7 +565,10 @@ const buildGuestUpdatePayload = (formData) => {
     latitude,
     longitude,
     address: String(formData?.address ?? '').trim(),
-    numberOfPeople: Number.isFinite(peopleRaw) ? peopleRaw : null,
+    numberOfPeople: totalPeople,
+    adultCount,
+    elderlyCount,
+    childrenCount,
   }
 }
 
