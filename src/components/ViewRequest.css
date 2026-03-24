@@ -73,6 +73,20 @@
   box-shadow: none;
 }
 
+.request-feedback-safe-prompt {
+  background-color: #f0fdf4;
+  border: 1px solid #86efac;
+  color: #166534;
+  font-size: 0;
+}
+
+.request-feedback-safe-prompt-text {
+  display: block;
+  font-size: 14px;
+  line-height: 1.55;
+  white-space: normal;
+}
+
 /* Status Banner */
 .status-banner {
   padding: 12px 20px;

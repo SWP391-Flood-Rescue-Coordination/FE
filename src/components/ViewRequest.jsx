@@ -26,8 +26,16 @@ const EMPTY_FORM_DATA = {
   canReportSafe: false,
 }
 
+const SAFE_PROMPT_MESSAGE =
+  'Đội cứu hộ đã xác nhận hoàn tất nhiệm vụ. Nếu bạn đã an toàn, vui lòng bấm "Báo an toàn" để đóng yêu cầu này.'
+const PEOPLE_COUNT_ERROR_MESSAGE = 'Số người phải lớn hơn hoặc bằng tổng số người già và trẻ em.'
+const PHONE_ERROR_MESSAGE = 'Số điện thoại không hợp lệ!'
+
 function ViewRequest({ onClose, requestData, requestId }) {
   const isAuthenticated = authService.isAuthenticated()
+  const currentUser = authService.getUserInfo()
+  const roleKey = String(currentUser?.role ?? '').toUpperCase()
+  const usesCitizenRequestFlow = isAuthenticated && roleKey === 'CITIZEN'
   const [isEditing, setIsEditing] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isReportingSafe, setIsReportingSafe] = useState(false)
@@ -40,8 +48,8 @@ function ViewRequest({ onClose, requestData, requestId }) {
   const canAcknowledgeSafe = canReportSafe && !isLoading && !isReportingSafe
 
   const canGuestEdit = useMemo(
-    () => !isAuthenticated && Boolean(formData?.requestId),
-    [isAuthenticated, formData?.requestId],
+    () => !usesCitizenRequestFlow && Boolean(formData?.requestId),
+    [usesCitizenRequestFlow, formData?.requestId],
   )
 
   const canStartEdit = normalizedStatus === 'PENDING' && !isLoading && !isReportingSafe
@@ -63,7 +71,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
           sourceData = requestData
         }
 
-        if (isAuthenticated) {
+        if (usesCitizenRequestFlow) {
           if (resolvedRequestId) {
             const detailData = await rescueRequestService.getRequestById(resolvedRequestId)
             sourceData = {
@@ -119,7 +127,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
     }
 
     loadRequestData()
-  }, [requestData, requestId, isAuthenticated])
+  }, [requestData, requestId, usesCitizenRequestFlow])
 
   const mapContainerRef = useRef(null)
   const mapRef = useRef(null)
@@ -239,6 +247,50 @@ function ViewRequest({ onClose, requestData, requestId }) {
 
   const isVietnamesePhoneNumber = (number) => /^(\+84|84|0)(3|5|7|8|9|1[2689])[0-9]{8}$/.test(number)
 
+  const hasInvalidPeopleCounts = (nextFormData) => {
+    const totalPeople = Number.parseInt(String(nextFormData.totalPeople ?? '').trim(), 10)
+    const elderlyRaw = Number.parseInt(String(nextFormData.elderly ?? '').trim(), 10)
+    const childrenRaw = Number.parseInt(String(nextFormData.children ?? '').trim(), 10)
+    const elderly = Number.isFinite(elderlyRaw) ? elderlyRaw : 0
+    const children = Number.isFinite(childrenRaw) ? childrenRaw : 0
+
+    return Number.isFinite(totalPeople) && totalPeople < elderly + children
+  }
+
+  const handlePeopleGroupBlur = (event) => {
+    if (!isEditing) {
+      return
+    }
+
+    if (!(event.target instanceof HTMLElement) || !event.target.closest('.people-group')) {
+      return
+    }
+
+    if (hasInvalidPeopleCounts(formData)) {
+      setErrorMessage(PEOPLE_COUNT_ERROR_MESSAGE)
+      return
+    }
+
+    setErrorMessage((currentMessage) =>
+      currentMessage === PEOPLE_COUNT_ERROR_MESSAGE ? '' : currentMessage,
+    )
+  }
+
+  const handlePhoneBlur = () => {
+    if (!isEditing) {
+      return
+    }
+
+    if (!isVietnamesePhoneNumber(formData.phone)) {
+      setErrorMessage(PHONE_ERROR_MESSAGE)
+      return
+    }
+
+    setErrorMessage((currentMessage) =>
+      currentMessage === PHONE_ERROR_MESSAGE ? '' : currentMessage,
+    )
+  }
+
   const handleSubmit = async (event) => {
     event.preventDefault()
 
@@ -251,14 +303,8 @@ function ViewRequest({ onClose, requestData, requestId }) {
       return
     }
 
-    const totalPeople = Number.parseInt(String(formData.totalPeople ?? '').trim(), 10)
-    const elderlyRaw = Number.parseInt(String(formData.elderly ?? '').trim(), 10)
-    const childrenRaw = Number.parseInt(String(formData.children ?? '').trim(), 10)
-    const elderly = Number.isFinite(elderlyRaw) ? elderlyRaw : 0
-    const children = Number.isFinite(childrenRaw) ? childrenRaw : 0
-
-    if (Number.isFinite(totalPeople) && totalPeople < elderly + children) {
-      setErrorMessage('Số người phải lớn hơn hoặc bằng tổng số người già và trẻ em.')
+    if (hasInvalidPeopleCounts(formData)) {
+      setErrorMessage(PEOPLE_COUNT_ERROR_MESSAGE)
       return
     }
 
@@ -268,7 +314,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
       return
     }
 
-    if (isAuthenticated && !formData.requestId) {
+    if (usesCitizenRequestFlow && !formData.requestId) {
       setErrorMessage('Không tìm thấy yêu cầu để cập nhật.')
       setIsEditing(false)
       return
@@ -279,7 +325,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
     setSuccessMessage('')
 
     try {
-      const updateResult = isAuthenticated
+      const updateResult = usesCitizenRequestFlow
         ? await rescueRequestService.updateMyRequest(formData.requestId, formData)
         : await rescueRequestService.updateGuestRequest(
             formData.requestId,
@@ -292,7 +338,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
         return
       }
 
-      const refreshed = isAuthenticated
+      const refreshed = usesCitizenRequestFlow
         ? await rescueRequestService.getRequestById(formData.requestId)
         : (await rescueRequestService.getTrackedGuestRequestStatus())
           || await rescueRequestService.getGuestRequestStatus(formData.requestId, formData.accessCode)
@@ -356,7 +402,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
     setSuccessMessage('')
 
     try {
-      if (isAuthenticated) {
+      if (usesCitizenRequestFlow) {
         await rescueRequestService.confirmRescued(requestIdValue)
       } else {
         const phone = String(formData.phone ?? '').trim()
@@ -368,7 +414,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
         await rescueRequestService.confirmRescuedAsGuest(requestIdValue, phone)
       }
 
-      const refreshed = isAuthenticated
+      const refreshed = usesCitizenRequestFlow
         ? await rescueRequestService.getRequestById(requestIdValue)
         : (await rescueRequestService.getTrackedGuestRequestStatus())
           || await rescueRequestService.getGuestRequestStatus(requestIdValue, formData.accessCode)
@@ -448,7 +494,8 @@ function ViewRequest({ onClose, requestData, requestId }) {
         )}
 
         {!isLoading && canReportSafe && (
-          <div className="request-feedback request-feedback-info">
+          <div className="request-feedback request-feedback-safe-prompt">
+            <span className="request-feedback-safe-prompt-text">{SAFE_PROMPT_MESSAGE}</span>
             Đội cứu hộ đã xác nhận hoàn tất. Vui lòng bấm &quot;Báo an toàn&quot; để đóng yêu cầu.
           </div>
         )}
@@ -459,7 +506,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
           </div>
         )}
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} onBlurCapture={handlePeopleGroupBlur}>
           <div className="form-row">
             <div className="form-left">
               <div className="form-field">
@@ -470,12 +517,13 @@ function ViewRequest({ onClose, requestData, requestId }) {
                   onChange={(event) => {
                     const numericValue = sanitizeNumberText(event.target.value)
                     setFormData((prev) => ({ ...prev, phone: numericValue }))
-                    if (!isVietnamesePhoneNumber(numericValue)) {
-                      setErrorMessage('Số điện thoại không hợp lệ!')
-                    } else {
-                      setErrorMessage('')
+                    if (isVietnamesePhoneNumber(numericValue)) {
+                      setErrorMessage((currentMessage) =>
+                        currentMessage === PHONE_ERROR_MESSAGE ? '' : currentMessage,
+                      )
                     }
                   }}
+                  onBlur={handlePhoneBlur}
                   disabled={!isEditing}
                   required
                 />

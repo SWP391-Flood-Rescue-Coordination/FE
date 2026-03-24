@@ -1,16 +1,17 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import ForgotPassword from '../components/ForgotPassword';
+import React from 'react'
+import { useNavigate } from 'react-router-dom'
+import ForgotPassword from '../components/ForgotPassword'
 
 const ForgotPasswordPage = () => {
-  const navigate = useNavigate();
+  const navigate = useNavigate()
 
   return (
-    <ForgotPassword 
+    <ForgotPassword
       onClose={() => navigate('/')}
       onShowLogin={() => navigate('/login')}
+      onOtpVerified={() => navigate('/reset-password')}
     />
-  );
-};
+  )
+}
 
-export default ForgotPasswordPage;
+export default ForgotPasswordPage

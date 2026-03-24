@@ -1,6 +1,7 @@
 import api from './api'
 
 const PHONE_REGEX = /^(?:\+84|84|0)\d{9}$/
+const RESCUE_REQUEST_PHONE_REGEX = /^(\+84|84|0)(3|5|7|8|9|1[2689])[0-9]{8}$/
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const FORGOT_PASSWORD_CONTEXT_KEY = 'forgotPasswordResetContext'
 const GUEST_REQUEST_TRACKING_KEY = 'guestRescueRequestTracking'
@@ -196,7 +197,7 @@ const authService = {
     const passwordValue = String(password ?? '')
 
     if (!PHONE_REGEX.test(trimmedPhone)) {
-      return { valid: false, message: 'Số điện thoại không đúng định dạng.' }
+      return { valid: false, message: 'Số điện thoại không hợp lệ!' }
     }
 
     if (passwordValue.length < 5 || passwordValue.length > 20) {
@@ -244,7 +245,7 @@ const authService = {
   validateForgotPasswordPhone: (phone) => {
     const trimmedPhone = String(phone ?? '').trim()
 
-    if (!PHONE_REGEX.test(trimmedPhone)) {
+    if (!RESCUE_REQUEST_PHONE_REGEX.test(trimmedPhone)) {
       return { valid: false, message: 'Số điện thoại không đúng định dạng.' }
     }
 

@@ -25,6 +25,8 @@ const INITIAL_FORM_DATA = {
 }
 
 const sanitizeNumberText = (value) => String(value ?? '').replace(/[^0-9]/g, '')
+const PHONE_ERROR_MESSAGE = 'Số điện thoại không hợp lệ!'
+const PEOPLE_COUNT_ERROR_MESSAGE = 'Số người phải lớn hơn hoặc bằng tổng số người già và trẻ em.'
 
 function isVietnamesePhoneNumber(number) {
   return /^(\+84|84|0)(3|5|7|8|9|1[2689])[0-9]{8}$/.test(number)
@@ -164,6 +166,42 @@ function RequestForm({ onClose }) {
     }
   }
 
+  const hasInvalidPeopleCounts = (nextFormData) => {
+    const totalPeople = Number.parseInt(String(nextFormData.totalPeople ?? '').trim(), 10)
+    const elderlyRaw = Number.parseInt(String(nextFormData.elderly ?? '').trim(), 10)
+    const childrenRaw = Number.parseInt(String(nextFormData.children ?? '').trim(), 10)
+    const elderly = Number.isFinite(elderlyRaw) ? elderlyRaw : 0
+    const children = Number.isFinite(childrenRaw) ? childrenRaw : 0
+
+    return Number.isFinite(totalPeople) && totalPeople < elderly + children
+  }
+
+  const handlePeopleGroupBlur = (event) => {
+    if (!(event.target instanceof HTMLElement) || !event.target.closest('.people-group')) {
+      return
+    }
+
+    if (hasInvalidPeopleCounts(formData)) {
+      setErrorMessage(PEOPLE_COUNT_ERROR_MESSAGE)
+      return
+    }
+
+    setErrorMessage((currentMessage) =>
+      currentMessage === PEOPLE_COUNT_ERROR_MESSAGE ? '' : currentMessage,
+    )
+  }
+
+  const handlePhoneBlur = () => {
+    if (!isVietnamesePhoneNumber(formData.phone)) {
+      setErrorMessage(PHONE_ERROR_MESSAGE)
+      return
+    }
+
+    setErrorMessage((currentMessage) =>
+      currentMessage === PHONE_ERROR_MESSAGE ? '' : currentMessage,
+    )
+  }
+
   const handleSubmit = async (event) => {
     event.preventDefault()
     setErrorMessage('')
@@ -226,7 +264,7 @@ function RequestForm({ onClose }) {
         {errorMessage && <div className="request-feedback request-feedback-error">{errorMessage}</div>}
         {successMessage && <div className="request-feedback request-feedback-success">{successMessage}</div>}
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} onBlurCapture={handlePeopleGroupBlur}>
           <div className="form-row">
             <div className="form-left">
               <div className="form-field">
@@ -239,12 +277,13 @@ function RequestForm({ onClose }) {
                   onChange={(event) => {
                     const numericValue = sanitizeNumberText(event.target.value)
                     setFormData((prev) => ({ ...prev, phone: numericValue }))
-                    if (!isVietnamesePhoneNumber(numericValue)) {
-                      setErrorMessage('Số điện thoại không hợp lệ!')
-                    } else {
-                      setErrorMessage('')
+                    if (isVietnamesePhoneNumber(numericValue)) {
+                      setErrorMessage((currentMessage) =>
+                        currentMessage === PHONE_ERROR_MESSAGE ? '' : currentMessage,
+                      )
                     }
                   }}
+                  onBlur={handlePhoneBlur}
                   disabled={isSubmitting}
                   required
                 />
@@ -346,6 +385,56 @@ function RequestForm({ onClose }) {
             </div>
 
             <div className="form-right">
+              <div className="form-field people-group people-group-right">
+                <div className="form-field-inline">
+                  <label>Số người</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    min="0"
+                    value={formData.totalPeople}
+                    onChange={(event) => {
+                      const numericValue = sanitizeNumberText(event.target.value)
+                      setFormData((prev) => ({ ...prev, totalPeople: numericValue }))
+                    }}
+                    disabled={isSubmitting}
+                  />
+                </div>
+
+                <div className="form-field-inline">
+                  <label>Người già</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    min="0"
+                    value={formData.elderly}
+                    onChange={(event) => {
+                      const numericValue = sanitizeNumberText(event.target.value)
+                      setFormData((prev) => ({ ...prev, elderly: numericValue }))
+                    }}
+                    disabled={isSubmitting}
+                  />
+                </div>
+
+                <div className="form-field-inline">
+                  <label>Trẻ em</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    min="0"
+                    value={formData.children}
+                    onChange={(event) => {
+                      const numericValue = sanitizeNumberText(event.target.value)
+                      setFormData((prev) => ({ ...prev, children: numericValue }))
+                    }}
+                    disabled={isSubmitting}
+                  />
+                </div>
+              </div>
+
               <div className="form-field">
                 <label>Tình trạng</label>
                 <div className="checkbox-group">
@@ -397,7 +486,7 @@ function RequestForm({ onClose }) {
                 </div>
               </div>
 
-              <div className="form-field">
+              <div className="form-field notes-field">
                 <label>Ghi chú (tùy chọn)</label>
                 <textarea
                   rows="4"

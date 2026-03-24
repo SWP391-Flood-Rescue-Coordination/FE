@@ -3,33 +3,47 @@ import authService from '../services/authService'
 import './ForgotPassword.css'
 
 const MOCK_OTP = '123456'
+const RESEND_SECONDS = 30
+const OTP_EXPIRY_SECONDS = 10 * 60
+const VERIFY_DELAY_MS = 3000
 
 const EMPTY_FIELD_ERRORS = {
   phone: '',
   otp: '',
-  newPassword: '',
-  confirmPassword: '',
 }
 
-const ForgotPassword = ({ onClose, onShowLogin }) => {
+const sanitizeNumberText = (value) => String(value ?? '').replace(/[^0-9]/g, '')
+
+const formatCountdown = (totalSeconds) => {
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
+
+const ForgotPassword = ({ onClose, onShowLogin, onOtpVerified }) => {
   const [step, setStep] = useState('request')
   const [phone, setPhone] = useState('')
+  const [submittedPhone, setSubmittedPhone] = useState('')
   const [otp, setOtp] = useState('')
-  const [newPassword, setNewPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
   const [sendingOtp, setSendingOtp] = useState(false)
-  const [resettingPassword, setResettingPassword] = useState(false)
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false)
   const [resendCountdown, setResendCountdown] = useState(0)
-  const [redirectCountdown, setRedirectCountdown] = useState(5)
+  const [otpExpiresAt, setOtpExpiresAt] = useState(null)
+  const [currentTime, setCurrentTime] = useState(Date.now())
   const [errorMessage, setErrorMessage] = useState('')
-  const [successMessage, setSuccessMessage] = useState('')
   const [fieldErrors, setFieldErrors] = useState(EMPTY_FIELD_ERRORS)
 
-  const isBusy = sendingOtp || resettingPassword
   const isVerifyStep = step === 'verify'
-  const isResetStep = step === 'reset'
-  const isDoneStep = step === 'done'
+  const isBusy = sendingOtp || isVerifyingOtp
+  const remainingOtpSeconds = otpExpiresAt
+    ? Math.max(Math.ceil((otpExpiresAt - currentTime) / 1000), 0)
+    : 0
+  const isOtpExpired = isVerifyStep && otpExpiresAt !== null && remainingOtpSeconds === 0
   const canResendOtp = isVerifyStep && resendCountdown === 0 && !isBusy
+
+  useEffect(() => {
+    authService.clearForgotPasswordResetContext()
+  }, [])
 
   useEffect(() => {
     if (resendCountdown <= 0) {
@@ -44,39 +58,24 @@ const ForgotPassword = ({ onClose, onShowLogin }) => {
   }, [resendCountdown])
 
   useEffect(() => {
-    if (!isDoneStep) {
-      return undefined
-    }
-
-    if (redirectCountdown <= 0) {
-      if (onShowLogin) {
-        onShowLogin()
-      }
+    if (!isVerifyStep || !otpExpiresAt || remainingOtpSeconds <= 0) {
       return undefined
     }
 
     const timer = window.setTimeout(() => {
-      setRedirectCountdown((current) => Math.max(current - 1, 0))
+      setCurrentTime(Date.now())
     }, 1000)
 
     return () => window.clearTimeout(timer)
-  }, [isDoneStep, onShowLogin, redirectCountdown])
+  }, [isVerifyStep, otpExpiresAt, remainingOtpSeconds])
 
   const subtitle = useMemo(() => {
-    if (isDoneStep) {
-      return 'Mật khẩu đã được đặt lại. Hệ thống sẽ tự chuyển về đăng nhập.'
-    }
-
-    if (isResetStep) {
-      return 'Mã OTP hợp lệ. Hãy nhập mật khẩu mới để hoàn tất.'
-    }
-
     if (isVerifyStep) {
-      return 'Nhập đúng mã OTP đã nhận để chuyển sang bước đặt mật khẩu mới.'
+      return 'Nhập đúng mã OTP để chuyển sang bước đặt mật khẩu mới.'
     }
 
-    return 'Nhập đúng số điện thoại đã đăng ký để nhận mã OTP.'
-  }, [isDoneStep, isResetStep, isVerifyStep])
+    return 'Nhập số điện thoại đã đăng ký để nhận mã OTP đặt lại mật khẩu.'
+  }, [isVerifyStep])
 
   const updateFieldError = (fieldName, message) => {
     setFieldErrors((current) => ({
@@ -90,33 +89,15 @@ const ForgotPassword = ({ onClose, onShowLogin }) => {
 
     if (fieldName === 'phone') {
       const validation = authService.validateForgotPasswordPhone(nextValue ?? phone)
-      message = validation.valid ? '' : validation.message
+      message = validation.valid ? '' : 'Số điện thoại không hợp lệ!'
     }
 
-    if (fieldName === 'otp' && isVerifyStep) {
+    if (fieldName === 'otp') {
       const otpValue = String(nextValue ?? otp).trim()
       if (!otpValue) {
         message = 'Vui lòng nhập mã OTP.'
       } else if (otpValue.length < 4 || otpValue.length > 6) {
-        message = 'OTP phải từ 4 đến 6 ký tự.'
-      }
-    }
-
-    if (fieldName === 'newPassword' && isResetStep) {
-      const passwordValue = String(nextValue ?? newPassword)
-      if (!passwordValue) {
-        message = 'Vui lòng nhập mật khẩu mới.'
-      } else if (passwordValue.length < 5 || passwordValue.length > 100) {
-        message = 'Mật khẩu mới phải từ 5 đến 100 ký tự.'
-      }
-    }
-
-    if (fieldName === 'confirmPassword' && isResetStep) {
-      const confirmValue = String(nextValue ?? confirmPassword)
-      if (!confirmValue) {
-        message = 'Vui lòng nhập lại mật khẩu mới.'
-      } else if (confirmValue !== String(newPassword)) {
-        message = 'Mật khẩu xác nhận không khớp.'
+        message = 'Mã OTP phải từ 4 đến 6 ký tự.'
       }
     }
 
@@ -125,77 +106,48 @@ const ForgotPassword = ({ onClose, onShowLogin }) => {
   }
 
   const handlePhoneChange = (event) => {
-    const value = event.target.value
-    setPhone(value)
+    const numericValue = sanitizeNumberText(event.target.value)
+    setPhone(numericValue)
+
     if (fieldErrors.phone) {
-      validateField('phone', value)
+      validateField('phone', numericValue)
     }
   }
 
   const handleOtpChange = (event) => {
-    const value = event.target.value
+    const value = String(event.target.value ?? '').trim()
     setOtp(value)
+
     if (fieldErrors.otp) {
       validateField('otp', value)
     }
   }
 
-  const handleNewPasswordChange = (event) => {
-    const value = event.target.value
-    setNewPassword(value)
-
-    if (fieldErrors.newPassword) {
-      validateField('newPassword', value)
-    }
-
-    if (fieldErrors.confirmPassword && confirmPassword) {
-      updateFieldError(
-        'confirmPassword',
-        confirmPassword === value ? '' : 'Mật khẩu xác nhận không khớp.',
-      )
-    }
-  }
-
-  const handleConfirmPasswordChange = (event) => {
-    const value = event.target.value
-    setConfirmPassword(value)
-
-    if (fieldErrors.confirmPassword) {
-      updateFieldError(
-        'confirmPassword',
-        value === String(newPassword) ? '' : 'Mật khẩu xác nhận không khớp.',
-      )
-    }
-  }
-
   const handleSendOtp = async () => {
     setErrorMessage('')
-    setSuccessMessage('')
-    validateField('phone')
 
-    const validation = authService.validateForgotPasswordPhone(phone)
-    if (!validation.valid) {
-      setErrorMessage(validation.message)
+    const targetPhone = isVerifyStep ? submittedPhone : phone
+    const phoneError = validateField('phone', targetPhone)
+    if (phoneError) {
+      setErrorMessage(phoneError)
       return
     }
 
     setSendingOtp(true)
 
     try {
-      const response = await authService.sendForgotPasswordOtp(phone)
+      const response = await authService.sendForgotPasswordOtp(targetPhone)
       if (!response?.success) {
-        setErrorMessage(response?.message || 'Không thể gửi OTP lúc này.')
+        setErrorMessage(response?.message || 'Không thể gửi mã OTP lúc này.')
         return
       }
 
       setStep('verify')
-      setResendCountdown(60)
+      setSubmittedPhone(targetPhone)
       setOtp('')
-      setSuccessMessage(
-        resendCountdown > 0 || isVerifyStep
-          ? (response?.message || 'OTP đã được gửi lại thành công.')
-          : (response?.message || 'OTP đã được gửi thành công.')
-      )
+      setResendCountdown(RESEND_SECONDS)
+      setOtpExpiresAt(Date.now() + OTP_EXPIRY_SECONDS * 1000)
+      setCurrentTime(Date.now())
       setFieldErrors((current) => ({
         ...current,
         otp: '',
@@ -207,9 +159,16 @@ const ForgotPassword = ({ onClose, onShowLogin }) => {
     }
   }
 
-  const handleVerifyOtp = () => {
+  const handleVerifyOtp = (event) => {
+    event.preventDefault()
     setErrorMessage('')
-    setSuccessMessage('')
+
+    if (isOtpExpired) {
+      const message = 'Mã OTP đã hết hiệu lực. Vui lòng thao tác lại.'
+      updateFieldError('otp', message)
+      setErrorMessage(message)
+      return
+    }
 
     const otpError = validateField('otp')
     if (otpError) {
@@ -217,83 +176,29 @@ const ForgotPassword = ({ onClose, onShowLogin }) => {
       return
     }
 
-    if (String(otp).trim() !== MOCK_OTP) {
-      const message = 'Mã OTP không đúng. Vui lòng thử lại.'
+    const otpValue = String(otp).trim()
+    if (otpValue !== MOCK_OTP) {
+      const message = 'Mã OTP không chính xác. Vui lòng kiểm tra lại.'
       updateFieldError('otp', message)
       setErrorMessage(message)
       return
     }
 
-    setStep('reset')
-    setSuccessMessage('Mã OTP hợp lệ. Vui lòng nhập mật khẩu mới.')
-    setFieldErrors((current) => ({
-      ...current,
-      otp: '',
-      newPassword: '',
-      confirmPassword: '',
-    }))
-  }
+    setIsVerifyingOtp(true)
 
-  const handleResetPassword = async () => {
-    setErrorMessage('')
-    setSuccessMessage('')
+    window.setTimeout(() => {
+      authService.storeForgotPasswordResetContext(submittedPhone, otpValue)
+      setIsVerifyingOtp(false)
 
-    const validation = authService.validateResetPasswordInput(
-      phone,
-      otp,
-      newPassword,
-      confirmPassword,
-    )
-
-    validateField('newPassword')
-    validateField('confirmPassword')
-
-    if (!validation.valid) {
-      setErrorMessage(validation.message)
-      return
-    }
-
-    setResettingPassword(true)
-
-    try {
-      const response = await authService.resetForgotPassword(phone, otp, newPassword)
-      if (!response?.success) {
-        setErrorMessage(response?.message || 'Không thể đặt lại mật khẩu.')
-        return
+      if (onOtpVerified) {
+        onOtpVerified(submittedPhone, otpValue)
       }
-
-      setStep('done')
-      setRedirectCountdown(5)
-      setOtp('')
-      setNewPassword('')
-      setConfirmPassword('')
-      setFieldErrors(EMPTY_FIELD_ERRORS)
-      setSuccessMessage(
-        response?.message || 'Mật khẩu đã được đặt lại thành công. Vui lòng đăng nhập lại.',
-      )
-    } catch (error) {
-      setErrorMessage(authService.getForgotPasswordErrorMessage(error))
-    } finally {
-      setResettingPassword(false)
-    }
+    }, VERIFY_DELAY_MS)
   }
 
-  const handleFormSubmit = async (event) => {
+  const handleRequestSubmit = async (event) => {
     event.preventDefault()
-
-    if (step === 'request') {
-      await handleSendOtp()
-      return
-    }
-
-    if (step === 'verify') {
-      handleVerifyOtp()
-      return
-    }
-
-    if (step === 'reset') {
-      await handleResetPassword()
-    }
+    await handleSendOtp()
   }
 
   const handleLoginClick = (event) => {
@@ -306,10 +211,6 @@ const ForgotPassword = ({ onClose, onShowLogin }) => {
       onShowLogin()
     }
   }
-
-  const resendButtonLabel = isVerifyStep
-    ? (resendCountdown > 0 ? `Gửi lại OTP(${resendCountdown}s)` : 'Gửi lại OTP')
-    : 'Nhận mã OTP'
 
   return (
     <div className="forgot-password-container">
@@ -331,132 +232,83 @@ const ForgotPassword = ({ onClose, onShowLogin }) => {
         <h2>Quên Mật Khẩu</h2>
         <p className="forgot-password-subtitle">{subtitle}</p>
 
-        {!isDoneStep && (
-          <div className="forgot-password-message forgot-password-message-info">
-            Mã OTP test cố định để demo/local: <strong>123456</strong>
-          </div>
-        )}
-
         {errorMessage && (
           <div className="forgot-password-message forgot-password-message-error">
             {errorMessage}
           </div>
         )}
 
-        {successMessage && (
-          <div className="forgot-password-message forgot-password-message-success">
-            {successMessage}
-          </div>
-        )}
-
-        {!isDoneStep && (
-          <form onSubmit={handleFormSubmit}>
+        {!isVerifyStep ? (
+          <form onSubmit={handleRequestSubmit}>
             <div className="form-group">
               <label htmlFor="phone">Số điện thoại</label>
-              <div className="otp-input-group">
-                <input
-                  type="tel"
-                  id="phone"
-                  placeholder="Nhập số điện thoại của bạn"
-                  value={phone}
-                  onChange={handlePhoneChange}
-                  onBlur={() => validateField('phone')}
-                  disabled={isBusy || step !== 'request'}
-                  required
-                />
-                {(step === 'request' || isVerifyStep) && (
-                  <button
-                    type="button"
-                    className="send-otp-button"
-                    onClick={handleSendOtp}
-                    disabled={step === 'request' ? isBusy : !canResendOtp}
-                  >
-                    {step === 'request'
-                      ? (sendingOtp ? 'Đang gửi...' : 'Nhận mã OTP')
-                      : resendButtonLabel}
-                  </button>
-                )}
-              </div>
-              {fieldErrors.phone && <div className="forgot-password-field-error">{fieldErrors.phone}</div>}
+              <input
+                type="tel"
+                id="phone"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                placeholder="Nhập số điện thoại đã đăng ký"
+                value={phone}
+                onChange={handlePhoneChange}
+                onBlur={() => validateField('phone')}
+                disabled={isBusy}
+                required
+              />
+              {fieldErrors.phone && (
+                <div className="forgot-password-field-error">{fieldErrors.phone}</div>
+              )}
             </div>
 
-            {isVerifyStep && (
-              <>
-                <div className="form-group">
-                  <label htmlFor="otp">Mã OTP</label>
-                  <input
-                    type="text"
-                    id="otp"
-                    placeholder="Nhập mã OTP (test: 123456)"
-                    value={otp}
-                    onChange={handleOtpChange}
-                    onBlur={() => validateField('otp')}
-                    disabled={isBusy}
-                    required
-                  />
-                  {fieldErrors.otp && <div className="forgot-password-field-error">{fieldErrors.otp}</div>}
-                </div>
-
-                <button type="submit" className="forgot-password-button" disabled={isBusy}>
-                  Xác nhận OTP
-                </button>
-              </>
-            )}
-
-            {isResetStep && (
-              <>
-                <div className="form-group">
-                  <label htmlFor="newPassword">Mật khẩu mới</label>
-                  <input
-                    type="password"
-                    id="newPassword"
-                    placeholder="Nhập mật khẩu mới (tối thiểu 5 ký tự)"
-                    value={newPassword}
-                    onChange={handleNewPasswordChange}
-                    onBlur={() => validateField('newPassword')}
-                    disabled={isBusy}
-                    required
-                  />
-                  {fieldErrors.newPassword && (
-                    <div className="forgot-password-field-error">{fieldErrors.newPassword}</div>
-                  )}
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="confirmPassword">Xác nhận mật khẩu mới</label>
-                  <input
-                    type="password"
-                    id="confirmPassword"
-                    placeholder="Nhập lại mật khẩu mới"
-                    value={confirmPassword}
-                    onChange={handleConfirmPasswordChange}
-                    onBlur={() => validateField('confirmPassword')}
-                    disabled={isBusy}
-                    required
-                  />
-                  {fieldErrors.confirmPassword && (
-                    <div className="forgot-password-field-error">{fieldErrors.confirmPassword}</div>
-                  )}
-                </div>
-
-                <button type="submit" className="forgot-password-button" disabled={isBusy}>
-                  {resettingPassword ? 'Đang cập nhật...' : 'Đặt lại mật khẩu'}
-                </button>
-              </>
-            )}
-          </form>
-        )}
-
-        {isDoneStep && (
-          <div className="forgot-password-actions">
-            <button
-              type="button"
-              className="forgot-password-secondary-button"
-              onClick={handleLoginClick}
-            >
-              {`Quay về đăng nhập (${redirectCountdown}s)`}
+            <button type="submit" className="forgot-password-button" disabled={isBusy}>
+              {sendingOtp ? 'Đang gửi mã...' : 'Nhận mã OTP'}
             </button>
-          </div>
+          </form>
+        ) : (
+          <form onSubmit={handleVerifyOtp}>
+            <div className="forgot-password-message forgot-password-message-info">
+              Mã OTP dùng để test/demo local hiện tại là <strong>{MOCK_OTP}</strong>.
+            </div>
+
+            <div className="forgot-password-message forgot-password-message-info">
+              {isOtpExpired ? (
+                <>OTP đã hết hiệu lực. Vui lòng gửi lại mã mới.</>
+              ) : (
+                <>
+                  OTP đã được gửi tới số điện thoại <strong>{submittedPhone}</strong>. Mã có hiệu lực trong{' '}
+                  <strong>{formatCountdown(remainingOtpSeconds)}</strong>.
+                </>
+              )}
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="otp">Mã OTP</label>
+              <div className="otp-input-group">
+                <input
+                  type="text"
+                  id="otp"
+                  placeholder="Nhập mã OTP"
+                  value={otp}
+                  onChange={handleOtpChange}
+                  onBlur={() => validateField('otp')}
+                  disabled={isBusy}
+                  required
+                />
+                <button
+                  type="button"
+                  className="send-otp-button"
+                  onClick={handleSendOtp}
+                  disabled={!canResendOtp}
+                >
+                  {resendCountdown > 0 ? `Gửi lại OTP (${resendCountdown}s)` : 'Gửi lại OTP'}
+                </button>
+              </div>
+              {fieldErrors.otp && <div className="forgot-password-field-error">{fieldErrors.otp}</div>}
+            </div>
+
+            <button type="submit" className="forgot-password-button" disabled={isBusy || isOtpExpired}>
+              {isVerifyingOtp ? 'Đang xác nhận...' : 'Xác nhận OTP'}
+            </button>
+          </form>
         )}
 
         <div className="forgot-password-footer">

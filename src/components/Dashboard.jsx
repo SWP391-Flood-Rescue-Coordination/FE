@@ -1,13 +1,18 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeftOnRectangleIcon, ArrowRightOnRectangleIcon, UserCircleIcon } from '@heroicons/react/24/outline'
 import authService from '../services/authService'
 import rescueRequestService from '../services/rescueRequestService'
 
-import { formatDateTimeVN } from '../pages/adminShared';
+import { formatDateTimeVN, HOME_ROUTE_BY_ROLE, normalizeRole } from '../pages/adminShared';
 import RequestForm from './RequestForm'
 import ViewRequest from './ViewRequest'
 import './Dashboard.css'
+
+const SAFE_NOTICE_TEXT = 'Đội cứu hộ đã xác nhận hoàn tất nhiệm vụ'
+const SAFE_NOTICE_TITLE = SAFE_NOTICE_TEXT
+const SAFE_NOTICE_MESSAGE = ''
+const SAFE_REPORT_SAFE_LABEL = 'Báo an toàn'
 
 const ROLE_LABEL_MAP = {
   CITIZEN: 'Công dân',
@@ -54,14 +59,22 @@ function Dashboard() {
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [isLoadingHistory, setIsLoadingHistory] = useState(false)
   const [remoteDashboardStats, setRemoteDashboardStats] = useState(null)
+  const [isReportingSafeFromDashboard, setIsReportingSafeFromDashboard] = useState(false)
   const userMenuRef = useRef(null)
 
   const isAuthenticated = authService.isAuthenticated() && Boolean(currentUser)
-  const roleKey = String(currentUser?.role ?? '').toUpperCase()
+  const roleKey = normalizeRole(currentUser?.role)
   const roleLabel = ROLE_LABEL_MAP[roleKey] || currentUser?.role || '-'
   const isCitizen = isAuthenticated && roleKey === 'CITIZEN'
   const latestRequest = requestHistory[0] ?? null
+  const latestRequestStatus = rescueRequestService.normalizeStatus(latestRequest?.status)
   const latestRequestStatusMeta = latestRequest ? getRequestStatusMeta(latestRequest.status) : null
+  const hasSafeCompletionSignal = Boolean(latestRequest?.canReportSafe) && latestRequestStatus === 'ASSIGNED'
+  const showSafeCompletionDot = hasSafeCompletionSignal
+  const showSafeCompletionNotice = hasSafeCompletionSignal
+  const safeNoticeClassName = showStats
+    ? 'dashboard-safe-notice dashboard-safe-notice-below-stats'
+    : 'dashboard-safe-notice'
 
   const fallbackDashboardStats = useMemo(() => {
     const receivedRequests = requestHistory.length
@@ -91,6 +104,10 @@ function Dashboard() {
       ? latestRequestStatusMeta?.label || 'Đang chờ xử lý'
       : 'Tạo yêu cầu'
 
+  const primaryButtonClassName = hasSafeCompletionSignal
+    ? 'btn-primary btn-primary-report-ready'
+    : 'btn-primary'
+
   const buildHistoryItem = (requestItem) => {
     if (!requestItem) {
       return null
@@ -107,51 +124,62 @@ function Dashboard() {
     }
   }
 
-  useEffect(() => {
-    const loadRequestHistory = async () => {
-      setIsLoadingHistory(true)
-      try {
-        if (isCitizen) {
-          const requests = await rescueRequestService.getMyRequests()
-          const history = requests.map((item) => buildHistoryItem(item)).filter(Boolean)
-          setRequestHistory(history)
-          return
-        }
-
-        const guestTrackedRequest = await rescueRequestService.getTrackedGuestRequestStatus()
-        const historyItem = buildHistoryItem(guestTrackedRequest)
-        setRequestHistory(historyItem ? [historyItem] : [])
-      } catch (error) {
-        if (error?.response?.status !== 404) {
-          console.error('Error loading request history:', error)
-        }
-        setRequestHistory([])
-      } finally {
-        setIsLoadingHistory(false)
+  const loadRequestHistory = useCallback(async () => {
+    setIsLoadingHistory(true)
+    try {
+      if (isCitizen) {
+        const requests = await rescueRequestService.getMyRequests()
+        const history = requests.map((item) => buildHistoryItem(item)).filter(Boolean)
+        setRequestHistory(history)
+        setHasActiveRequest(requests.some((item) => !rescueRequestService.isTerminalStatus(item?.status)))
+        return
       }
-    }
 
-    loadRequestHistory()
-  }, [isAuthenticated, isCitizen])
-
-  useEffect(() => {
-    const loadDashboardStatistics = async () => {
-      try {
-        const stats = await rescueRequestService.getCitizenDashboardStatistics()
-        setRemoteDashboardStats({
-          receivedRequests: Number(stats?.receivedRequests ?? 0),
-          rescuedPeople: Number(stats?.rescuedPeople ?? 0),
-          supportedCount: Number(stats?.supportedRequests ?? 0),
-          safeCount: Number(stats?.safeReports ?? 0),
-        })
-      } catch (error) {
-        console.error('Error loading dashboard statistics:', error)
-        setRemoteDashboardStats(null)
+      const guestTrackedRequest = await rescueRequestService.getTrackedGuestRequestStatus()
+      const historyItem = buildHistoryItem(guestTrackedRequest)
+      setRequestHistory(historyItem ? [historyItem] : [])
+      setHasActiveRequest(historyItem ? !rescueRequestService.isTerminalStatus(historyItem?.status) : false)
+    } catch (error) {
+      if (error?.response?.status !== 404) {
+        console.error('Error loading request history:', error)
       }
+      setRequestHistory([])
+      setHasActiveRequest(false)
+    } finally {
+      setIsLoadingHistory(false)
     }
+  }, [isCitizen])
 
-    loadDashboardStatistics()
+  const loadDashboardStatistics = useCallback(async () => {
+    try {
+      const stats = await rescueRequestService.getCitizenDashboardStatistics()
+      setRemoteDashboardStats({
+        receivedRequests: Number(stats?.receivedRequests ?? 0),
+        rescuedPeople: Number(stats?.rescuedPeople ?? 0),
+        supportedCount: Number(stats?.supportedRequests ?? 0),
+        safeCount: Number(stats?.safeReports ?? 0),
+      })
+    } catch (error) {
+      console.error('Error loading dashboard statistics:', error)
+      setRemoteDashboardStats(null)
+    }
   }, [])
+
+  useEffect(() => {
+    loadRequestHistory()
+  }, [loadRequestHistory])
+
+  useEffect(() => {
+    loadDashboardStatistics()
+  }, [loadDashboardStatistics])
+
+  useEffect(() => {
+    if (!isAuthenticated || isCitizen) {
+      return
+    }
+
+    navigate(HOME_ROUTE_BY_ROLE[roleKey] || '/login', { replace: true })
+  }, [isAuthenticated, isCitizen, navigate, roleKey])
 
   useEffect(() => {
     const handleOutsideClick = (event) => {
@@ -259,6 +287,50 @@ function Dashboard() {
     setShowRequestForm(true)
   }
 
+  const handleOpenStatusDetail = () => {
+    if (requestHistory.length === 0) {
+      return
+    }
+
+    setShowStatusDetail(true)
+  }
+
+  const dismissSafeCompletionNotice = useCallback(() => {}, [])
+
+  const handleReportSafeFromDashboard = useCallback(async () => {
+    const requestId = latestRequest?.requestId
+    if (!requestId || isReportingSafeFromDashboard) {
+      return
+    }
+
+    setIsReportingSafeFromDashboard(true)
+
+    try {
+      if (isAuthenticated) {
+        await rescueRequestService.confirmRescued(requestId)
+      } else {
+        const phone = String(latestRequest?.phone ?? '').trim()
+        if (!phone) {
+          return
+        }
+        await rescueRequestService.confirmRescuedAsGuest(requestId, phone)
+      }
+
+      await Promise.all([loadRequestHistory(), loadDashboardStatistics()])
+    } catch (error) {
+      console.error('Error reporting safe from dashboard:', error)
+    } finally {
+      setIsReportingSafeFromDashboard(false)
+    }
+  }, [
+    isAuthenticated,
+    isReportingSafeFromDashboard,
+    latestRequest?.phone,
+    latestRequest?.requestId,
+    loadDashboardStatistics,
+    loadRequestHistory,
+  ])
+
   const handleCloseRequestForm = async (requestData) => {
     setShowRequestForm(false)
 
@@ -266,45 +338,7 @@ function Dashboard() {
       return
     }
 
-    setIsLoadingHistory(true)
-    try {
-      const isCitizen = authService.isAuthenticated() && roleKey === 'CITIZEN'
-      if (isCitizen) {
-        const requests = await rescueRequestService.getMyRequests()
-        const history = requests.map((item) => buildHistoryItem(item)).filter(Boolean)
-        setRequestHistory(history)
-        const hasOpenRequest = requests.some((item) => !rescueRequestService.isTerminalStatus(item?.status))
-        setHasActiveRequest(hasOpenRequest)
-      } else {
-        const guestRequest = await rescueRequestService.getTrackedGuestRequestStatus()
-        const historyItem = buildHistoryItem(guestRequest)
-        if (historyItem) {
-          setRequestHistory([historyItem])
-          setHasActiveRequest(!rescueRequestService.isTerminalStatus(historyItem?.status))
-        } else {
-          setRequestHistory([])
-          setHasActiveRequest(false)
-        }
-      }
-    } catch (error) {
-      console.error('Error reloading request history:', error)
-      setRequestHistory([])
-      setHasActiveRequest(false)
-    } finally {
-      setIsLoadingHistory(false)
-    }
-
-    try {
-      const stats = await rescueRequestService.getCitizenDashboardStatistics()
-      setRemoteDashboardStats({
-        receivedRequests: Number(stats?.receivedRequests ?? 0),
-        rescuedPeople: Number(stats?.rescuedPeople ?? 0),
-        supportedCount: Number(stats?.supportedRequests ?? 0),
-        safeCount: Number(stats?.safeReports ?? 0),
-      })
-    } catch (error) {
-      console.error('Error reloading dashboard statistics:', error)
-    }
+    await Promise.all([loadRequestHistory(), loadDashboardStatistics()])
   }
 
   return (
@@ -313,7 +347,7 @@ function Dashboard() {
         <h1>Hệ Thống Quản Lí Cứu Hộ Cứu Trợ Lũ Lụt</h1>
         <div className="header-buttons">
           <button
-            className="btn-primary"
+            className={primaryButtonClassName}
             onClick={handleOpenRequestForm}
             disabled={isPreparingRequestForm || hasActiveRequest}
           >
@@ -323,11 +357,12 @@ function Dashboard() {
           <div className="view-request-wrapper">
             <button
               className="btn-secondary"
-              onClick={() => setShowStatusDetail(true)}
+              onClick={handleOpenStatusDetail}
               disabled={requestHistory.length === 0}
             >
               Xem yêu cầu
             </button>
+            {showSafeCompletionDot && <span className="view-request-notice-dot" aria-hidden="true" />}
           </div>
 
           {isAuthenticated ? (
@@ -378,19 +413,57 @@ function Dashboard() {
             </button>
           )}
         </div>
+        <button className="stats-toggle" onClick={() => setShowStats(!showStats)} aria-label="Thu gọn thống kê">
+        </button>
       </header>
 
       {showRequestForm && <RequestForm onClose={handleCloseRequestForm} />}
+
+      {showSafeCompletionNotice && (
+        <div className={safeNoticeClassName} role="status" aria-live="polite">
+          <div className="dashboard-safe-notice-content">
+            <span className="dashboard-safe-notice-message-inline">{SAFE_NOTICE_TEXT}</span>
+            <strong className="dashboard-safe-notice-title">{SAFE_NOTICE_TITLE}</strong>
+            <span className="dashboard-safe-notice-message">{SAFE_NOTICE_MESSAGE}</span>
+            <strong>Đội cứu hộ đã xác nhận hoàn tất nhiệm vụ.</strong>
+            <span> Nếu bạn đã an toàn, vui lòng bấm "Báo an toàn" để hoàn tất yêu cầu này.</span>
+          </div>
+          <button
+            type="button"
+            className="dashboard-safe-notice-action dashboard-safe-notice-action-report"
+            onClick={handleReportSafeFromDashboard}
+            disabled={isReportingSafeFromDashboard}
+          >
+            {isReportingSafeFromDashboard ? 'Đang gửi...' : SAFE_REPORT_SAFE_LABEL}
+          </button>
+          <button
+            type="button"
+            className="dashboard-safe-notice-action"
+            onClick={handleOpenStatusDetail}
+          >
+            Xem yÃªu cáº§u
+          </button>
+          <button
+            type="button"
+            className="dashboard-safe-notice-close"
+            onClick={dismissSafeCompletionNotice}
+            aria-label="ÄÃ³ng thÃ´ng bÃ¡o"
+          >
+            Ã—
+          </button>
+        </div>
+      )}
 
       {showViewRequest && (selectedRequestId || selectedRequest) && (
         <ViewRequest
           requestId={selectedRequestId}
           requestData={selectedRequest}
-          onClose={() => {
+          onClose={async () => {
             setShowViewRequest(false)
             setShowStatusDetail(false)
             setSelectedRequestId(null)
             setSelectedRequest(null)
+            await Promise.all([loadRequestHistory(), loadDashboardStatistics()])
           }}
         />
       )}
@@ -468,9 +541,7 @@ function Dashboard() {
         </div>
       )}
 
-      <button className="stats-toggle" onClick={() => setShowStats(!showStats)}>
         <span className={showStats ? 'arrow-up' : 'arrow-down'}>▲</span>
-      </button>
 
       <div className="map-container">
         <iframe

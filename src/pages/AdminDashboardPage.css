@@ -445,32 +445,46 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(247, 251, 255, 0.94) 100%);
+  box-shadow: 0 10px 22px rgba(38, 84, 124, 0.12);
+}
+
+.admin-metric-icon::before {
+  content: '';
+  width: 32px;
+  height: 32px;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  background-image: var(--admin-metric-icon-image);
 }
 
 .admin-metric-icon.teams {
-  background: #fee2e2;
-  color: #dc2626;
+  --admin-metric-icon-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Ccircle cx='16' cy='14' r='5.2' fill='%235AA7FF'/%3E%3Ccircle cx='31.5' cy='13.5' r='4.6' fill='%23F8B84E'/%3E%3Ccircle cx='24' cy='22' r='5.9' fill='%2341D39A'/%3E%3Cpath d='M7.5 36c0-4.9 3.8-8.9 8.5-8.9s8.5 4 8.5 8.9V37H7.5Z' fill='%234F8EF7'/%3E%3Cpath d='M23 36c0-4.4 3.2-8 7.2-8s7.3 3.6 7.3 8V37H23Z' fill='%23FFB54A'/%3E%3Cpath d='M11.5 37c0-5.4 4-9.8 9-9.8s9 4.4 9 9.8V38H11.5Z' fill='%2334C98C'/%3E%3C/svg%3E");
 }
 
 .admin-metric-icon.users {
-  background: #ede9fe;
-  color: #7c3aed;
+  --admin-metric-icon-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Ccircle cx='20' cy='17' r='7' fill='%235AA7FF'/%3E%3Cpath d='M10 35c0-5.5 4.5-10 10-10s10 4.5 10 10v1H10Z' fill='%234F8EF7'/%3E%3Crect x='26' y='22' width='12' height='14' rx='3.5' fill='%237C3AED'/%3E%3Cpath d='M30 22v-2.2a3.9 3.9 0 1 1 7.8 0V22' fill='none' stroke='%23DDD6FE' stroke-width='2.6' stroke-linecap='round'/%3E%3Ccircle cx='32' cy='28.8' r='1.6' fill='%23ffffff'/%3E%3C/svg%3E");
 }
 
 .admin-metric-icon.calendar {
-  background: #dcfce7;
-  color: #16a34a;
+  --admin-metric-icon-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect x='9' y='10' width='30' height='27' rx='7' fill='%23EAF2FF'/%3E%3Crect x='9' y='10' width='30' height='8' rx='7' fill='%23FF7A59'/%3E%3Crect x='15' y='6' width='3.5' height='8' rx='1.75' fill='%23F97316'/%3E%3Crect x='29.5' y='6' width='3.5' height='8' rx='1.75' fill='%23F97316'/%3E%3Crect x='15' y='22' width='6.2' height='6.2' rx='2' fill='%235AA7FF'/%3E%3Crect x='24.2' y='22' width='8.8' height='6.2' rx='2' fill='%238CE5C2'/%3E%3Crect x='15' y='30.2' width='18' height='2.8' rx='1.4' fill='%23B7C9F8'/%3E%3C/svg%3E");
 }
 
 .admin-metric-icon.requests {
-  background: #dbeafe;
-  color: #2563eb;
+  --admin-metric-icon-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect x='10' y='8' width='28' height='32' rx='8' fill='%23EAF2FF'/%3E%3Crect x='16' y='5' width='16' height='9' rx='4.5' fill='%23FF7A59'/%3E%3Crect x='15' y='18' width='18' height='3.5' rx='1.75' fill='%234F8EF7'/%3E%3Crect x='15' y='24' width='15' height='3.5' rx='1.75' fill='%2379C4FF'/%3E%3Crect x='15' y='30' width='12' height='3.5' rx='1.75' fill='%238CE5C2'/%3E%3Ccircle cx='34' cy='33' r='6' fill='%23FFD166'/%3E%3Cpath d='M34 29.8v3.4l2.2 1.4' fill='none' stroke='%23F97316' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
 .admin-metric-svg,
 .admin-panel-chip-icon {
   width: 22px;
   height: 22px;
+}
+
+.admin-metric-svg {
+  display: none;
 }
 
 .admin-progress-track {
@@ -492,31 +506,31 @@
 }
 
 .admin-progress-segment.available {
-  background: #16a34a;
+  background: #52b772;
 }
 
 .admin-progress-segment.operating {
-  background: #dc2626;
+  background: #df6f6f;
 }
 
 .admin-progress-segment.busy {
-  background: #f59e0b;
+  background: #eb964e;
 }
 
 .admin-progress-segment.maintenance {
-  background: #94a3b8;
+  background: #7f8b9b;
 }
 
 .admin-progress-segment.active {
-  background: #2563eb;
+  background: #5c97f6;
 }
 
 .admin-progress-segment.locked {
-  background: #94a3b8;
+  background: #75879b;
 }
 
 .admin-progress-segment.attention {
-  background: #c88a3d;
+  background: #eb964e;
 }
 
 .admin-metric-footer {
@@ -565,15 +579,15 @@
 }
 
 .admin-dashboard-shell .admin-metric-card.users {
-  border-top: 4px solid #75879b;
+  border-top: 4px solid #5c97f6;
 }
 
 .admin-dashboard-shell .admin-metric-card.calendar {
-  border-top: 4px solid #7da986;
+  border-top: 4px solid #52b772;
 }
 
 .admin-dashboard-shell .admin-metric-card.requests {
-  border-top: 4px solid #c58f56;
+  border-top: 4px solid #eb964e;
 }
 
 .admin-pair-grid {
@@ -1225,23 +1239,23 @@
 }
 
 .admin-role-bar.admin {
-  background: linear-gradient(180deg, #f7d9d9 0%, #ef9a9a 100%);
+  background: linear-gradient(180deg, #dd6b6b 0%, #b91c1c 100%);
 }
 
 .admin-role-bar.manager {
-  background: linear-gradient(180deg, #d9f5ee 0%, #8dd7c6 100%);
+  background: linear-gradient(180deg, #63d5b3 0%, #0f766e 100%);
 }
 
 .admin-role-bar.coordinator {
-  background: linear-gradient(180deg, #fde8d3 0%, #f4bf8a 100%);
+  background: linear-gradient(180deg, #eeaa61 0%, #c96b16 100%);
 }
 
 .admin-role-bar.rescue_team {
-  background: linear-gradient(180deg, #dbeafe 0%, #9ec5fe 100%);
+  background: linear-gradient(180deg, #6ea9ff 0%, #2563eb 100%);
 }
 
 .admin-role-bar.citizen {
-  background: linear-gradient(180deg, #d7f7de 0%, #8fd8a0 100%);
+  background: linear-gradient(180deg, #70d18c 0%, #15803d 100%);
 }
 
 .admin-role-bar-segment {
@@ -1249,11 +1263,11 @@
 }
 
 .admin-role-bar-segment.active {
-  background: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.56);
 }
 
 .admin-role-bar-segment.inactive {
-  background: rgba(15, 23, 42, 0.22);
+  background: rgba(15, 23, 42, 0.34);
 }
 
 .admin-role-tooltip {
@@ -1351,36 +1365,45 @@
   align-items: center;
   justify-content: center;
   transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(247, 251, 255, 0.94) 100%);
+  box-shadow: 0 8px 18px rgba(38, 84, 124, 0.12);
+}
+
+.admin-role-card-icon::before {
+  content: '';
+  width: 28px;
+  height: 28px;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  background-image: var(--admin-role-card-icon-image);
 }
 
 .admin-role-card-icon.admin {
-  background: #fee2e2;
-  color: #ef4444;
   --icon-ring: #dc2626;
+  --admin-role-card-icon-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath d='M24 5.5 37 10.3V20c0 9.4-6.7 16.1-13 19.9C17.7 36.1 11 29.4 11 20v-9.7L24 5.5Z' fill='%235AA7FF'/%3E%3Cpath d='M24 10.5 32.2 13.5v7c0 6.1-4.3 10.9-8.2 13.5-3.9-2.6-8.2-7.4-8.2-13.5v-7L24 10.5Z' fill='%23BFDBFE'/%3E%3Cpath d='M24 16.2 26 20.2l4.4.6-3.2 3.1.8 4.4-4-2.1-4 2.1.8-4.4-3.2-3.1 4.4-.6Z' fill='%23FFD166'/%3E%3C/svg%3E");
 }
 
 .admin-role-card-icon.manager {
-  background: #d9f5ee;
-  color: #0f766e;
   --icon-ring: #0f766e;
+  --admin-role-card-icon-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect x='10' y='16' width='28' height='19' rx='5' fill='%235AA7FF'/%3E%3Cpath d='M18 16v-2.1A4.9 4.9 0 0 1 22.9 9h2.2a4.9 4.9 0 0 1 4.9 4.9V16' fill='none' stroke='%234F46E5' stroke-width='3'/%3E%3Crect x='10' y='19' width='28' height='6' fill='%23FFB54A'/%3E%3Crect x='22' y='22' width='4' height='3.6' rx='1.4' fill='%23334155'/%3E%3C/svg%3E");
 }
 
 .admin-role-card-icon.coordinator {
-  background: #ffedd5;
-  color: #ea580c;
   --icon-ring: #c2410c;
+  --admin-role-card-icon-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Ccircle cx='24' cy='24' r='16' fill='%23EAF2FF'/%3E%3Cpath d='M23.8 12c4.3 0 8.2 2 10.7 5.1' fill='none' stroke='%234F8EF7' stroke-width='3.2' stroke-linecap='round'/%3E%3Cpath d='M35.5 12.8v7.4h-7.3' fill='none' stroke='%234F8EF7' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M24.2 36c-4.3 0-8.2-2-10.7-5.1' fill='none' stroke='%23FF8A5B' stroke-width='3.2' stroke-linecap='round'/%3E%3Cpath d='M12.5 35.2v-7.4h7.3' fill='none' stroke='%23FF8A5B' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='24' cy='24' r='4.8' fill='%2334C98C'/%3E%3C/svg%3E");
 }
 
 .admin-role-card-icon.rescue-team {
-  background: #dbeafe;
-  color: #2563eb;
   --icon-ring: #1d4ed8;
+  --admin-role-card-icon-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Ccircle cx='16' cy='14' r='5.2' fill='%235AA7FF'/%3E%3Ccircle cx='31.5' cy='13.5' r='4.6' fill='%23F8B84E'/%3E%3Ccircle cx='24' cy='22' r='5.9' fill='%2341D39A'/%3E%3Cpath d='M7.5 36c0-4.9 3.8-8.9 8.5-8.9s8.5 4 8.5 8.9V37H7.5Z' fill='%234F8EF7'/%3E%3Cpath d='M23 36c0-4.4 3.2-8 7.2-8s7.3 3.6 7.3 8V37H23Z' fill='%23FFB54A'/%3E%3Cpath d='M11.5 37c0-5.4 4-9.8 9-9.8s9 4.4 9 9.8V38H11.5Z' fill='%2334C98C'/%3E%3C/svg%3E");
 }
 
 .admin-role-card-icon.citizen {
-  background: #d1fadf;
-  color: #16a34a;
   --icon-ring: #15803d;
+  --admin-role-card-icon-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Ccircle cx='24' cy='16.5' r='7' fill='%23FFB54A'/%3E%3Cpath d='M12 37c0-6.2 5.4-11.2 12-11.2S36 30.8 36 37v1H12Z' fill='%2334C98C'/%3E%3Cpath d='M33 10.5a8.8 8.8 0 0 1 5 7.9c0 5-3.7 7.8-7.5 9.7' fill='none' stroke='%235AA7FF' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E");
 }
 
 .admin-role-bar-card:hover .admin-role-card-icon,
@@ -1390,8 +1413,7 @@
 }
 
 .admin-role-card-svg {
-  width: 22px;
-  height: 22px;
+  display: none;
 }
 
 .admin-role-bar-code {
@@ -1505,32 +1527,45 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(247, 251, 255, 0.94) 100%);
+  box-shadow: 0 10px 22px rgba(38, 84, 124, 0.12);
+}
+
+.admin-team-card-icon::before {
+  content: '';
+  width: 34px;
+  height: 34px;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  background-image: var(--admin-team-card-icon-image);
 }
 
 .admin-team-card-icon.total {
-  background: #dbeafe;
-  color: #2563eb;
+  --admin-team-card-icon-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Ccircle cx='16' cy='14' r='5.2' fill='%235AA7FF'/%3E%3Ccircle cx='31.5' cy='13.5' r='4.6' fill='%23F8B84E'/%3E%3Ccircle cx='24' cy='22' r='5.9' fill='%2341D39A'/%3E%3Cpath d='M7.5 36c0-4.9 3.8-8.9 8.5-8.9s8.5 4 8.5 8.9V37H7.5Z' fill='%234F8EF7'/%3E%3Cpath d='M23 36c0-4.4 3.2-8 7.2-8s7.3 3.6 7.3 8V37H23Z' fill='%23FFB54A'/%3E%3Cpath d='M11.5 37c0-5.4 4-9.8 9-9.8s9 4.4 9 9.8V38H11.5Z' fill='%2334C98C'/%3E%3C/svg%3E");
 }
 
 .admin-team-card-icon.operating {
-  background: #fee2e2;
-  color: #ef4444;
+  --admin-team-card-icon-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Ccircle cx='24' cy='24' r='16' fill='%23EAF2FF'/%3E%3Cpath d='M23.8 12c4.3 0 8.2 2 10.7 5.1' fill='none' stroke='%234F8EF7' stroke-width='3.2' stroke-linecap='round'/%3E%3Cpath d='M35.5 12.8v7.4h-7.3' fill='none' stroke='%234F8EF7' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M24.2 36c-4.3 0-8.2-2-10.7-5.1' fill='none' stroke='%23FF8A5B' stroke-width='3.2' stroke-linecap='round'/%3E%3Cpath d='M12.5 35.2v-7.4h7.3' fill='none' stroke='%23FF8A5B' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='24' cy='24' r='4.8' fill='%2334C98C'/%3E%3C/svg%3E");
 }
 
 .admin-team-card-icon.available,
 .admin-team-card-icon.vehicle-available {
-  background: #d1fadf;
-  color: #16a34a;
+  --admin-team-card-icon-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath d='M24 5.5 37 10.3V20c0 9.4-6.7 16.1-13 19.9C17.7 36.1 11 29.4 11 20v-9.7L24 5.5Z' fill='%232CC97B'/%3E%3Cpath d='M24 10.5 32.2 13.5v7c0 6.1-4.3 10.9-8.2 13.5-3.9-2.6-8.2-7.4-8.2-13.5v-7L24 10.5Z' fill='%239AE6B4'/%3E%3Ccircle cx='32.4' cy='14.3' r='4.8' fill='%23FFD166'/%3E%3Cpath d='m18.4 22.3 3.7 3.7 7.6-7.6' fill='none' stroke='%23ffffff' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+.admin-team-card-icon.vehicle-available {
+  --admin-team-card-icon-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath d='M9 18.5h18.5l4.7 5.7h4.4c1.4 0 2.5 1.1 2.5 2.5v5.3c0 1.1-.9 2-2 2h-1.5a4.6 4.6 0 0 1-9.2 0H20a4.6 4.6 0 0 1-9.2 0H9.8c-1.5 0-2.8-1.2-2.8-2.8V21.3c0-1.5 1.2-2.8 2.8-2.8Z' fill='%2334C98C'/%3E%3Cpath d='M28.4 20.4h2.5l3.4 4.1h-5.9z' fill='%23A7F3D0'/%3E%3Ccircle cx='15.4' cy='34' r='4.1' fill='%23334155'/%3E%3Ccircle cx='31.2' cy='34' r='4.1' fill='%23334155'/%3E%3Ccircle cx='15.4' cy='34' r='1.8' fill='%23ffffff'/%3E%3Ccircle cx='31.2' cy='34' r='1.8' fill='%23ffffff'/%3E%3Ccircle cx='34.7' cy='13.3' r='4.4' fill='%23FFD166'/%3E%3Cpath d='m33 13.4 1.2 1.2 2.5-2.5' fill='none' stroke='%23ffffff' stroke-width='2.1' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
 .admin-team-card-icon.vehicle-busy {
-  background: #fef3c7;
-  color: #d97706;
+  --admin-team-card-icon-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath d='M9 18.5h18.5l4.7 5.7h4.4c1.4 0 2.5 1.1 2.5 2.5v5.3c0 1.1-.9 2-2 2h-1.5a4.6 4.6 0 0 1-9.2 0H20a4.6 4.6 0 0 1-9.2 0H9.8c-1.5 0-2.8-1.2-2.8-2.8V21.3c0-1.5 1.2-2.8 2.8-2.8Z' fill='%23FFB54A'/%3E%3Cpath d='M28.4 20.4h2.5l3.4 4.1h-5.9z' fill='%23FDE68A'/%3E%3Ccircle cx='15.4' cy='34' r='4.1' fill='%23334155'/%3E%3Ccircle cx='31.2' cy='34' r='4.1' fill='%23334155'/%3E%3Ccircle cx='15.4' cy='34' r='1.8' fill='%23ffffff'/%3E%3Ccircle cx='31.2' cy='34' r='1.8' fill='%23ffffff'/%3E%3Ccircle cx='34.8' cy='13.3' r='4.5' fill='%235AA7FF'/%3E%3Cpath d='M34.8 11.1v2.8l1.8 1.1' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
 .admin-team-card-icon.vehicle-maintenance {
-  background: #e2e8f0;
-  color: #475569;
+  --admin-team-card-icon-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath d='M29.6 8.5a7.2 7.2 0 0 0-2.7 7l-9.6 9.7a4.8 4.8 0 1 0 5.5 5.5l9.7-9.6a7.2 7.2 0 0 0 7-2.7l-4.5-4.4 1.8-4.9-4.9 1.8Z' fill='%235AA7FF'/%3E%3Ccircle cx='18.4' cy='29.6' r='4.8' fill='%23C7D2FE'/%3E%3Cpath d='M33.4 31.6a4.6 4.6 0 1 1 0 9.2 4.6 4.6 0 0 1 0-9.2Zm0 2.1a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z' fill='%23FF8A5B'/%3E%3Cpath d='M29.2 33.6h8.4' stroke='%23FF8A5B' stroke-width='2.1' stroke-linecap='round'/%3E%3C/svg%3E");
 }
 
 .admin-summary-stat {
@@ -1567,23 +1602,23 @@
 }
 
 .admin-summary-stat.total {
-  border-left-color: #64748b;
+  border-left-color: #5c97f6;
 }
 
 .admin-summary-stat.operating {
-  border-left-color: #c26f5f;
+  border-left-color: #df6f6f;
 }
 
 .admin-summary-stat.available {
-  border-left-color: #7b9e7e;
+  border-left-color: #52b772;
 }
 
 .admin-summary-stat.busy {
-  border-left-color: #c88a3d;
+  border-left-color: #eb964e;
 }
 
 .admin-summary-stat.maintenance {
-  border-left-color: #8d99aa;
+  border-left-color: #7f8b9b;
 }
 
 .admin-summary-ratio-card {
