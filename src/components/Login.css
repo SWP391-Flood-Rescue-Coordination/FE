@@ -222,6 +222,30 @@
   opacity: 0.7;
 }
 
+.login-secondary-button {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 6px;
+  border: 1px solid #dc2626;
+  background: #fff;
+  color: #dc2626;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-bottom: 20px;
+}
+
+.login-secondary-button:hover {
+  background: #fef2f2;
+}
+
+.login-secondary-button:disabled {
+  border-color: #f3b5b5;
+  color: #f3b5b5;
+  cursor: not-allowed;
+}
+
 .login-error-message {
   margin-bottom: 20px;
   padding: 12px 14px;

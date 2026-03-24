@@ -27,7 +27,7 @@ const INITIAL_FORM_DATA = {
 const sanitizeNumberText = (value) => String(value ?? '').replace(/[^0-9]/g, '')
 
 function isVietnamesePhoneNumber(number) {
-  return /^(\+84|84|0)(3|5|7|8|9|1[2689])[0-9]{8}$/.test(number);
+  return /^(\+84|84|0)(3|5|7|8|9|1[2689])[0-9]{8}$/.test(number)
 }
 
 function RequestForm({ onClose }) {
@@ -43,28 +43,25 @@ function RequestForm({ onClose }) {
   const [errorMessage, setErrorMessage] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
 
-  // Map states
   const mapContainerRef = useRef(null)
   const mapRef = useRef(null)
   const markerRef = useRef(null)
   const [mapLat, setMapLat] = useState(null)
   const [mapLng, setMapLng] = useState(null)
-  const [mapReady, setMapReady] = useState(false)
 
-  // Initialize map
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return
 
     try {
-      const HCM_BOUNDS = window.L.latLngBounds(
-        [10.20, 106.20], // SW
-        [11.20, 107.10]  // NE
+      const hcmBounds = window.L.latLngBounds(
+        [10.2, 106.2],
+        [11.2, 107.1],
       )
 
       const map = window.L.map(mapContainerRef.current, {
         center: [10.7769, 106.7009],
         zoom: 12,
-        maxBounds: HCM_BOUNDS,
+        maxBounds: hcmBounds,
         maxBoundsViscosity: 1.0,
       })
 
@@ -73,19 +70,16 @@ function RequestForm({ onClose }) {
       }).addTo(map)
 
       mapRef.current = map
-      setMapReady(true)
 
-      // Click event to select location
-      map.on('click', async (e) => {
-        const { lat, lng } = e.latlng;
-        // Get address from coordinates using Nominatim (free reverse geocoding)
+      map.on('click', async (event) => {
+        const { lat, lng } = event.latlng
+
         try {
           const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
-          );
-          const data = await response.json();
-          // Kiểm tra nhiều trường trong address object
-          const addressObj = data?.address || {};
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`,
+          )
+          const data = await response.json()
+          const addressObj = data?.address || {}
           const addressFields = [
             addressObj.city,
             addressObj.state,
@@ -93,35 +87,38 @@ function RequestForm({ onClose }) {
             addressObj.town,
             addressObj.village,
             addressObj.suburb,
-            data?.display_name
-          ];
-          const isHCM = addressFields.some(f =>
-            typeof f === 'string' &&
-            (f.toLowerCase().includes('hồ chí minh') || f.toLowerCase().includes('ho chi minh'))
-          );
-          if (isHCM) {
-            setMapLat(lat);
-            setMapLng(lng);
+            data?.display_name,
+          ]
+
+          const isHcm = addressFields.some(
+            (value) =>
+              typeof value === 'string' &&
+              (value.toLowerCase().includes('hồ chí minh') || value.toLowerCase().includes('ho chi minh')),
+          )
+
+          if (isHcm) {
+            setMapLat(lat)
+            setMapLng(lng)
             setFormData((prev) => ({
               ...prev,
               location: `${lat},${lng}`,
-              address: data.address.address || data.display_name || `${lat}, ${lng}`,
-            }));
-            // Update marker
+              address: data.address?.address || data.display_name || `${lat}, ${lng}`,
+            }))
+
             if (markerRef.current) {
-              markerRef.current.setLatLng([lat, lng]);
+              markerRef.current.setLatLng([lat, lng])
             } else {
-              markerRef.current = window.L.marker([lat, lng]).addTo(map);
+              markerRef.current = window.L.marker([lat, lng]).addTo(map)
             }
-            setErrorMessage('');
+            setErrorMessage('')
           } else {
-            setErrorMessage('Chỉ hỗ trợ trong khu vực TP.HCM');
+            setErrorMessage('Chỉ hỗ trợ trong khu vực TP.HCM')
           }
         } catch (error) {
-          console.warn('Reverse geocoding error:', error);
-          setErrorMessage('Không thể xác định địa chỉ từ vị trí này.');
+          console.warn('Reverse geocoding error:', error)
+          setErrorMessage('Không thể xác định địa chỉ từ vị trí này.')
         }
-      });
+      })
     } catch (error) {
       console.error('Map initialization error:', error)
     }
@@ -167,38 +164,16 @@ function RequestForm({ onClose }) {
     }
   }
 
-  const handleOpenMap = () => {
-    const coordinates = rescueRequestService.parseCoordinates(formData.location)
-    let query = ''
-
-    if (coordinates.latitude !== null && coordinates.longitude !== null) {
-      query = `${coordinates.latitude},${coordinates.longitude}`
-    } else {
-      const address = String(formData.address ?? '').trim()
-      if (address) {
-        query = address
-      }
-    }
-
-    if (!query) {
-      query = '10.762622,106.660172'
-    }
-
-    window.open(`https://www.google.com/maps?q=${encodeURIComponent(query)}`, '_blank')
-  }
-
   const handleSubmit = async (event) => {
     event.preventDefault()
     setErrorMessage('')
     setSuccessMessage('')
 
-    // Validate map location selected
     if (mapLat === null || mapLng === null) {
       setErrorMessage('Vui lòng chọn vị trí trên bản đồ trước khi gửi yêu cầu.')
       return
     }
 
-    // Validate phone
     if (!isVietnamesePhoneNumber(formData.phone)) {
       setErrorMessage('Số điện thoại không hợp lệ!')
       return
@@ -281,14 +256,13 @@ function RequestForm({ onClose }) {
                   type="text"
                   value={formData.location}
                   placeholder="Ví dụ: 10.762622,106.660172"
-                  disabled={true}
+                  disabled
                   required
                   style={{ width: '100%', background: '#e0e3e9', color: '#555', cursor: 'not-allowed' }}
                 />
                 <small className="request-input-hint">Chỉ chọn trên bản đồ</small>
               </div>
 
-              {/* Interactive Map */}
               <div className="form-field">
                 <label>Chọn vị trí trên bản đồ</label>
                 <div
@@ -330,12 +304,13 @@ function RequestForm({ onClose }) {
                     min="0"
                     value={formData.totalPeople}
                     onChange={(event) => {
-                      const numericValue = sanitizeNumberText(event.target.value);
-                      setFormData((prev) => ({ ...prev, totalPeople: numericValue }));
+                      const numericValue = sanitizeNumberText(event.target.value)
+                      setFormData((prev) => ({ ...prev, totalPeople: numericValue }))
                     }}
                     disabled={isSubmitting}
                   />
                 </div>
+
                 <div className="form-field-inline">
                   <label>Người già</label>
                   <input
@@ -345,12 +320,13 @@ function RequestForm({ onClose }) {
                     min="0"
                     value={formData.elderly}
                     onChange={(event) => {
-                      const numericValue = sanitizeNumberText(event.target.value);
-                      setFormData((prev) => ({ ...prev, elderly: numericValue }));
+                      const numericValue = sanitizeNumberText(event.target.value)
+                      setFormData((prev) => ({ ...prev, elderly: numericValue }))
                     }}
                     disabled={isSubmitting}
                   />
                 </div>
+
                 <div className="form-field-inline">
                   <label>Trẻ em</label>
                   <input
@@ -360,8 +336,8 @@ function RequestForm({ onClose }) {
                     min="0"
                     value={formData.children}
                     onChange={(event) => {
-                      const numericValue = sanitizeNumberText(event.target.value);
-                      setFormData((prev) => ({ ...prev, children: numericValue }));
+                      const numericValue = sanitizeNumberText(event.target.value)
+                      setFormData((prev) => ({ ...prev, children: numericValue }))
                     }}
                     disabled={isSubmitting}
                   />
@@ -446,9 +422,6 @@ function RequestForm({ onClose }) {
       </div>
     </div>
   )
-
-  
-
 }
 
 export default RequestForm

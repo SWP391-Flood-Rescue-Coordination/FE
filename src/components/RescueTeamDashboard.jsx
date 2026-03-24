@@ -224,8 +224,8 @@ function RescueTeamDashboard() {
   const handleComplete = async () => {
     await handleUpdateMission({
       nextStatus: 'Completed',
-      confirmMessage: 'Xác nhận đội đã hoàn thành nhiệm vụ này và chuyển yêu cầu sang trạng thái hoàn tất?',
-      successMessage: 'Đã hoàn tất nhiệm vụ thành công.',
+      confirmMessage: 'Xác nhận đội đã hoàn thành nhiệm vụ này? Người dân sẽ nhận được thông báo để bấm Báo an toàn.',
+      successMessage: 'Đã ghi nhận đội cứu hộ hoàn tất. Người dân có thể bấm Báo an toàn để hoàn tất yêu cầu.',
       actionKey: 'complete',
     });
   };

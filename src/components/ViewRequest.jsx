@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-// Map states
-const sanitizeNumberText = (value) => String(value ?? '').replace(/[^0-9]/g, '');
-import authService from '../services/authService';
-import rescueRequestService from '../services/rescueRequestService';
-import './ViewRequest.css';
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import authService from '../services/authService'
+import rescueRequestService from '../services/rescueRequestService'
+import './ViewRequest.css'
+
+const sanitizeNumberText = (value) => String(value ?? '').replace(/[^0-9]/g, '')
 
 const EMPTY_FORM_DATA = {
   requestId: null,
@@ -23,136 +23,139 @@ const EMPTY_FORM_DATA = {
   },
   notes: '',
   status: 'Pending',
-};
+  canReportSafe: false,
+}
 
 function ViewRequest({ onClose, requestData, requestId }) {
-  // Map/marker refs declared once, logic handled below
-  const isAuthenticated = authService.isAuthenticated();
-  const [isEditing, setIsEditing] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isReportingSafe, setIsReportingSafe] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
-  const [isSafeReported, setIsSafeReported] = useState(false);
-  const [formData, setFormData] = useState(EMPTY_FORM_DATA);
+  const isAuthenticated = authService.isAuthenticated()
+  const [isEditing, setIsEditing] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [isReportingSafe, setIsReportingSafe] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
+  const [successMessage, setSuccessMessage] = useState('')
+  const [formData, setFormData] = useState(EMPTY_FORM_DATA)
 
-  const normalizedStatus = rescueRequestService.normalizeStatus(formData.status);
-  const isTerminal = rescueRequestService.isTerminalStatus(formData.status);
-  const displayNormalizedStatus =
-    normalizedStatus === 'COMPLETED' && !isSafeReported ? 'RESCUE_ARRIVED' : normalizedStatus;
-  const canAcknowledgeSafe =
-    normalizedStatus === 'COMPLETED' && !isSafeReported && !isLoading && !isReportingSafe;
+  const normalizedStatus = rescueRequestService.normalizeStatus(formData.status)
+  const canReportSafe = Boolean(formData?.canReportSafe) && normalizedStatus === 'ASSIGNED'
+  const canAcknowledgeSafe = canReportSafe && !isLoading && !isReportingSafe
 
   const canGuestEdit = useMemo(
     () => !isAuthenticated && Boolean(formData?.requestId),
     [isAuthenticated, formData?.requestId],
-  );
+  )
 
-  const canStartEdit = normalizedStatus === 'PENDING' && !isLoading && !isReportingSafe;
+  const canStartEdit = normalizedStatus === 'PENDING' && !isLoading && !isReportingSafe
 
   useEffect(() => {
     const loadRequestData = async () => {
-      setIsLoading(true);
-      setErrorMessage('');
-      setSuccessMessage('');
+      setIsLoading(true)
+      setErrorMessage('')
+      setSuccessMessage('')
 
       try {
-        let sourceData = null;
-        const requestDataId = requestData?.requestId ?? requestData?.RequestId ?? null;
-        const resolvedRequestId = requestId ?? requestDataId ?? null;
+        let sourceData = null
+        const requestDataId = requestData?.requestId ?? requestData?.RequestId ?? null
+        const resolvedRequestId = requestId ?? requestDataId ?? null
+        const resolvedAccessCode =
+          requestData?.accessCode ?? requestData?.AccessCode ?? formData?.accessCode ?? null
 
         if (requestData) {
-          sourceData = requestData;
+          sourceData = requestData
         }
 
         if (isAuthenticated) {
           if (resolvedRequestId) {
-            const detailData = await rescueRequestService.getRequestById(resolvedRequestId);
+            const detailData = await rescueRequestService.getRequestById(resolvedRequestId)
             sourceData = {
               ...(sourceData || {}),
               ...(detailData || {}),
-            };
+            }
           } else if (!sourceData) {
-            sourceData = await rescueRequestService.getMyLatestRequest();
+            sourceData = await rescueRequestService.getMyLatestRequest()
+          }
+        } else if (resolvedRequestId) {
+          const detailData = await rescueRequestService.getGuestRequestStatus(
+            resolvedRequestId,
+            resolvedAccessCode,
+          )
+          sourceData = {
+            ...(sourceData || {}),
+            ...(detailData || {}),
           }
         } else if (!sourceData) {
-          sourceData = await rescueRequestService.getTrackedGuestRequestStatus();
+          sourceData = await rescueRequestService.getTrackedGuestRequestStatus()
         }
 
         if (!sourceData) {
-          setFormData(EMPTY_FORM_DATA);
-          setIsSafeReported(false);
-          setErrorMessage('Không tìm thấy yêu cầu cứu hộ nào.');
-          return;
+          setFormData(EMPTY_FORM_DATA)
+          setErrorMessage('Không tìm thấy yêu cầu cứu hộ nào.')
+          return
         }
 
-        const formatted = rescueRequestService.toRequestFormData(sourceData);
+        const formatted = rescueRequestService.toRequestFormData(sourceData)
         const resolvedRequestIdForState =
-          formatted?.requestId ?? sourceData?.requestId ?? requestId ?? null;
-        const resolvedStatus = rescueRequestService.normalizeStatus(formatted?.status);
+          formatted?.requestId ?? sourceData?.requestId ?? requestId ?? null
+
         setFormData({
           ...EMPTY_FORM_DATA,
           ...formatted,
           requestId: resolvedRequestIdForState,
           accessCode: formatted?.accessCode ?? sourceData?.accessCode ?? null,
+          canReportSafe: Boolean(formatted?.canReportSafe),
           conditions: {
             ...EMPTY_FORM_DATA.conditions,
             ...(formatted?.conditions || {}),
           },
-        });
-        setIsSafeReported(
-          resolvedStatus === 'COMPLETED'
-            ? rescueRequestService.isSafeReportAcknowledged(resolvedRequestIdForState)
-            : false,
-        );
+        })
       } catch (error) {
-        setIsSafeReported(false);
         if (error?.response?.status === 404) {
-          setErrorMessage('Không tìm thấy yêu cầu cứu hộ nào.');
+          setErrorMessage('Không tìm thấy yêu cầu cứu hộ nào.')
         } else {
-          setErrorMessage('Không thể tải dữ liệu yêu cầu. Vui lòng thử lại.');
+          setErrorMessage('Không thể tải dữ liệu yêu cầu. Vui lòng thử lại.')
         }
       } finally {
-        setIsLoading(false);
+        setIsLoading(false)
       }
-    };
+    }
 
-    loadRequestData();
-  }, [requestData, requestId, isAuthenticated]);
+    loadRequestData()
+  }, [requestData, requestId, isAuthenticated])
 
-  // --- Map and Marker Logic ---
-  const mapContainerRef = useRef(null);
-  const mapRef = useRef(null);
-  const markerRef = useRef(null);
+  const mapContainerRef = useRef(null)
+  const mapRef = useRef(null)
+  const markerRef = useRef(null)
 
-  // Initialize map only once
   useEffect(() => {
-    if (!mapContainerRef.current || mapRef.current) return;
+    if (!mapContainerRef.current || mapRef.current) return
+
     try {
-      const HCM_BOUNDS = window.L.latLngBounds(
-        [10.20, 106.20],
-        [11.20, 107.10]
-      );
+      const hcmBounds = window.L.latLngBounds(
+        [10.2, 106.2],
+        [11.2, 107.1],
+      )
+
       const map = window.L.map(mapContainerRef.current, {
         center: [10.7769, 106.7009],
         zoom: 12,
-        maxBounds: HCM_BOUNDS,
+        maxBounds: hcmBounds,
         maxBoundsViscosity: 1.0,
-      });
+      })
+
       window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: 'OpenStreetMap',
-      }).addTo(map);
-      mapRef.current = map;
-      // Click event to select location
-      map.on('click', async (e) => {
-        const { lat, lng } = e.latlng;
+      }).addTo(map)
+
+      mapRef.current = map
+
+      map.on('click', async (event) => {
+        const { lat, lng } = event.latlng
+
         try {
           const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
-          );
-          const data = await response.json();
-          // Kiểm tra nhiều trường trong address object
-          const addressObj = data?.address || {};
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`,
+          )
+          const data = await response.json()
+          const addressObj = data?.address || {}
           const addressFields = [
             addressObj.city,
             addressObj.state,
@@ -160,59 +163,63 @@ function ViewRequest({ onClose, requestData, requestId }) {
             addressObj.town,
             addressObj.village,
             addressObj.suburb,
-            data?.display_name
-          ];
-          const isHCM = addressFields.some(f =>
-            typeof f === 'string' &&
-            (f.toLowerCase().includes('hồ chí minh') || f.toLowerCase().includes('ho chi minh'))
-          );
-          if (isHCM) {
+            data?.display_name,
+          ]
+
+          const isHcm = addressFields.some(
+            (value) =>
+              typeof value === 'string' &&
+              (value.toLowerCase().includes('hồ chí minh') || value.toLowerCase().includes('ho chi minh')),
+          )
+
+          if (isHcm) {
             setFormData((prev) => ({
               ...prev,
               location: `${lat},${lng}`,
-              address: data.address.address || data.display_name || `${lat}, ${lng}`,
-            }));
-            // Update marker
+              address: data.address?.address || data.display_name || `${lat}, ${lng}`,
+            }))
+
             if (markerRef.current) {
-              markerRef.current.setLatLng([lat, lng]);
+              markerRef.current.setLatLng([lat, lng])
             } else {
-              markerRef.current = window.L.marker([lat, lng]).addTo(map);
+              markerRef.current = window.L.marker([lat, lng]).addTo(map)
             }
-            setErrorMessage('');
+            setErrorMessage('')
           } else {
-            setErrorMessage('Chỉ hỗ trợ trong khu vực TP.HCM');
+            setErrorMessage('Chỉ hỗ trợ trong khu vực TP.HCM')
           }
-        } catch (error) {
-          setErrorMessage('Không thể xác định địa chỉ từ vị trí này.');
+        } catch {
+          setErrorMessage('Không thể xác định địa chỉ từ vị trí này.')
         }
-      });
+      })
     } catch (error) {
-      // Prevent blank form if map fails
-      console.error('Map initialization error:', error);
+      console.error('Map initialization error:', error)
     }
+
     return () => {
       if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
+        mapRef.current.remove()
+        mapRef.current = null
       }
-    };
-  }, []);
-
-  // Update marker and map view when location changes
-  useEffect(() => {
-    if (!mapRef.current) return;
-    const loc = String(formData.location || '').split(',');
-    const lat = parseFloat(loc[0]);
-    const lng = parseFloat(loc[1]);
-    if (!isNaN(lat) && !isNaN(lng)) {
-      if (markerRef.current) {
-        markerRef.current.setLatLng([lat, lng]);
-      } else {
-        markerRef.current = window.L.marker([lat, lng]).addTo(mapRef.current);
-      }
-      mapRef.current.setView([lat, lng], mapRef.current.getZoom() || 12);
     }
-  }, [formData.location]);
+  }, [])
+
+  useEffect(() => {
+    if (!mapRef.current) return
+
+    const [latText, lngText] = String(formData.location || '').split(',')
+    const lat = Number.parseFloat(latText)
+    const lng = Number.parseFloat(lngText)
+
+    if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
+      if (markerRef.current) {
+        markerRef.current.setLatLng([lat, lng])
+      } else {
+        markerRef.current = window.L.marker([lat, lng]).addTo(mapRef.current)
+      }
+      mapRef.current.setView([lat, lng], mapRef.current.getZoom() || 12)
+    }
+  }, [formData.location])
 
   const getStatusLabel = (status) => {
     const statusMap = {
@@ -221,83 +228,55 @@ function ViewRequest({ onClose, requestData, requestId }) {
       ASSIGNED: 'Đã phân công',
       IN_PROGRESS: 'Đang cứu hộ',
       CONFIRMED: 'Đã xác nhận',
-      RESCUE_ARRIVED: 'Đội cứu hộ đã đến',
       COMPLETED: 'Đã hoàn thành',
       CANCELLED: 'Đã hủy',
+      CANCELED: 'Đã hủy',
       DUPLICATE: 'Trùng lặp',
-    };
-    return statusMap[rescueRequestService.normalizeStatus(status)] || status;
-  };
-
-  const isVietnamesePhoneNumber = (number) => {
-    return /^(\+84|84|0)(3|5|7|8|9|1[2689])[0-9]{8}$/.test(number);
-  };
-
-  const handleOpenMap = () => {
-    const coordinates = rescueRequestService.parseCoordinates(formData.location);
-    let query = '';
-
-    if (coordinates.latitude !== null && coordinates.longitude !== null) {
-      query = `${coordinates.latitude},${coordinates.longitude}`;
-    } else {
-      const address = String(formData.address ?? '').trim();
-      if (address) {
-        query = address;
-      }
     }
 
-    if (!query) {
-      query = '10.762622,106.660172';
-    }
+    return statusMap[rescueRequestService.normalizeStatus(status)] || status
+  }
 
-    window.open(`https://www.google.com/maps?q=${encodeURIComponent(query)}`, '_blank');
-  };
+  const isVietnamesePhoneNumber = (number) => /^(\+84|84|0)(3|5|7|8|9|1[2689])[0-9]{8}$/.test(number)
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault()
 
     if (!isEditing) {
-
-      return;
+      return
     }
 
-    // Validate phone
     if (!isVietnamesePhoneNumber(formData.phone)) {
-      setErrorMessage('Số điện thoại không hợp lệ!');
-      return;
+      setErrorMessage('Số điện thoại không hợp lệ!')
+      return
     }
 
-    // Validate people fields: totalPeople >= elderly + children
-    const totalPeople = Number.parseInt(String(formData.totalPeople ?? '').trim(), 10);
-    const elderlyRaw = Number.parseInt(String(formData.elderly ?? '').trim(), 10);
-    const childrenRaw = Number.parseInt(String(formData.children ?? '').trim(), 10);
-    const elderly = Number.isFinite(elderlyRaw) ? elderlyRaw : 0;
-    const children = Number.isFinite(childrenRaw) ? childrenRaw : 0;
-    if (
-      Number.isFinite(totalPeople) &&
-      totalPeople < elderly + children
-    ) {
-      setErrorMessage('Số người phải lớn hơn hoặc bằng tổng số người già và trẻ em.');
-      return;
+    const totalPeople = Number.parseInt(String(formData.totalPeople ?? '').trim(), 10)
+    const elderlyRaw = Number.parseInt(String(formData.elderly ?? '').trim(), 10)
+    const childrenRaw = Number.parseInt(String(formData.children ?? '').trim(), 10)
+    const elderly = Number.isFinite(elderlyRaw) ? elderlyRaw : 0
+    const children = Number.isFinite(childrenRaw) ? childrenRaw : 0
+
+    if (Number.isFinite(totalPeople) && totalPeople < elderly + children) {
+      setErrorMessage('Số người phải lớn hơn hoặc bằng tổng số người già và trẻ em.')
+      return
     }
 
     if (!isAuthenticated && !canGuestEdit) {
-      setErrorMessage('Không tìm thấy mã yêu cầu để chỉnh sửa yêu cầu guest.');
-      setIsEditing(false);
-      return;
+      setErrorMessage('Không tìm thấy mã yêu cầu để chỉnh sửa yêu cầu guest.')
+      setIsEditing(false)
+      return
     }
 
     if (isAuthenticated && !formData.requestId) {
-      setErrorMessage('Không tìm thấy yêu cầu để cập nhật.');
-      // Luồng đã đăng nhập hiện chưa có API sửa riêng.
-      // Giữ UI chỉnh sửa bình thường và đóng chế độ sửa tại FE.
-      setIsEditing(false);
-      return;
+      setErrorMessage('Không tìm thấy yêu cầu để cập nhật.')
+      setIsEditing(false)
+      return
     }
 
-    setIsLoading(true);
-    setErrorMessage('');
-    setSuccessMessage('');
+    setIsLoading(true)
+    setErrorMessage('')
+    setSuccessMessage('')
 
     try {
       const updateResult = isAuthenticated
@@ -306,123 +285,144 @@ function ViewRequest({ onClose, requestData, requestId }) {
             formData.requestId,
             formData,
             formData.accessCode,
-          );
+          )
 
       if (!updateResult?.success) {
-        setErrorMessage(updateResult?.message || 'Không thể cập nhật yêu cầu.');
-        return;
+        setErrorMessage(updateResult?.message || 'Không thể cập nhật yêu cầu.')
+        return
       }
 
       const refreshed = isAuthenticated
         ? await rescueRequestService.getRequestById(formData.requestId)
-        : await rescueRequestService.getTrackedGuestRequestStatus();
+        : (await rescueRequestService.getTrackedGuestRequestStatus())
+          || await rescueRequestService.getGuestRequestStatus(formData.requestId, formData.accessCode)
+
       const formatted = rescueRequestService.toRequestFormData({
+        ...formData,
         ...refreshed,
         accessCode: formData.accessCode,
-      });
+      })
 
       setFormData((prev) => ({
         ...prev,
         ...formatted,
         requestId: prev.requestId,
         accessCode: prev.accessCode,
+        canReportSafe: Boolean(formatted?.canReportSafe),
         conditions: {
           ...EMPTY_FORM_DATA.conditions,
           ...(formatted?.conditions || {}),
         },
-      }));
+      }))
 
-      setIsEditing(false);
-      setSuccessMessage('Lưu thay đổi thành công.');
+      setIsEditing(false)
+      setSuccessMessage('Lưu thay đổi thành công.')
     } catch (error) {
-      setErrorMessage(error?.response?.data?.message || 'Không thể cập nhật yêu cầu. Vui lòng thử lại.');
+      setErrorMessage(error?.response?.data?.message || 'Không thể cập nhật yêu cầu. Vui lòng thử lại.')
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
-  const handleEditClick = (e) => {
+  const handleEditClick = (event) => {
     if (isEditing) {
-      return;
+      return
     }
 
-    e.preventDefault();
+    event.preventDefault()
 
     if (!canStartEdit) {
-      return;
+      return
     }
 
-    setErrorMessage('');
-    setSuccessMessage('');
-    setIsEditing(true);
-  };
+    setErrorMessage('')
+    setSuccessMessage('')
+    setIsEditing(true)
+  }
 
   const handleReportSafe = async () => {
     if (!canAcknowledgeSafe) {
-      return;
+      return
     }
 
-    const requestIdValue = formData.requestId;
+    const requestIdValue = formData.requestId
     if (!requestIdValue) {
-      setErrorMessage('Không tìm thấy yêu cầu để báo an toàn.');
-      return;
+      setErrorMessage('Không tìm thấy yêu cầu để báo an toàn.')
+      return
     }
 
-    setIsReportingSafe(true);
-    setErrorMessage('');
-    setSuccessMessage('');
+    setIsReportingSafe(true)
+    setErrorMessage('')
+    setSuccessMessage('')
 
     try {
       if (isAuthenticated) {
-        await rescueRequestService.confirmRescued(requestIdValue);
+        await rescueRequestService.confirmRescued(requestIdValue)
       } else {
-        const phone = String(formData.phone ?? '').trim();
+        const phone = String(formData.phone ?? '').trim()
         if (!phone) {
-          setErrorMessage('Không tìm thấy số điện thoại để báo an toàn.');
-          return;
+          setErrorMessage('Không tìm thấy số điện thoại để báo an toàn.')
+          return
         }
 
-        await rescueRequestService.confirmRescuedAsGuest(requestIdValue, phone);
+        await rescueRequestService.confirmRescuedAsGuest(requestIdValue, phone)
       }
 
-      if (!rescueRequestService.markSafeReportAcknowledged(requestIdValue)) {
-        setErrorMessage('Không thể ghi nhận báo an toàn cho yêu cầu này.');
-        return;
-      }
+      const refreshed = isAuthenticated
+        ? await rescueRequestService.getRequestById(requestIdValue)
+        : (await rescueRequestService.getTrackedGuestRequestStatus())
+          || await rescueRequestService.getGuestRequestStatus(requestIdValue, formData.accessCode)
 
-      setIsSafeReported(true);
-      setSuccessMessage('Báo an toàn thành công. Yêu cầu đã được đánh dấu hoàn tất.');
+      const formatted = rescueRequestService.toRequestFormData({
+        ...formData,
+        ...refreshed,
+        accessCode: formData.accessCode,
+      })
+
+      setFormData((prev) => ({
+        ...prev,
+        ...formatted,
+        requestId: prev.requestId,
+        accessCode: prev.accessCode,
+        canReportSafe: Boolean(formatted?.canReportSafe),
+        conditions: {
+          ...EMPTY_FORM_DATA.conditions,
+          ...(formatted?.conditions || {}),
+        },
+      }))
+
+      setSuccessMessage('Báo an toàn thành công. Yêu cầu đã được đánh dấu hoàn tất.')
     } catch (error) {
-      setErrorMessage(rescueRequestService.getConfirmRescuedErrorMessage(error));
+      setErrorMessage(rescueRequestService.getConfirmRescuedErrorMessage(error))
     } finally {
-      setIsReportingSafe(false);
+      setIsReportingSafe(false)
     }
-  };
+  }
 
   const handleConditionChange = (condition) => {
     setFormData((prev) => {
-      const nextValue = !prev.conditions[condition];
+      const nextValue = !prev.conditions[condition]
       const nextConditions = {
         ...prev.conditions,
         [condition]: nextValue,
-      };
+      }
 
       if (condition === 'floodUnder1m' && nextValue) {
-        nextConditions.floodOver1m = false;
+        nextConditions.floodOver1m = false
       }
 
       if (condition === 'floodOver1m' && nextValue) {
-        nextConditions.floodUnder1m = false;
+        nextConditions.floodUnder1m = false
       }
 
       return {
         ...prev,
         conditions: nextConditions,
-      };
-    });
-  };
+      }
+    })
+  }
 
-  const editButtonDisabled = isEditing ? isLoading || isReportingSafe : !canStartEdit;
+  const editButtonDisabled = isEditing ? isLoading || isReportingSafe : !canStartEdit
 
   return (
     <div className="request-overlay">
@@ -447,9 +447,15 @@ function ViewRequest({ onClose, requestData, requestId }) {
           </div>
         )}
 
+        {!isLoading && canReportSafe && (
+          <div className="request-feedback request-feedback-info">
+            Đội cứu hộ đã xác nhận hoàn tất. Vui lòng bấm &quot;Báo an toàn&quot; để đóng yêu cầu.
+          </div>
+        )}
+
         {!isLoading && formData.status && (
-          <div className={`status-banner status-${displayNormalizedStatus.toLowerCase()}`}>
-            <strong>Trạng thái:</strong> {getStatusLabel(displayNormalizedStatus)}
+          <div className={`status-banner status-${normalizedStatus.toLowerCase()}`}>
+            <strong>Trạng thái:</strong> {getStatusLabel(normalizedStatus)}
           </div>
         )}
 
@@ -461,13 +467,13 @@ function ViewRequest({ onClose, requestData, requestId }) {
                 <input
                   type="tel"
                   value={formData.phone}
-                  onChange={(e) => {
-                    const numericValue = sanitizeNumberText(e.target.value);
-                    setFormData({ ...formData, phone: numericValue });
+                  onChange={(event) => {
+                    const numericValue = sanitizeNumberText(event.target.value)
+                    setFormData((prev) => ({ ...prev, phone: numericValue }))
                     if (!isVietnamesePhoneNumber(numericValue)) {
-                      setErrorMessage('Số điện thoại không hợp lệ!');
+                      setErrorMessage('Số điện thoại không hợp lệ!')
                     } else {
-                      setErrorMessage('');
+                      setErrorMessage('')
                     }
                   }}
                   disabled={!isEditing}
@@ -480,14 +486,13 @@ function ViewRequest({ onClose, requestData, requestId }) {
                 <input
                   type="text"
                   value={formData.location}
-                  disabled={true}
+                  disabled
                   required
                   style={{ width: '100%' }}
                 />
                 <small className="request-input-hint">Chỉ chọn trên bản đồ</small>
               </div>
 
-              {/* Interactive Map */}
               <div className="form-field">
                 <label>Chọn vị trí trên bản đồ</label>
                 <div
@@ -513,7 +518,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
                 <input
                   type="text"
                   value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, address: event.target.value }))}
                   disabled={!isEditing}
                   required
                 />
@@ -529,13 +534,14 @@ function ViewRequest({ onClose, requestData, requestId }) {
                       pattern="[0-9]*"
                       min="0"
                       value={formData.totalPeople}
-                      onChange={isEditing ? (e) => {
-                        const numericValue = sanitizeNumberText(e.target.value);
-                        setFormData((prev) => ({ ...prev, totalPeople: numericValue }));
+                      onChange={isEditing ? (event) => {
+                        const numericValue = sanitizeNumberText(event.target.value)
+                        setFormData((prev) => ({ ...prev, totalPeople: numericValue }))
                       } : undefined}
                       disabled={!isEditing}
                     />
                   </div>
+
                   <div className="form-field-inline">
                     <label>Người già</label>
                     <input
@@ -544,13 +550,14 @@ function ViewRequest({ onClose, requestData, requestId }) {
                       pattern="[0-9]*"
                       min="0"
                       value={formData.elderly}
-                      onChange={isEditing ? (e) => {
-                        const numericValue = sanitizeNumberText(e.target.value);
-                        setFormData((prev) => ({ ...prev, elderly: numericValue }));
+                      onChange={isEditing ? (event) => {
+                        const numericValue = sanitizeNumberText(event.target.value)
+                        setFormData((prev) => ({ ...prev, elderly: numericValue }))
                       } : undefined}
                       disabled={!isEditing}
                     />
                   </div>
+
                   <div className="form-field-inline">
                     <label>Trẻ em</label>
                     <input
@@ -559,9 +566,9 @@ function ViewRequest({ onClose, requestData, requestId }) {
                       pattern="[0-9]*"
                       min="0"
                       value={formData.children}
-                      onChange={isEditing ? (e) => {
-                        const numericValue = sanitizeNumberText(e.target.value);
-                        setFormData((prev) => ({ ...prev, children: numericValue }));
+                      onChange={isEditing ? (event) => {
+                        const numericValue = sanitizeNumberText(event.target.value)
+                        setFormData((prev) => ({ ...prev, children: numericValue }))
                       } : undefined}
                       disabled={!isEditing}
                     />
@@ -627,9 +634,9 @@ function ViewRequest({ onClose, requestData, requestId }) {
                 <textarea
                   rows="5"
                   value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, notes: event.target.value }))}
                   disabled={!isEditing}
-                ></textarea>
+                />
               </div>
             </div>
           </div>
@@ -653,14 +660,19 @@ function ViewRequest({ onClose, requestData, requestId }) {
               {isEditing ? 'Lưu thay đổi' : 'Chỉnh sửa'}
             </button>
 
-            <button type="button" className="cancel-btn" onClick={onClose} disabled={isLoading || isReportingSafe}>
+            <button
+              type="button"
+              className="cancel-btn"
+              onClick={onClose}
+              disabled={isLoading || isReportingSafe}
+            >
               Đóng
             </button>
           </div>
         </form>
       </div>
     </div>
-  );
+  )
 }
 
-export default ViewRequest;
+export default ViewRequest

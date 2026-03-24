@@ -11,7 +11,6 @@ const CONDITION_DESCRIPTION_MAP = {
 const TERMINAL_STATUSES = new Set(['COMPLETED', 'CANCELLED', 'CANCELED', 'DUPLICATE', 'DUPLICATED'])
 const GUEST_REQUEST_TRACKING_KEY = 'guestRescueRequestTracking'
 const GUEST_REQUEST_DETAILS_KEY = 'guestRescueRequestDetails'
-const SAFE_REPORT_ACK_KEY = 'rescueRequestSafeReportAck'
 
 const normalizeText = (value) => String(value ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 
@@ -86,6 +85,28 @@ const toNullableInteger = (value) => {
   return Number.isFinite(numeric) ? numeric : null
 }
 
+const toBooleanFlag = (value) => {
+  if (typeof value === 'boolean') {
+    return value
+  }
+
+  if (typeof value === 'number') {
+    return value !== 0
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase()
+    if (normalized === 'true' || normalized === '1') {
+      return true
+    }
+    if (normalized === 'false' || normalized === '0' || normalized === '') {
+      return false
+    }
+  }
+
+  return false
+}
+
 const parsePeopleCounts = (formData) => {
   const totalPeople = toNullableInteger(String(formData?.totalPeople ?? '').trim())
   const elderlyRaw = toNullableInteger(String(formData?.elderly ?? '').trim())
@@ -157,6 +178,14 @@ const mergeGuestRequestData = (apiData, cachedDetails, tracking) => {
     latitude,
     longitude,
     numberOfPeople,
+    canReportSafe: toBooleanFlag(
+      pickFirstMeaningful(
+        source?.canReportSafe,
+        source?.CanReportSafe,
+        cached?.canReportSafe,
+        cached?.CanReportSafe,
+      ),
+    ),
     status: String(pickFirstMeaningful(source?.status, cached?.status) ?? 'Pending'),
     createdAt: pickFirstMeaningful(source?.createdAt, source?.created_at, cached?.createdAt) ?? null,
     updatedAt:
@@ -288,6 +317,12 @@ const toRequestFormData = (requestItem) => {
         requestItem?.Description,
       ) ?? '',
     ).trim(),
+    canReportSafe: toBooleanFlag(
+      pickFirstMeaningful(
+        requestItem?.canReportSafe,
+        requestItem?.CanReportSafe,
+      ),
+    ),
     status: pickFirstMeaningful(requestItem?.status, requestItem?.Status) ?? 'Pending',
     submittedDate:
       pickFirstMeaningful(
@@ -495,43 +530,6 @@ const clearGuestDetails = () => {
   localStorage.removeItem(GUEST_REQUEST_DETAILS_KEY)
 }
 
-const parseSafeReportAck = (rawValue) => {
-  if (!rawValue) {
-    return {}
-  }
-
-  try {
-    const parsed = JSON.parse(rawValue)
-    return parsed && typeof parsed === 'object' ? parsed : {}
-  } catch {
-    return {}
-  }
-}
-
-const getSafeReportAckMap = () => parseSafeReportAck(localStorage.getItem(SAFE_REPORT_ACK_KEY))
-
-const markSafeReportAcknowledged = (requestId) => {
-  const normalizedRequestId = toNullableInteger(requestId)
-  if (!normalizedRequestId) {
-    return false
-  }
-
-  const ackMap = getSafeReportAckMap()
-  ackMap[String(normalizedRequestId)] = true
-  localStorage.setItem(SAFE_REPORT_ACK_KEY, JSON.stringify(ackMap))
-  return true
-}
-
-const isSafeReportAcknowledged = (requestId) => {
-  const normalizedRequestId = toNullableInteger(requestId)
-  if (!normalizedRequestId) {
-    return false
-  }
-
-  const ackMap = getSafeReportAckMap()
-  return Boolean(ackMap[String(normalizedRequestId)])
-}
-
 const buildGuestDetailsFromForm = (formData, requestId = null, status = 'Pending', accessCode = null) => {
   const { latitude, longitude } = parseCoordinates(formData?.location)
   const { totalPeople, adultCount, elderlyCount, childrenCount } = parsePeopleCounts(formData)
@@ -549,6 +547,7 @@ const buildGuestDetailsFromForm = (formData, requestId = null, status = 'Pending
     elderlyCount,
     childrenCount,
     description: buildDescription(formData?.notes, formData?.conditions),
+    canReportSafe: false,
     status,
     updatedAt: new Date().toISOString(),
   }
@@ -699,6 +698,7 @@ const rescueRequestService = {
         ...(existingDetails || {}),
         requestId: toNullableInteger(requestId),
         phone: payload.phone || existingDetails?.phone || '',
+        canReportSafe: false,
         status: resolvedStatus,
         updatedAt: new Date().toISOString(),
       })
@@ -718,8 +718,6 @@ const rescueRequestService = {
   getGuestDetails,
   storeGuestDetails,
   clearGuestDetails,
-  markSafeReportAcknowledged,
-  isSafeReportAcknowledged,
 
   parseCoordinates,
   normalizeStatus,

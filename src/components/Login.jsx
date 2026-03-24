@@ -5,11 +5,8 @@ import './Login.css'
 const Login = ({ onClose, onShowForgotPassword, onShowRegister, onLoginSuccess }) => {
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
-  const [rememberPassword, setRememberPassword] = useState(false)
-  const [showSuccessPopup, setShowSuccessPopup] = useState(false)
   const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
-  const [loggedInUser, setLoggedInUser] = useState(null)
 
   const handleSubmit = async (event) => {
     event.preventDefault()
@@ -25,8 +22,15 @@ const Login = ({ onClose, onShowForgotPassword, onShowRegister, onLoginSuccess }
 
     try {
       const data = await authService.login(phone, password)
-      setLoggedInUser(data.user || null)
-      setShowSuccessPopup(true)
+
+      if (onLoginSuccess) {
+        onLoginSuccess(data.user || null)
+        return
+      }
+
+      if (onClose) {
+        onClose()
+      }
     } catch (error) {
       setErrorMessage(authService.getLoginErrorMessage(error))
     } finally {
@@ -53,19 +57,6 @@ const Login = ({ onClose, onShowForgotPassword, onShowRegister, onLoginSuccess }
 
     if (onShowRegister) {
       onShowRegister()
-    }
-  }
-
-  const handleSuccessConfirm = () => {
-    setShowSuccessPopup(false)
-
-    if (onLoginSuccess) {
-      onLoginSuccess(loggedInUser)
-      return
-    }
-
-    if (onClose) {
-      onClose()
     }
   }
 
@@ -112,23 +103,17 @@ const Login = ({ onClose, onShowForgotPassword, onShowRegister, onLoginSuccess }
             />
           </div>
 
-          <div className="form-options">
-            <label className="remember-me">
-              <input
-                type="checkbox"
-                checked={rememberPassword}
-                onChange={(event) => setRememberPassword(event.target.checked)}
-                disabled={loading}
-              />
-              Lưu thông tin đăng nhập
-            </label>
-            <a href="#" className="forgot-password" onClick={handleForgotPasswordClick}>
-              Quên mật khẩu?
-            </a>
-          </div>
-
           <button type="submit" className="login-button" disabled={loading}>
             {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
+          </button>
+
+          <button
+            type="button"
+            className="login-secondary-button"
+            onClick={handleForgotPasswordClick}
+            disabled={loading}
+          >
+            Quên mật khẩu?
           </button>
         </form>
 
@@ -141,17 +126,6 @@ const Login = ({ onClose, onShowForgotPassword, onShowRegister, onLoginSuccess }
           </p>
         </div>
       </div>
-
-      {showSuccessPopup && (
-        <div className="success-overlay">
-          <div className="success-box">
-            <h2 className="success-title">Đăng Nhập Thành Công!</h2>
-            <button onClick={handleSuccessConfirm} className="success-button">
-              Xác nhận
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

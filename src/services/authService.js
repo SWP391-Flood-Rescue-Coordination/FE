@@ -2,8 +2,9 @@ import api from './api'
 
 const PHONE_REGEX = /^(?:\+84|84|0)\d{9}$/
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const LOGIN_PHONE_STORAGE_KEY = 'loginPhone'
-
+const FORGOT_PASSWORD_CONTEXT_KEY = 'forgotPasswordResetContext'
+const GUEST_REQUEST_TRACKING_KEY = 'guestRescueRequestTracking'
+const GUEST_REQUEST_DETAILS_KEY = 'guestRescueRequestDetails'
 const parseStoredUser = () => {
   const raw = localStorage.getItem('user')
   if (!raw) {
@@ -34,7 +35,7 @@ const resolveDefaultPhone = () => {
     return usernameAsPhone
   }
 
-  return normalizeValidPhone(localStorage.getItem(LOGIN_PHONE_STORAGE_KEY))
+  return ''
 }
 
 const flattenValidationErrors = (errors) => {
@@ -98,6 +99,59 @@ const getRegisterErrorMessage = (error) => {
   return data?.message || data?.title || 'Không thể đăng ký. Vui lòng thử lại.'
 }
 
+const getForgotPasswordErrorMessage = (error) => {
+  const status = error?.response?.status
+  const data = error?.response?.data
+
+  if (status === 400) {
+    const validationMessages = flattenValidationErrors(data?.errors)
+    if (validationMessages.length > 0) {
+      return validationMessages.join(' ')
+    }
+  return data?.message || data?.Message || data?.title || 'Dữ liệu gửi lên không hợp lệ.'
+  }
+
+  if (status === 404) {
+    return data?.message || data?.Message || 'Không tìm thấy tài khoản phù hợp.'
+  }
+
+  if (status >= 500) {
+    return 'Hệ thống đang gặp lỗi. Vui lòng thử lại sau.'
+  }
+
+  return data?.message || data?.Message || data?.title || 'Không thể xử lý yêu cầu lúc này.'
+}
+
+const storeForgotPasswordResetContext = (phone, otp) => {
+  const payload = {
+    phone: String(phone ?? '').trim(),
+    otp: String(otp ?? '').trim(),
+  }
+
+  sessionStorage.setItem(FORGOT_PASSWORD_CONTEXT_KEY, JSON.stringify(payload))
+}
+
+const getForgotPasswordResetContext = () => {
+  const raw = sessionStorage.getItem(FORGOT_PASSWORD_CONTEXT_KEY)
+  if (!raw) {
+    return null
+  }
+
+  try {
+    const parsed = JSON.parse(raw)
+    return {
+      phone: String(parsed?.phone ?? '').trim(),
+      otp: String(parsed?.otp ?? '').trim(),
+    }
+  } catch {
+    return null
+  }
+}
+
+const clearForgotPasswordResetContext = () => {
+  sessionStorage.removeItem(FORGOT_PASSWORD_CONTEXT_KEY)
+}
+
 const authService = {
   validateLoginInput: (phone, password) => {
     const trimmedPhone = String(phone ?? '').trim()
@@ -149,6 +203,43 @@ const authService = {
     return { valid: true, message: '' }
   },
 
+  validateForgotPasswordPhone: (phone) => {
+    const trimmedPhone = String(phone ?? '').trim()
+
+    if (!PHONE_REGEX.test(trimmedPhone)) {
+      return { valid: false, message: 'Số điện thoại không đúng định dạng.' }
+    }
+
+    return { valid: true, message: '' }
+  },
+
+  validateResetPasswordInput: (phone, otp, newPassword, confirmPassword) => {
+    const phoneValidation = authService.validateForgotPasswordPhone(phone)
+    if (!phoneValidation.valid) {
+      return phoneValidation
+    }
+
+    const otpValue = String(otp ?? '').trim()
+    if (!otpValue) {
+      return { valid: false, message: 'Vui lòng nhập mã OTP.' }
+    }
+
+    if (otpValue.length < 4 || otpValue.length > 6) {
+      return { valid: false, message: 'OTP phải từ 4 đến 6 ký tự.' }
+    }
+
+    const passwordValue = String(newPassword ?? '')
+    if (passwordValue.length < 5 || passwordValue.length > 100) {
+      return { valid: false, message: 'Mật khẩu mới phải từ 5 đến 100 ký tự.' }
+    }
+
+    if (passwordValue !== String(confirmPassword ?? '')) {
+      return { valid: false, message: 'Mật khẩu xác nhận không khớp.' }
+    }
+
+    return { valid: true, message: '' }
+  },
+
   login: async (phone, password) => {
     const payload = {
       phone: String(phone ?? '').trim(),
@@ -159,7 +250,7 @@ const authService = {
     const data = response?.data ?? {}
 
     if (!data?.success || !data?.accessToken || !data?.user) {
-      const authError = new Error(data?.message || 'Dang nhap that bai.')
+      const authError = new Error(data?.message || 'Đăng nhập thất bại.')
       authError.response = {
         status: 401,
         data,
@@ -173,9 +264,10 @@ const authService = {
     }
 
     localStorage.setItem('accessToken', data.accessToken)
-    localStorage.setItem(LOGIN_PHONE_STORAGE_KEY, payload.phone)
     localStorage.setItem('user', JSON.stringify(storedUser))
     localStorage.removeItem('refreshToken')
+    localStorage.removeItem(GUEST_REQUEST_TRACKING_KEY)
+    localStorage.removeItem(GUEST_REQUEST_DETAILS_KEY)
 
     return {
       ...data,
@@ -204,24 +296,46 @@ const authService = {
       throw authError
     }
 
-    // Không tự động lưu token - user cần đăng nhập sau khi đăng ký
     return data
+  },
+
+  sendForgotPasswordOtp: async (phone) => {
+    const payload = {
+      phone: String(phone ?? '').trim(),
+    }
+
+    const response = await api.post('/Auth/forgot-password/send-otp', payload)
+    return response?.data ?? {}
+  },
+
+  resetForgotPassword: async (phone, otp, newPassword) => {
+    const payload = {
+      phone: String(phone ?? '').trim(),
+      otp: String(otp ?? '').trim(),
+      newPassword: String(newPassword ?? ''),
+    }
+
+    const response = await api.post('/Auth/forgot-password/reset-password', payload)
+    return response?.data ?? {}
   },
 
   logout: () => {
     localStorage.removeItem('accessToken')
     localStorage.removeItem('refreshToken')
     localStorage.removeItem('user')
-    localStorage.removeItem(LOGIN_PHONE_STORAGE_KEY)
   },
 
   isAuthenticated: () => Boolean(localStorage.getItem('accessToken')),
 
   getUserInfo: () => parseStoredUser(),
   getDefaultPhone: () => resolveDefaultPhone(),
+  storeForgotPasswordResetContext,
+  getForgotPasswordResetContext,
+  clearForgotPasswordResetContext,
 
   getLoginErrorMessage,
   getRegisterErrorMessage,
+  getForgotPasswordErrorMessage,
 }
 
 export default authService
