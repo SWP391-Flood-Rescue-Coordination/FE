@@ -8,7 +8,7 @@ import {
   HOME_ROUTE_BY_ROLE,
   REQUEST_STATUS_LABELS,
   REQUEST_STATUS_OPTIONS,
-  formatDateTime,
+  formatDateTimeVN,
   formatPriority,
   normalizeRole,
   normalizeStatus,
@@ -279,8 +279,8 @@ function AdminRequestsPage() {
                           {REQUEST_STATUS_LABELS[normalizedRequestStatus] || request.status || '-'}
                         </span>
                       </td>
-                      <td>{formatDateTime(request.createdAt)}</td>
-                      <td>{formatDateTime(request.updatedAt)}</td>
+                      <td>{formatDateTimeVN(request.createdAt)}</td>
+                      <td>{formatDateTimeVN(request.updatedAt)}</td>
                       <td>
                         <button
                           type="button"

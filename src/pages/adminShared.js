@@ -59,18 +59,28 @@ export const normalizeText = (value) =>
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
 
-export const formatDateTime = (value) => {
-  if (!value) {
-    return '-'
-  }
 
-  const parsed = new Date(value)
-  if (Number.isNaN(parsed.getTime())) {
-    return '-'
-  }
+// Chuyển đổi sang giờ Việt Nam (UTC+7)
+export const toVietnamTime = (dateString) => {
+  if (!dateString) return null;
+  const date = new Date(dateString);
+  date.setHours(date.getHours() + 7);
+  return date;
+};
 
-  return parsed.toLocaleString('vi-VN')
-}
+// Format ngày giờ chuẩn Việt Nam
+export const formatDateTimeVN = (value) => {
+  const date = toVietnamTime(value);
+  if (!date || Number.isNaN(date.getTime())) return '-';
+  return date.toLocaleString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+};
 
 export const formatPriority = (priorityLevelId) => {
   const numericPriority = Number(priorityLevelId)

@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { ArrowLeftOnRectangleIcon, ArrowRightOnRectangleIcon, UserCircleIcon } from '@heroicons/react/24/outline'
 import authService from '../services/authService'
 import rescueRequestService from '../services/rescueRequestService'
+
+import { formatDateTimeVN } from '../pages/adminShared';
 import RequestForm from './RequestForm'
 import ViewRequest from './ViewRequest'
 import './Dashboard.css'
@@ -411,7 +413,7 @@ function Dashboard() {
                 <div className="empty-message">Chưa có yêu cầu nào được gửi</div>
               ) : (
                 requestHistory.map((request, index) => {
-                  const requestDate = new Date(request.submittedDate)
+                  const requestDate = request.submittedDate
                   const statusMeta = getRequestStatusMeta(request.status)
                   const statusClass = rescueRequestService.isTerminalStatus(request.status) ? 'completed' : 'pending'
 
@@ -427,14 +429,7 @@ function Dashboard() {
                       }}
                     >
                       <span className="detail-date">
-                        {requestDate.toLocaleString('vi-VN', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          hour12: false,
-                        })} CH
+                        {formatDateTimeVN(requestDate)}
                       </span>
                       <span className={`detail-status ${statusClass}`}>
                         {statusMeta.label}

@@ -23,7 +23,7 @@ import {
   HOME_ROUTE_BY_ROLE,
   REQUEST_STATUS_LABELS,
   ROLE_ORDER,
-  formatDateTime,
+  formatDateTimeVN,
   formatPriority,
   normalizeRole,
   normalizeStatus,
@@ -459,7 +459,7 @@ function AdminDashboardPage() {
                   </div>
                   <div>
                     <dt>Tạo lúc</dt>
-                    <dd>{formatDateTime(dashboardMetrics.oldestPendingRequest.createdAt)}</dd>
+                    <dd>{formatDateTimeVN(dashboardMetrics.oldestPendingRequest.createdAt)}</dd>
                   </div>
                 </dl>
               </div>
@@ -819,7 +819,7 @@ function AdminDashboardPage() {
                     </div>
                     <div className="admin-compact-side">
                       <span className="admin-badge inactive">Tạm khóa</span>
-                      <small>{formatDateTime(user.createdAt)}</small>
+                      <small>{formatDateTimeVN(user.createdAt)}</small>
                     </div>
                   </article>
                 ))}
@@ -881,7 +881,7 @@ function AdminDashboardPage() {
                       <span className={`admin-badge request-status ${request.normalizedStatus.toLowerCase()}`}>
                         {getRequestStatusLabel(request.status)}
                       </span>
-                      <small>{formatPriority(request.priorityLevelId)} · {formatDateTime(request.createdAt)}</small>
+                      <small>{formatPriority(request.priorityLevelId)} · {formatDateTimeVN(request.createdAt)}</small>
                     </div>
                   </article>
                 ))}
@@ -910,7 +910,7 @@ function AdminDashboardPage() {
                     </div>
                     <div className="admin-compact-side wide">
                       <span className="admin-badge role">{adminService.getRoleLabel(user.role)}</span>
-                      <small>{user.isActive ? 'Đang hoạt động' : 'Tạm khóa'} · {formatDateTime(user.createdAt)}</small>
+                      <small>{user.isActive ? 'Đang hoạt động' : 'Tạm khóa'} · {formatDateTimeVN(user.createdAt)}</small>
                     </div>
                   </article>
                 ))}

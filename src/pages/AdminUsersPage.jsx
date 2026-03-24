@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import AdminLayout from '../components/AdminLayout'
 import authService from '../services/authService'
 import adminService from '../services/adminService'
-import { HOME_ROUTE_BY_ROLE, ROLE_ORDER, formatDateTime, normalizeRole, normalizeText } from './adminShared'
+import { HOME_ROUTE_BY_ROLE, ROLE_ORDER, formatDateTimeVN, normalizeRole, normalizeText } from './adminShared'
 
 function AdminUsersPage() {
   const navigate = useNavigate()
@@ -331,7 +331,7 @@ function AdminUsersPage() {
                         {user.isActive ? 'Đang hoạt động' : 'Tạm khóa'}
                       </span>
                     </td>
-                    <td>{formatDateTime(user.createdAt)}</td>
+                    <td>{formatDateTimeVN(user.createdAt)}</td>
                     <td>
                       <div className="admin-action-stack">
                         <button
