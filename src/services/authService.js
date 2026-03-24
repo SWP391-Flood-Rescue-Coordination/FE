@@ -5,6 +5,8 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const FORGOT_PASSWORD_CONTEXT_KEY = 'forgotPasswordResetContext'
 const GUEST_REQUEST_TRACKING_KEY = 'guestRescueRequestTracking'
 const GUEST_REQUEST_DETAILS_KEY = 'guestRescueRequestDetails'
+const GUEST_REQUEST_TRACKING_BACKUP_KEY = 'guestRescueRequestTrackingBackup'
+const GUEST_REQUEST_DETAILS_BACKUP_KEY = 'guestRescueRequestDetailsBackup'
 const parseStoredUser = () => {
   const raw = localStorage.getItem('user')
   if (!raw) {
@@ -152,6 +154,42 @@ const clearForgotPasswordResetContext = () => {
   sessionStorage.removeItem(FORGOT_PASSWORD_CONTEXT_KEY)
 }
 
+const preserveGuestRequestContextForLogout = () => {
+  const guestTracking = localStorage.getItem(GUEST_REQUEST_TRACKING_KEY)
+  const guestDetails = localStorage.getItem(GUEST_REQUEST_DETAILS_KEY)
+
+  if (guestTracking) {
+    sessionStorage.setItem(GUEST_REQUEST_TRACKING_BACKUP_KEY, guestTracking)
+  } else {
+    sessionStorage.removeItem(GUEST_REQUEST_TRACKING_BACKUP_KEY)
+  }
+
+  if (guestDetails) {
+    sessionStorage.setItem(GUEST_REQUEST_DETAILS_BACKUP_KEY, guestDetails)
+  } else {
+    sessionStorage.removeItem(GUEST_REQUEST_DETAILS_BACKUP_KEY)
+  }
+
+  localStorage.removeItem(GUEST_REQUEST_TRACKING_KEY)
+  localStorage.removeItem(GUEST_REQUEST_DETAILS_KEY)
+}
+
+const restoreGuestRequestContextAfterLogout = () => {
+  const guestTracking = sessionStorage.getItem(GUEST_REQUEST_TRACKING_BACKUP_KEY)
+  const guestDetails = sessionStorage.getItem(GUEST_REQUEST_DETAILS_BACKUP_KEY)
+
+  if (guestTracking) {
+    localStorage.setItem(GUEST_REQUEST_TRACKING_KEY, guestTracking)
+  }
+
+  if (guestDetails) {
+    localStorage.setItem(GUEST_REQUEST_DETAILS_KEY, guestDetails)
+  }
+
+  sessionStorage.removeItem(GUEST_REQUEST_TRACKING_BACKUP_KEY)
+  sessionStorage.removeItem(GUEST_REQUEST_DETAILS_BACKUP_KEY)
+}
+
 const authService = {
   validateLoginInput: (phone, password) => {
     const trimmedPhone = String(phone ?? '').trim()
@@ -263,11 +301,10 @@ const authService = {
       phone: normalizeValidPhone(data?.user?.phone) || payload.phone,
     }
 
+    preserveGuestRequestContextForLogout()
     localStorage.setItem('accessToken', data.accessToken)
     localStorage.setItem('user', JSON.stringify(storedUser))
     localStorage.removeItem('refreshToken')
-    localStorage.removeItem(GUEST_REQUEST_TRACKING_KEY)
-    localStorage.removeItem(GUEST_REQUEST_DETAILS_KEY)
 
     return {
       ...data,
@@ -323,6 +360,7 @@ const authService = {
     localStorage.removeItem('accessToken')
     localStorage.removeItem('refreshToken')
     localStorage.removeItem('user')
+    restoreGuestRequestContextAfterLogout()
   },
 
   isAuthenticated: () => Boolean(localStorage.getItem('accessToken')),
