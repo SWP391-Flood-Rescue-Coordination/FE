@@ -467,7 +467,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
 
     try {
       await coordinatorService.verifyRequest(requestId)
-      setSuccessMessage(`Xác thực yêu cầu #${requestId} thành công. Mức ưu tiên đã được hệ thống tự động gán.`)
+      setSuccessMessage(`Xác thực yêu cầu #${requestId} thành công.`)
       await reloadAll()
     } catch (error) {
       const result = handleApiError(error, 'Yêu cầu đã được xử lý bởi người khác.')

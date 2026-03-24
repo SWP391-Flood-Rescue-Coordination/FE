@@ -1,11 +1,11 @@
 import api from './api'
 
 const CONDITION_DESCRIPTION_MAP = {
-  needSupplies: 'Het nhu yeu pham',
-  houseCollapsed: 'Sap nha',
-  needMedical: 'Can dieu tri y te',
-  floodUnder1m: 'Ngap duoi 1m',
-  floodOver1m: 'Ngap tren 1m',
+  needSupplies: 'Hết nhu yếu phẩm',
+  houseCollapsed: 'Sập nhà',
+  needMedical: 'Cần điều trị y tế',
+  floodUnder1m: 'Ngập dưới 1m',
+  floodOver1m: 'Ngập trên 1m',
 }
 
 const TERMINAL_STATUSES = new Set(['COMPLETED', 'CANCELLED', 'CANCELED', 'DUPLICATE', 'DUPLICATED'])
@@ -199,18 +199,18 @@ const isTerminalStatus = (status) => TERMINAL_STATUSES.has(normalizeStatus(statu
 
 const buildTitle = (conditions) => {
   if (conditions?.needMedical) {
-    return 'Can ho tro y te khan cap'
+    return 'Cần hỗ trợ y tế khẩn cấp'
   }
 
   if (conditions?.houseCollapsed) {
-    return 'Sap nha can cuu ho'
+    return 'Sập nhà cần cứu hộ'
   }
 
   if (conditions?.floodOver1m) {
-    return 'Ngap sau can cuu ho'
+    return 'Ngập sâu cần cứu hộ'
   }
 
-  return 'Yeu cau cuu ho khan cap'
+  return 'Yêu cầu cứu hộ khẩn cấp'
 }
 
 const buildDescription = (notes, conditions) => {
@@ -223,7 +223,7 @@ const buildDescription = (notes, conditions) => {
   const conditionText = activeConditions.join('; ')
 
   if (notesText && conditionText) {
-    return `${notesText}. Tinh trang: ${conditionText}.`
+    return `${notesText}. Tình trạng: ${conditionText}.`
   }
 
   if (notesText) {
@@ -231,7 +231,7 @@ const buildDescription = (notes, conditions) => {
   }
 
   if (conditionText) {
-    return `Tinh trang: ${conditionText}.`
+    return `Tình trạng: ${conditionText}.`
   }
 
   return ''
@@ -345,22 +345,22 @@ const getCreateRequestErrorMessage = (error) => {
     if (validationMessages.length > 0) {
       return validationMessages.join(' ')
     }
-    return data?.message || data?.title || 'Du lieu gui len khong hop le.'
+    return data?.message || data?.title || 'Dữ liệu gửi lên không hợp lệ.'
   }
 
   if (status === 401) {
-    return 'Phien dang nhap da het han hoac khong hop le. Vui long dang nhap lai.'
+    return 'Phiên đăng nhập đã hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại.'
   }
 
   if (status === 403) {
-    return data?.message || 'Ban khong co quyen thuc hien thao tac nay.'
+    return data?.message || 'Bạn không có quyền thực hiện thao tác này.'
   }
 
   if (status >= 500) {
-    return 'He thong dang gap loi. Vui long thu lai sau.'
+    return 'Hệ thống đang gặp lỗi. Vui lòng thử lại sau.'
   }
 
-  return data?.message || data?.title || 'Khong the gui yeu cau cuu ho. Vui long thu lai.'
+  return data?.message || data?.title || 'Không thể gửi yêu cầu cứu hộ. Vui lòng thử lại.'
 }
 
 const getConfirmRescuedErrorMessage = (error) => {
@@ -372,30 +372,30 @@ const getConfirmRescuedErrorMessage = (error) => {
     if (validationMessages.length > 0) {
       return validationMessages.join(' ')
     }
-    return data?.message || data?.Message || 'Khong the bao an toan cho yeu cau nay.'
+    return data?.message || data?.Message || 'Không thể báo an toàn cho yêu cầu này.'
   }
 
   if (status === 401) {
-    return 'Phien dang nhap da het han. Vui long dang nhap lai.'
+    return 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'
   }
 
   if (status === 403) {
-    return data?.message || data?.Message || 'Ban khong co quyen bao an toan cho yeu cau nay.'
+    return data?.message || data?.Message || 'Bạn không có quyền báo an toàn cho yêu cầu này.'
   }
 
   if (status === 404) {
-    return data?.message || data?.Message || 'Khong tim thay yeu cau can bao an toan.'
+    return data?.message || data?.Message || 'Không tìm thấy yêu cầu cần báo an toàn.'
   }
 
   if (status === 410) {
-    return data?.message || data?.Message || 'Chuc nang bao an toan tam thoi khong kha dung.'
+    return data?.message || data?.Message || 'Chức năng báo an toàn tạm thời không khả dụng.'
   }
 
   if (status >= 500) {
-    return 'He thong dang gap loi. Vui long thu lai sau.'
+    return 'Hệ thống đang gặp lỗi. Vui lòng thử lại sau.'
   }
 
-  return data?.message || data?.Message || data?.title || 'Khong the bao an toan luc nay.'
+  return data?.message || data?.Message || data?.title || 'Không thể báo an toàn lúc này.'
 }
 
 const buildCreatePayload = (formData) => {
@@ -420,18 +420,18 @@ const buildCreatePayload = (formData) => {
 const validateCreatePayloadInput = (formData) => {
   const phone = String(formData?.phone ?? '').trim()
   if (!phone) {
-    return { valid: false, message: 'Vui long nhap so dien thoai.' }
+    return { valid: false, message: 'Vui lòng nhập số điện thoại.' }
   }
 
   const location = String(formData?.location ?? '').trim()
   const { latitude, longitude } = parseCoordinates(location)
   if (latitude === null || longitude === null) {
-    return { valid: false, message: 'Vi tri khong hop le. Vui long nhap theo dinh dang: 10.762622,106.660172' }
+    return { valid: false, message: 'Vị trí không hợp lệ. Vui lòng nhập theo định dạng: 10.762622,106.660172' }
   }
 
   const address = String(formData?.address ?? '').trim()
   if (!address) {
-    return { valid: false, message: 'Vui long nhap dia chi cu the.' }
+    return { valid: false, message: 'Vui lòng nhập địa chỉ cụ thể.' }
   }
 
   // Validate people fields: totalPeople >= elderly + children

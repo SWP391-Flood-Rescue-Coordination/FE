@@ -572,8 +572,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
                 />
               </div>
 
-              <div className="form-field">
-                <div className="people-group">
+              <div className="form-field people-group">
                   <div className="form-field-inline">
                     <label>Số người</label>
                     <input
@@ -621,11 +620,60 @@ function ViewRequest({ onClose, requestData, requestId }) {
                       disabled={!isEditing}
                     />
                   </div>
-                </div>
               </div>
             </div>
 
             <div className="form-right">
+              <div className="form-field people-group people-group-right">
+                <div className="form-field-inline">
+                  <label>Số người</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    min="0"
+                    value={formData.totalPeople}
+                    onChange={isEditing ? (event) => {
+                      const numericValue = sanitizeNumberText(event.target.value)
+                      setFormData((prev) => ({ ...prev, totalPeople: numericValue }))
+                    } : undefined}
+                    disabled={!isEditing}
+                  />
+                </div>
+
+                <div className="form-field-inline">
+                  <label>Người già</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    min="0"
+                    value={formData.elderly}
+                    onChange={isEditing ? (event) => {
+                      const numericValue = sanitizeNumberText(event.target.value)
+                      setFormData((prev) => ({ ...prev, elderly: numericValue }))
+                    } : undefined}
+                    disabled={!isEditing}
+                  />
+                </div>
+
+                <div className="form-field-inline">
+                  <label>Trẻ em</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    min="0"
+                    value={formData.children}
+                    onChange={isEditing ? (event) => {
+                      const numericValue = sanitizeNumberText(event.target.value)
+                      setFormData((prev) => ({ ...prev, children: numericValue }))
+                    } : undefined}
+                    disabled={!isEditing}
+                  />
+                </div>
+              </div>
+
               <div className="form-field">
                 <label>Tình trạng</label>
                 <div className="checkbox-group">
@@ -677,7 +725,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
                 </div>
               </div>
 
-              <div className="form-field">
+              <div className="form-field notes-field">
                 <label>Ghi chú:</label>
                 <textarea
                   rows="5"
