@@ -23,7 +23,7 @@ const REQUEST_STATUS_META = {
   VERIFIED: { label: 'Đã xác minh', className: 'verified' },
   ASSIGNED: { label: 'Đã phân công', className: 'assigned' },
   IN_PROGRESS: { label: 'Đang cứu hộ', className: 'in-progress' },
-  CONFIRMED: { label: 'Đã xác nhận', className: 'confirmed' },
+  CONFIRMED: { label: 'Đã phân công', className: 'assigned' },
   COMPLETED: { label: 'Đã hoàn thành', className: 'completed' },
   CANCELLED: { label: 'Đã hủy', className: 'cancelled' },
   CANCELED: { label: 'Đã hủy', className: 'cancelled' },
@@ -73,7 +73,7 @@ function Dashboard() {
     const supportedCount = requestHistory.filter((item) => rescueRequestService.isTerminalStatus(item?.status)).length
     const safeCount = requestHistory.filter((item) => {
       const normalized = rescueRequestService.normalizeStatus(item?.status)
-      return normalized === 'CONFIRMED' || normalized === 'COMPLETED'
+      return normalized === 'COMPLETED'
     }).length
 
     return {

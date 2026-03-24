@@ -11,7 +11,6 @@ const STATUS_OPTIONS = [
   { value: 'PENDING', label: 'Mới tạo' },
   { value: 'VERIFIED', label: 'Đã xác minh' },
   { value: 'ASSIGNED', label: 'Đã phân công' },
-  { value: 'CONFIRMED', label: 'Đã xác nhận' },
   { value: 'COMPLETED', label: 'Hoàn tất' },
   { value: 'CANCELLED', label: 'Hủy' },
   { value: 'DUPLICATE', label: 'Trùng lặp' },
@@ -21,7 +20,6 @@ const STATUS_LABEL_MAP = {
   PENDING: 'Mới tạo',
   VERIFIED: 'Đã xác minh',
   ASSIGNED: 'Đã phân công',
-  CONFIRMED: 'Đã xác nhận',
   COMPLETED: 'Hoàn tất',
   CANCELLED: 'Hủy',
   DUPLICATE: 'Trùng lặp',
@@ -141,6 +139,9 @@ const normalizeRequestStatusKey = (status) => {
   if (status === 'DUPLICATED') {
     return 'DUPLICATE'
   }
+  if (status === 'CONFIRMED') {
+    return 'ASSIGNED'
+  }
   return status
 }
 
@@ -232,61 +233,6 @@ const normalizeRequest = (item) => {
   }
 }
 
-const normalizePriorityLabel = (rawLabel, id) => {
-  const labelText = String(rawLabel ?? '').trim()
-  if (labelText) {
-    const normalized = normalizeText(labelText)
-    if (normalized.includes('high') || normalized.includes('cao')) {
-      return 'Cao'
-    }
-    if (normalized.includes('medium') || normalized.includes('trung')) {
-      return 'Trung bình'
-    }
-    if (normalized.includes('low') || normalized.includes('thap')) {
-      return 'Thấp'
-    }
-    return labelText
-  }
-
-  const numericId = Number(id)
-  if (!Number.isNaN(numericId)) {
-    if (numericId === 1) {
-      return 'Cao'
-    }
-    if (numericId === 2) {
-      return 'Trung bình'
-    }
-    if (numericId === 3) {
-      return 'Thấp'
-    }
-    return `Mức ${numericId}`
-  }
-
-  return '-'
-}
-
-const normalizePriority = (item) => ({
-  id:
-    item.priority_id ??
-    item.priorityId ??
-    item.priority_level_id ??
-    item.priorityLevelId ??
-    item.level_id ??
-    item.levelId ??
-    item.id ??
-    item.value ??
-    null,
-  label: normalizePriorityLabel(
-    item.level_name ??
-      item.levelName ??
-      item.name ??
-      item.priority_name ??
-      item.priorityName ??
-      item.label,
-    item.priority_id ?? item.priorityId ?? item.priority_level_id ?? item.priorityLevelId ?? item.id ?? item.value,
-  ),
-})
-
 const normalizeTeam = (item) => ({
   id: item.rescue_team_id ?? item.rescueTeamId ?? item.team_id ?? item.teamId ?? item.id ?? null,
   teamId: item.teamId ?? item.team_id ?? item.rescueTeamId ?? item.rescue_team_id ?? item.id ?? null,
@@ -326,16 +272,12 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
   }, [externalStatusFilter])
 
   const [requests, setRequests] = useState([])
-  const [priorityLevels, setPriorityLevels] = useState([])
   const [teams, setTeams] = useState([])
   const [vehicles, setVehicles] = useState([])
 
   const [statusFilter, setStatusFilter] = useState(normalizedExternalStatus)
   const [isListLoading, setIsListLoading] = useState(false)
   const [actionLoadingMap, setActionLoadingMap] = useState({})
-  const [verifyEditMap, setVerifyEditMap] = useState({})
-
-  const [selectedPriorityByRequest, setSelectedPriorityByRequest] = useState({})
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false)
   const [assignTargetRequest, setAssignTargetRequest] = useState(null)
   const [assignTeamId, setAssignTeamId] = useState('')
@@ -413,11 +355,9 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
         })
         return next
       })
-      setVerifyEditMap({})
     } catch (error) {
       handleApiError(error, '', { silent: true })
       setRequests([])
-      setVerifyEditMap({})
       setErrorMessage('Không thể tải danh sách yêu cầu cứu hộ.')
     } finally {
       setIsListLoading(false)
@@ -426,24 +366,10 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
 
   const fetchOptionData = useCallback(async () => {
     setErrorMessage('')
-    const [priorityResult, teamResult, vehicleResult] = await Promise.allSettled([
-      coordinatorService.getPriorityLevels(),
+    const [teamResult, vehicleResult] = await Promise.allSettled([
       coordinatorService.getAvailableRescueTeams('AVAILABLE'),
       coordinatorService.getAvailableVehicles(),
     ])
-
-    if (priorityResult.status === 'fulfilled') {
-      const prioritySource = Array.isArray(priorityResult.value) ? priorityResult.value : []
-      const normalizedPriorityLevels = prioritySource
-        .map(normalizePriority)
-        .filter((item) => item.id !== null)
-        .sort((a, b) => Number(b.id) - Number(a.id))
-
-      setPriorityLevels(normalizedPriorityLevels)
-    } else {
-      handleApiError(priorityResult.reason, '', { silent: true })
-      setPriorityLevels([])
-    }
 
     if (teamResult.status === 'fulfilled') {
       const teamSource = Array.isArray(teamResult.value) ? teamResult.value : []
@@ -527,13 +453,6 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
     return sorted
   }, [requests, statusFilter])
 
-  const handlePriorityChange = (requestId, value) => {
-    setSelectedPriorityByRequest((prev) => ({
-      ...prev,
-      [requestId]: value,
-    }))
-  }
-
   const handleVerify = async (request) => {
     const requestId = request.request_id
     const isPending = request.status === 'PENDING'
@@ -542,36 +461,13 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
       return
     }
 
-    const isEditing = Boolean(verifyEditMap[requestId])
-    if (!isEditing) {
-      setVerifyEditMap((prev) => ({
-        ...prev,
-        [requestId]: true,
-      }))
-      setSelectedPriorityByRequest((prev) => ({
-        ...prev,
-        [requestId]: prev[requestId] || request.priority_level_id || '',
-      }))
-      return
-    }
-
-    const selectedPriority = selectedPriorityByRequest[requestId]
-    if (!selectedPriority) {
-      setErrorMessage('Vui lòng chọn mức ưu tiên trước khi xác thực.')
-      return
-    }
-
     setErrorMessage('')
     setSuccessMessage('')
     setActionLoading(requestId, 'verify', true)
 
     try {
-      await coordinatorService.verifyRequest(requestId, selectedPriority)
-      setSuccessMessage(`Xác thực yêu cầu #${requestId} thành công.`)
-      setVerifyEditMap((prev) => ({
-        ...prev,
-        [requestId]: false,
-      }))
+      await coordinatorService.verifyRequest(requestId)
+      setSuccessMessage(`Xác thực yêu cầu #${requestId} thành công. Mức ưu tiên đã được hệ thống tự động gán.`)
       await reloadAll()
     } catch (error) {
       const result = handleApiError(error, 'Yêu cầu đã được xử lý bởi người khác.')
@@ -598,10 +494,6 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
     try {
       await coordinatorService.markRequestDuplicate(requestId)
       setSuccessMessage(`Đã chuyển yêu cầu #${requestId} sang trạng thái trùng lặp.`)
-      setVerifyEditMap((prev) => ({
-        ...prev,
-        [requestId]: false,
-      }))
       await reloadAll()
     } catch (error) {
       const result = handleApiError(error, 'Yêu cầu đã được xử lý bởi người khác.')
@@ -909,12 +801,10 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
                 const hasValidRequestId = requestId !== null && requestId !== undefined && requestId !== ''
                 const isPending = request.status === 'PENDING'
                 const isVerified = request.status === 'VERIFIED'
-                const isVerifyEditing = Boolean(verifyEditMap[requestId])
 
                 const verifyLoading = hasValidRequestId ? isActionLoading(requestId, 'verify') : false
                 const duplicateLoading = hasValidRequestId ? isActionLoading(requestId, 'duplicate') : false
                 const assignLoading = hasValidRequestId ? isActionLoading(requestId, 'assign') : false
-                const selectedPriority = selectedPriorityByRequest[requestId] || ''
                 const assignmentFromCache = assignmentByRequestId[String(requestId)]
                 const assignment = assignmentFromCache || request.assignment || null
                 const assignedTeamText = assignment?.teamName || (assignment?.teamId ? `Đội #${assignment.teamId}` : null)
@@ -943,28 +833,13 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
                     <td>{formatLocation(request.latitude, request.longitude)}</td>
                     <td>{request.address || '-'}</td>
                     <td>
-                      {isPending && isVerifyEditing ? (
-                        <select
-                          value={selectedPriority}
-                          onChange={(event) => handlePriorityChange(requestId, event.target.value)}
-                          disabled={verifyLoading || assignLoading}
-                        >
-                          <option value="">Chọn mức ưu tiên</option>
-                          {priorityLevels.map((priority) => (
-                            <option key={priority.id} value={toNumberIfPossible(priority.id)}>
-                              {priority.label}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <span
-                          className={`coordinator-priority-badge coordinator-priority-${
-                            request.priority_key ? request.priority_key.toLowerCase() : 'unknown'
-                          }`}
-                        >
-                          {request.priority_label}
-                        </span>
-                      )}
+                      <span
+                        className={`coordinator-priority-badge coordinator-priority-${
+                          request.priority_key ? request.priority_key.toLowerCase() : 'unknown'
+                        }`}
+                      >
+                        {request.priority_label}
+                      </span>
                     </td>
                     <td>
                       <span className={`coordinator-status-badge coordinator-status-${request.status.toLowerCase()}`}>
@@ -999,11 +874,10 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
                             !isPending ||
                             verifyLoading ||
                             duplicateLoading ||
-                            assignLoading ||
-                            (isVerifyEditing && !selectedPriority)
+                            assignLoading
                           }
                         >
-                          {verifyLoading ? 'Đang xác thực...' : isVerifyEditing ? 'Xác nhận' : 'Xác thực'}
+                          {verifyLoading ? 'Đang xác thực...' : 'Xác thực'}
                         </button>
 
                         {isPending && (

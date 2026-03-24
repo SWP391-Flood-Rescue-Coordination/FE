@@ -227,7 +227,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
       VERIFIED: 'Đã xác minh',
       ASSIGNED: 'Đã phân công',
       IN_PROGRESS: 'Đang cứu hộ',
-      CONFIRMED: 'Đã xác nhận',
+      CONFIRMED: 'Đã phân công',
       COMPLETED: 'Đã hoàn thành',
       CANCELLED: 'Đã hủy',
       CANCELED: 'Đã hủy',

@@ -8,7 +8,6 @@ import {
   ClipboardDocumentCheckIcon,
   ClockIcon,
   DocumentDuplicateIcon,
-  ShieldCheckIcon,
   TruckIcon,
   UserCircleIcon,
   UserGroupIcon,
@@ -44,14 +43,6 @@ const REQUEST_STATUS_ITEMS = [
     iconClass: 'assigned',
     barClass: 'assigned',
     shades: { base: '#fef3c7', high: '#d97706', medium: '#f59e0b', low: '#fcd34d' },
-  },
-  {
-    key: 'CONFIRMED',
-    label: 'Đã xác nhận',
-    icon: ShieldCheckIcon,
-    iconClass: 'confirmed',
-    barClass: 'confirmed',
-    shades: { base: '#dbeafe', high: '#2563eb', medium: '#60a5fa', low: '#93c5fd' },
   },
   {
     key: 'COMPLETED',
@@ -104,6 +95,10 @@ const normalizeRequestStatusKey = (status) => {
 
   if (status === 'DUPLICATED') {
     return 'DUPLICATE'
+  }
+
+  if (status === 'CONFIRMED') {
+    return 'ASSIGNED'
   }
 
   return status

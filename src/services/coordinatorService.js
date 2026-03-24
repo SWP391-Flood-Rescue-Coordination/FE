@@ -95,12 +95,8 @@ const coordinatorService = {
     return normalizeArray(unwrapApiData(response))
   },
 
-  verifyRequest: async (requestId, priorityLevelId) => {
-    const payload = {
-      status: 'Verified',
-      priorityLevelId: Number(priorityLevelId),
-    }
-    const response = await api.put(`${REQUEST_BASE}/${requestId}/set-priority-and-verify`, payload)
+  verifyRequest: async (requestId) => {
+    const response = await api.put(`${REQUEST_BASE}/${requestId}/verify`)
     return unwrapApiData(response)
   },
 
