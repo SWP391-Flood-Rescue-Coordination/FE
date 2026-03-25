@@ -3,6 +3,8 @@ import { HomeIcon, MapPinIcon } from '@heroicons/react/24/outline'
 import './RequestForm.css'
 import './VehicleFormModal.css'
 
+// Popup thêm/sửa xe tái sử dụng phong cách UI của RequestForm
+// nhưng map dữ liệu sang payload vehicle của manager/admin.
 const DEFAULT_STATUS = 'AVAILABLE'
 const HCM_BOUNDS = {
   southWest: [10.2, 106.2],
@@ -89,6 +91,7 @@ function VehicleFormModal({
     }).addTo(map)
 
     map.on('click', async (event) => {
+      // Dùng lại logic map picker của citizen: chỉ cho chọn vị trí thuộc TP.HCM.
       const { lat, lng } = event.latlng
 
       try {
@@ -174,6 +177,7 @@ function VehicleFormModal({
   const resolvedError = localError || serverError
 
   const statusOptions = useMemo(() => {
+    // Xe đang INUSE không được đổi status trong popup để tránh lệch nghiệp vụ đang chạy.
     if (isInUseVehicle) {
       return [{ value: 'INUSE', label: 'Đang sử dụng' }]
     }

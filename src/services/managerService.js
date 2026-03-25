@@ -1,5 +1,6 @@
 import api from './api'
 
+// Service manager gom cả vehicle, vật tư và phiếu nhập/xuất để dashboard và page con dùng chung.
 const unwrapApiData = (response) => {
   if (response?.data?.data !== undefined) {
     return response.data.data
@@ -42,6 +43,8 @@ const VEHICLE_TYPE_OPTIONS = [
   { id: 6, code: 'DRONE', label: 'Thiết bị bay' },
 ]
 
+// Các helper build payload ở đây giúp FE hiển thị tiếng Việt
+// nhưng vẫn gửi đúng enum/id mà BE đang nhận.
 const toApiRequestStatusValue = (status) => {
   const normalized = String(status ?? '')
     .trim()
@@ -114,6 +117,7 @@ const buildVehiclePayload = (vehicleData, { isCreate = false, originalStatus = '
   }
 
   if (status && (isCreate || normalizedOriginalStatus !== 'INUSE')) {
+    // Xe đang INUSE không được cho FE đổi trạng thái thủ công khi sửa.
     payload.Status = status
   }
 
@@ -396,6 +400,7 @@ const managerService = {
 
   getVehicleStats: async () => {
     try {
+      // Dashboard manager đang tự tổng hợp thống kê xe từ các API list theo status.
       const [allVehicles, availableVehicles, inUseVehicles, maintenanceVehicles] = await Promise.all([
         managerService.getAllVehicles(''),
         managerService.getAllVehicles('AVAILABLE'),
@@ -497,6 +502,7 @@ const managerService = {
   },
 
   createVehicle: async (vehicleData) => {
+    // FE tạo payload theo DTO mới của BE, còn VehicleCode do backend sinh.
     const response = await api.post('/Vehicle', buildVehiclePayload(vehicleData, { isCreate: true }))
     const payload = response?.data ?? {}
     return {

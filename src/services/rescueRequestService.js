@@ -12,6 +12,7 @@ const TERMINAL_STATUSES = new Set(['COMPLETED', 'CANCELLED', 'CANCELED', 'DUPLIC
 const GUEST_REQUEST_TRACKING_KEY = 'guestRescueRequestTracking'
 const GUEST_REQUEST_DETAILS_KEY = 'guestRescueRequestDetails'
 
+// Service này là lớp chuẩn hóa dữ liệu rescue request giữa FE và nhiều API BE khác nhau.
 const normalizeText = (value) => String(value ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 
 const flattenValidationErrors = (errors) => {
@@ -108,6 +109,8 @@ const toBooleanFlag = (value) => {
 }
 
 const parsePeopleCounts = (formData) => {
+  // FE luôn quy đổi lại số người thành tổng/adult/elderly/children
+  // để thống nhất create, update citizen và update guest.
   const totalPeople = toNullableInteger(String(formData?.totalPeople ?? '').trim())
   const elderlyRaw = toNullableInteger(String(formData?.elderly ?? '').trim())
   const childrenRaw = toNullableInteger(String(formData?.children ?? '').trim())
@@ -132,6 +135,8 @@ const parsePeopleCounts = (formData) => {
 }
 
 const mergeGuestRequestData = (apiData, cachedDetails, tracking) => {
+  // Guest flow cần ghép dữ liệu từ API + cache localStorage
+  // để không mất request nếu người dùng reload hoặc chưa đăng nhập.
   const source = apiData && typeof apiData === 'object' ? apiData : {}
   const cached = cachedDetails && typeof cachedDetails === 'object' ? cachedDetails : {}
 
@@ -397,6 +402,7 @@ const buildCreatePayload = (formData) => {
   const { latitude, longitude } = parseCoordinates(formData?.location)
   const { totalPeople, adultCount, elderlyCount, childrenCount } = parsePeopleCounts(formData)
 
+  // Payload create đang map từ form citizen sang đúng contract BE.
   return {
     Title: buildTitle(formData?.conditions),
     ContactName: String(formData?.contactName ?? '').trim() || null,
@@ -587,6 +593,7 @@ const rescueRequestService = {
     }
 
     if (requestId) {
+      // Guest request hiện theo requestId, không còn phụ thuộc access_code cũ.
       storeGuestTracking(requestId)
       storeGuestDetails(
         buildGuestDetailsFromForm(formData, requestId, 'Pending'),
@@ -621,6 +628,7 @@ const rescueRequestService = {
     const data = await rescueRequestService.getGuestRequestStatus(tracking.requestId)
     const merged = mergeGuestRequestData(data, cachedDetails, tracking)
 
+    // Luôn đồng bộ cache local với response mới nhất để ViewRequest/Dashboard dùng chung.
     storeGuestDetails(merged)
     storeGuestTracking(merged?.requestId ?? tracking.requestId)
     return merged
@@ -668,6 +676,7 @@ const rescueRequestService = {
     if (Boolean(successRaw)) {
       const existingDetails = getGuestDetails()
       const resolvedStatus = String(pickFirstMeaningful(result?.status, result?.Status, 'Completed'))
+      // Guest bấm Báo an toàn xong thì FE tự cập nhật cache local sang trạng thái cuối.
       storeGuestDetails({
         ...(existingDetails || {}),
         requestId: toNullableInteger(requestId),

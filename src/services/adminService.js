@@ -38,6 +38,7 @@ const VEHICLE_TYPE_OPTIONS = [
   { id: 6, code: 'DRONE', label: 'Thiết bị bay' },
 ]
 
+// Admin dùng chung nhiều mapper với manager nhưng có thêm nhánh user/role/request moderation.
 const unwrapApiData = (response) => {
   if (response?.data?.data !== undefined) {
     return response.data.data
@@ -261,6 +262,7 @@ const adminService = {
   getVehicleTypeOptions: () => VEHICLE_TYPE_OPTIONS.map((item) => ({ ...item })),
 
   updateUserRole: async (userId, role) => {
+    // Vai trò được chuẩn hóa trước khi gửi để tránh lệch giữa label hiển thị và enum BE.
     const response = await api.put(`${ADMIN_BASE}/${userId}/role`, {
       role: normalizeRole(role),
     })

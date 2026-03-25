@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react'
 import authService from '../services/authService'
 import './ForgotPassword.css'
 
+// Flow quên mật khẩu bước 1-2:
+// nhập số điện thoại, nhận OTP và xác nhận OTP trước khi sang trang reset.
 const MOCK_OTP = '123456'
 const RESEND_SECONDS = 30
 const OTP_EXPIRY_SECONDS = 10 * 60
@@ -136,6 +138,7 @@ const ForgotPassword = ({ onClose, onShowLogin, onOtpVerified }) => {
     setSendingOtp(true)
 
     try {
+      // FE gọi API gửi OTP thật, còn bước verify hiện mock ở client theo yêu cầu demo.
       const response = await authService.sendForgotPasswordOtp(targetPhone)
       if (!response?.success) {
         setErrorMessage(response?.message || 'Không thể gửi mã OTP lúc này.')
@@ -186,6 +189,7 @@ const ForgotPassword = ({ onClose, onShowLogin, onOtpVerified }) => {
 
     setIsVerifyingOtp(true)
 
+    // Giữ một nhịp loading ngắn để trải nghiệm gần với bước xác thực thật.
     window.setTimeout(() => {
       authService.storeForgotPasswordResetContext(submittedPhone, otpValue)
       setIsVerifyingOtp(false)

@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react'
 import authService from '../services/authService'
 import './ForgotPassword.css'
 
+// Flow quên mật khẩu bước cuối:
+// dùng phone + otp đã lưu tạm để gọi API reset-password.
 const EMPTY_FIELD_ERRORS = {
   newPassword: '',
   confirmPassword: '',
@@ -127,6 +129,7 @@ const ResetPassword = ({ onClose, onShowLogin, phone, otp }) => {
     setIsSubmitting(true)
 
     try {
+      // Thành công xong sẽ xóa context reset để tab hiện tại không dùng lại OTP cũ.
       const response = await authService.resetForgotPassword(phone, otp, newPassword)
       if (!response?.success) {
         setErrorMessage(response?.message || 'Không thể đặt lại mật khẩu lúc này.')

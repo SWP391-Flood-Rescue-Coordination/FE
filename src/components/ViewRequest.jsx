@@ -4,6 +4,7 @@ import authService from '../services/authService'
 import rescueRequestService from '../services/rescueRequestService'
 import './ViewRequest.css'
 
+// Popup xem/chỉnh sửa request cho cả citizen đã đăng nhập và guest đang track request.
 const sanitizeNumberText = (value) => String(value ?? '').replace(/[^0-9]/g, '')
 
 const EMPTY_FORM_DATA = {
@@ -66,6 +67,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
 
   useEffect(() => {
     const loadRequestData = async () => {
+      // Tùy actor mà lấy detail từ API citizen hoặc API guest status.
       setIsLoading(true)
       setErrorMessage('')
       setSuccessMessage('')
@@ -164,6 +166,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
       mapRef.current = map
 
       map.on('click', async (event) => {
+        // Chỉ cho đổi vị trí khi user đang ở chế độ chỉnh sửa.
         if (!isEditingRef.current) {
           return
         }
@@ -343,6 +346,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
     setSuccessMessage('')
 
     try {
+      // FE tách route update citizen/guest nhưng sau đó luôn load lại detail để đồng bộ UI.
       const updateResult = usesCitizenRequestFlow
         ? await rescueRequestService.updateMyRequest(formData.requestId, formData)
         : await rescueRequestService.updateGuestRequest(formData.requestId, formData)
@@ -414,6 +418,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
     setSuccessMessage('')
 
     try {
+      // Đây là bước chốt hoàn tất request khi canReportSafe đã được BE bật.
       if (usesCitizenRequestFlow) {
         await rescueRequestService.confirmRescued(requestIdValue)
       } else {

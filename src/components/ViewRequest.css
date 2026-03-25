@@ -1,6 +1,8 @@
 
 @import './RequestForm.css';
 
+/* Popup xem/chỉnh sửa request kế thừa phần lớn layout từ RequestForm. */
+
 
 .request-modal input:disabled,
 .request-modal textarea:disabled {

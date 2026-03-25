@@ -7,6 +7,8 @@ import authService from '../services/authService'
 import coordinatorService from '../services/coordinatorService'
 import './CoordinatorRequestsPage.css'
 
+// Page thao tác chính của coordinator:
+// xác thực request và phân công đội/xe cho yêu cầu đã verified.
 const STATUS_OPTIONS = [
   { value: '', label: 'Tất cả trạng thái' },
   { value: 'PENDING', label: 'Mới tạo' },
@@ -365,6 +367,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
     setErrorMessage('')
     try {
       const data = await coordinatorService.getRescueRequests('')
+      // Chuẩn hóa response tại đây để table và modal chỉ dùng một shape dữ liệu thống nhất.
       const normalizedRequests = data.map(normalizeRequest)
       setRequests(normalizedRequests)
       setAssignmentByRequestId((prev) => {
@@ -594,6 +597,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
     setActionLoading(requestId, 'assign', true)
 
     try {
+      // FE vừa cập nhật cache assignment cục bộ vừa reload từ API để phản hồi nhanh nhưng vẫn nhất quán.
       const assignResult = await coordinatorService.assignRequest(requestId, assignTeamId, assignVehicleIds, parsedEstimatedTime)
       const selectedTeam = teams.find((team) => String(team.id) === String(assignTeamId))
       const selectedVehicles = vehicles.filter((vehicle) => assignVehicleIds.includes(String(vehicle.id)))

@@ -1,5 +1,6 @@
 export const ROLE_ORDER = ['ADMIN', 'MANAGER', 'COORDINATOR', 'RESCUE_TEAM', 'CITIZEN']
 
+// Bộ helper chung cho admin/coordinator nhằm tránh lặp lại logic format/normalize ở nhiều page.
 export const REQUEST_STATUS_OPTIONS = [
   { value: '', label: 'Tất cả trạng thái' },
   { value: 'PENDING', label: 'Mới tạo' },

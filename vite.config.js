@@ -9,6 +9,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     server: {
+      // Khi chạy npm run dev, mọi request /api từ FE sẽ đi qua proxy này sang BE.
       proxy: {
         '/api': {
           target: proxyTarget,

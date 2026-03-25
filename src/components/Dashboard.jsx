@@ -9,6 +9,9 @@ import RequestForm from './RequestForm'
 import ViewRequest from './ViewRequest'
 import './Dashboard.css'
 
+// Dashboard là màn hình chung cho citizen và guest:
+// quản lý lịch sử yêu cầu, popup tạo/xem request và tín hiệu "Báo an toàn".
+
 const SAFE_NOTICE_TEXT = 'Đội cứu hộ đã xác nhận hoàn tất nhiệm vụ'
 const SAFE_NOTICE_TITLE = SAFE_NOTICE_TEXT
 const SAFE_NOTICE_MESSAGE = ''

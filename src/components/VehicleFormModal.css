@@ -2,6 +2,7 @@
   max-width: 1180px;
 }
 
+/* Hàng đầu chứa tên xe, biển số và sức chứa để tận dụng tối đa chiều ngang. */
 .vehicle-form-modal .form-row {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   align-items: stretch;

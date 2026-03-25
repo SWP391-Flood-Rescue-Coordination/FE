@@ -29,6 +29,7 @@ import {
   normalizeStatus,
 } from './adminShared'
 
+// Dashboard admin ghép nhiều API độc lập để tạo góc nhìn giám sát toàn hệ thống.
 const ROLE_CARD_META = {
   ADMIN: {
     icon: ShieldCheckIcon,
@@ -169,6 +170,7 @@ function AdminDashboardPage() {
       }
 
       const results = await Promise.allSettled([
+        // Không có một API summary duy nhất, nên FE tự tổng hợp từ nhiều list API.
         adminService.getUsers(),
         adminService.getRescueTeams(),
         adminService.getRescueTeams('AVAILABLE'),
@@ -271,6 +273,7 @@ function AdminDashboardPage() {
   )
 
   const dashboardMetrics = useMemo(() => {
+    // Gom thêm các chỉ số phục vụ review: user mới, user khóa, request chờ lâu, request flagged.
     const activeUsers = users.filter((user) => user.isActive)
     const lockedUsers = sortByCreatedDesc(users.filter((user) => !user.isActive))
     const latestUsers = sortByCreatedDesc(users).slice(0, 5)

@@ -7,11 +7,13 @@
   position: relative;
 }
 
+/* Vùng loading và bảng phương tiện được đặt trong cùng một page shell của manager. */
 .manager-vehicles-page::after,
 .manager-vehicles-page::before {
   display: none !important;
 }
 
+/* Cho phép bảng rộng theo desktop và cuộn ngang nếu số cột tăng lên. */
 .manager-vehicles-page .page-loading {
   display: flex;
   flex-direction: column;

@@ -19,6 +19,8 @@ import coordinatorService from '../services/coordinatorService'
 import CoordinatorRequestsPage from './CoordinatorRequestsPage'
 import './CoordinatorDashboardPage.css'
 
+// Dashboard tổng quan của điều phối viên:
+// tải song song số liệu request, đội cứu hộ và phương tiện rồi đẩy filter xuống bảng nghiệp vụ.
 const REQUEST_STATUS_ITEMS = [
   {
     key: 'PENDING',
@@ -207,6 +209,7 @@ function CoordinatorDashboardPage() {
     setErrorMessage('')
 
     const results = await Promise.allSettled([
+      // Tách API theo từng mảng dữ liệu để khi một phần lỗi, dashboard vẫn còn phần còn lại.
       coordinatorService.getRescueRequests(''),
       coordinatorService.getAvailableRescueTeams(),
       coordinatorService.getAvailableRescueTeams('AVAILABLE'),
@@ -360,6 +363,7 @@ function CoordinatorDashboardPage() {
   }
 
   const handleSelectStatusSegment = (statusKey) => {
+    // Click cột biểu đồ sẽ đồng bộ filter xuống CoordinatorRequestsPage embedded.
     setRequestsStatusFilter((prev) => (prev === statusKey ? '' : statusKey))
     window.setTimeout(scrollToRequestTable, 80)
   }

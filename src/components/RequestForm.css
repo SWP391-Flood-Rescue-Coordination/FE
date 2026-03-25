@@ -1,3 +1,4 @@
+/* Modal tạo request và các field dùng chung với ViewRequest/VehicleFormModal. */
 .request-overlay {
   position: fixed;
   top: 0;
@@ -50,6 +51,7 @@
   color: #166534;
 }
 
+/* Hai cột chính: trái là map + địa chỉ, phải là điều kiện và ghi chú. */
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;

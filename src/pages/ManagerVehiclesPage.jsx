@@ -13,6 +13,8 @@ import managerService from '../services/managerService'
 import VehicleFormModal from '../components/VehicleFormModal'
 import './ManagerVehiclesPage.css'
 
+// Page CRUD phương tiện của manager:
+// list, search, filter và mở modal thêm/sửa/xóa xe.
 const STATUS_MAP = {
   AVAILABLE: { label: 'Sẵn sàng', color: 'success' },
   INUSE: { label: 'Đang sử dụng', color: 'info' },
@@ -201,6 +203,7 @@ function ManagerVehiclesPage() {
     setIsModalSubmitting(true)
 
     try {
+      // Modal dùng chung cho create/edit, chỉ khác service call theo mode hiện tại.
       const response = modalMode === 'create'
         ? await managerService.createVehicle(formData)
         : await managerService.updateVehicle(

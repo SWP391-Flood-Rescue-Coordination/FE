@@ -22,6 +22,7 @@ function App() {
   return (
     <Router>
       <div className="App">
+        {/* Khai báo toàn bộ route chính theo từng actor trong hệ thống. */}
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/login" element={<LoginPage />} />

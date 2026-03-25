@@ -42,6 +42,8 @@ const ROLE_LABEL_MAP = {
   CITIZEN: 'Công dân',
 };
 
+// Dashboard của rescue team gồm 2 mode chính:
+// danh sách nhiệm vụ được giao và màn chi tiết để hoàn tất / thất bại.
 function RescueTeamDashboard() {
   const navigate = useNavigate();
   // State: danh sách nhiệm vụ và nhiệm vụ được chọn
@@ -66,6 +68,7 @@ function RescueTeamDashboard() {
         setError(null);
       }
       const data = await rescueTeamService.getMyOperations();
+      // Service đã lọc bỏ các request trạng thái cuối trước khi trả về page.
       setMissions(data);
     } catch (err) {
       console.error('Error fetching missions:', err);
@@ -198,6 +201,7 @@ function RescueTeamDashboard() {
     setUpdating(true);
     setUpdatingAction(actionKey);
     try {
+      // Hoàn tất và thất bại/hủy đang đi theo 2 API khác nhau ở tầng service.
       if (actionKey === 'cancel') {
         await rescueTeamService.cancelMissionRequest(selectedMission.requestId);
       } else {

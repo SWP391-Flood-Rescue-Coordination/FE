@@ -19,6 +19,7 @@ import authService from '../services/authService'
 import managerService from '../services/managerService'
 import './ManagerDashboardPage.css'
 
+// Dashboard manager là điểm vào để xem số liệu xe, vật tư và điều hướng sang các page nghiệp vụ.
 function ManagerDashboardPage() {
   const navigate = useNavigate()
   const userMenuRef = useRef(null)
@@ -67,7 +68,7 @@ function ManagerDashboardPage() {
     setErrorMessage('')
 
     try {
-      // Fetch tất cả stats song song
+      // Fetch tất cả stats song song để dashboard lên nhanh hơn.
       const [vehicles, supplies, today] = await Promise.allSettled([
         // Vehicle stats
         Promise.all([

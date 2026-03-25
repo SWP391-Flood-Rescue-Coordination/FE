@@ -1,5 +1,6 @@
 import api from './api'
 
+// Service rescue team gom operation hiện tại thành dữ liệu mission mà UI dễ hiển thị hơn.
 const normalizeStatus = (status) => String(status ?? '').trim()
 
 const normalizeStatusKey = (status) =>
@@ -140,6 +141,7 @@ const rescueTeamService = {
       const data = unwrapApiData(response)
 
       if (Array.isArray(data)) {
+        // FE chỉ giữ các nhiệm vụ request chưa rơi vào trạng thái cuối.
         return filterActiveMissions(data.map(transformOperationToMission))
       }
 
@@ -169,6 +171,7 @@ const rescueTeamService = {
 
   cancelMissionRequest: async (requestId) => {
     try {
+      // Nút thất bại/hủy ở rescue team đi theo API hủy request giống luồng admin.
       const response = await api.put(`/RescueRequest/${requestId}/status`, {
         status: 'Cancelled',
       })

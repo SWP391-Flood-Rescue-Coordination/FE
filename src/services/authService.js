@@ -8,6 +8,9 @@ const GUEST_REQUEST_TRACKING_KEY = 'guestRescueRequestTracking'
 const GUEST_REQUEST_DETAILS_KEY = 'guestRescueRequestDetails'
 const GUEST_REQUEST_TRACKING_BACKUP_KEY = 'guestRescueRequestTrackingBackup'
 const GUEST_REQUEST_DETAILS_BACKUP_KEY = 'guestRescueRequestDetailsBackup'
+
+// Nhóm helper phía dưới chịu trách nhiệm quản lý session đăng nhập
+// và giữ lại ngữ cảnh guest request khi người dùng đăng nhập / đăng xuất.
 const parseStoredUser = () => {
   const raw = localStorage.getItem('user')
   if (!raw) {
@@ -156,6 +159,8 @@ const clearForgotPasswordResetContext = () => {
 }
 
 const preserveGuestRequestContextForLogout = () => {
+  // Khi guest vừa tạo request rồi đăng nhập, FE tạm cất ngữ cảnh guest
+  // để khi logout cùng tab vẫn khôi phục được request đó.
   const guestTracking = localStorage.getItem(GUEST_REQUEST_TRACKING_KEY)
   const guestDetails = localStorage.getItem(GUEST_REQUEST_DETAILS_KEY)
 
@@ -285,6 +290,7 @@ const authService = {
       password: String(password ?? ''),
     }
 
+    // API login trả accessToken + thông tin user, FE lưu lại để route protected dùng chung.
     const response = await api.post('/Auth/login', payload)
     const data = response?.data ?? {}
 
@@ -342,6 +348,7 @@ const authService = {
       phone: String(phone ?? '').trim(),
     }
 
+    // API public nên bỏ qua interceptor auth ở tầng api.js bằng config route backend.
     const response = await api.post('/Auth/forgot-password/send-otp', payload)
     return response?.data ?? {}
   },
@@ -361,6 +368,7 @@ const authService = {
     localStorage.removeItem('accessToken')
     localStorage.removeItem('refreshToken')
     localStorage.removeItem('user')
+    // Sau logout, khôi phục lại request guest trước đó trong cùng tab nếu có.
     restoreGuestRequestContextAfterLogout()
   },
 

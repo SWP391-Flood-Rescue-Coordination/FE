@@ -4,6 +4,8 @@ import authService from '../services/authService'
 import rescueRequestService from '../services/rescueRequestService'
 import './RequestForm.css'
 
+// Popup tạo request cho citizen/guest.
+// Dữ liệu map và form sẽ được đổi sang payload BE tại rescueRequestService.
 const INITIAL_FORM_DATA = {
   requestId: null,
   contactName: '',
@@ -86,6 +88,7 @@ function RequestForm({ onClose }) {
       mapRef.current = map
 
       map.on('click', async (event) => {
+        // Chỉ cho pick điểm trong TP.HCM để đồng nhất với rule nghiệp vụ hiện tại.
         const { lat, lng } = event.latlng
 
         try {
@@ -201,6 +204,7 @@ function RequestForm({ onClose }) {
   }
 
   const handlePeopleFieldBlur = () => {
+    // Validate ngay khi rời ô thay vì đợi submit toàn form.
     const validationMessage = getPeopleCountValidationMessage(formData)
     if (validationMessage) {
       setErrorMessage(validationMessage)
@@ -249,6 +253,7 @@ function RequestForm({ onClose }) {
     setIsSubmitting(true)
 
     try {
+      // Thành công xong sẽ trả request vừa tạo về Dashboard để refresh lịch sử và trạng thái nút chính.
       const data = await rescueRequestService.createRescueRequest(formData)
 
       if (!data?.success) {

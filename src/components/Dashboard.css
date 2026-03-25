@@ -1,3 +1,4 @@
+/* Khung tổng thể của dashboard citizen/guest. */
 .dashboard {
   display: flex;
   flex-direction: column;
@@ -12,7 +13,7 @@
   display: none;
 }
 
-/* Header */
+/* Header và cụm nút thao tác chính ở đầu trang. */
 .dashboard-header {
   background: linear-gradient(135deg, #ffffff 0%, #ffffff 100%);
   color: rgb(240, 42, 42);
@@ -129,6 +130,7 @@
   box-shadow: 0 4px 10px rgba(220, 38, 38, 0.35);
 }
 
+/* Notice báo "Đội cứu hộ đã hoàn tất" gắn với luồng Báo an toàn. */
 .dashboard-safe-notice {
   position: fixed;
   top: 113px;
@@ -639,7 +641,7 @@
   font-size: 14px;
 }
 
-/* Statistics Bar */
+/* Thanh thống kê của citizen dashboard. */
 /* thanh chứa 4 icon */
 .stats-bar {
   display: flex;
@@ -652,7 +654,7 @@
   gap: 20px;
 }
 
-/* Toggle Button */
+/* Nút thu gọn / mở rộng thanh thống kê. */
 .stats-toggle {
   position: absolute;
   bottom: -19px;
@@ -810,6 +812,7 @@
 
 
 
+/* Hotline nổi: mặc định chỉ hiện icon, hover mới bung thông tin. */
 .hotline-floating {
   position: fixed;
   left: 63px;

@@ -8,6 +8,7 @@ const PRIORITY_LEVELS = [
   { priorityLevelId: 3, priorityName: 'Thấp' },
 ]
 
+// Service dành cho điều phối viên: lấy request, đội cứu hộ, xe và gọi các action verify/assign.
 const unwrapApiData = (response) => {
   if (response?.data?.data !== undefined) {
     return response.data.data
@@ -126,6 +127,7 @@ const coordinatorService = {
   },
 
   assignRequest: async (requestId, teamId, vehicleIds, estimatedTime) => {
+    // vehicleIds được chấp nhận cả string lẫn array, FE chuẩn hóa lại trước khi gửi BE.
     const vehicleIdsString = Array.isArray(vehicleIds)
       ? vehicleIds.map((id) => Number(id)).filter((id) => Number.isFinite(id)).join(',')
       : String(vehicleIds ?? '')

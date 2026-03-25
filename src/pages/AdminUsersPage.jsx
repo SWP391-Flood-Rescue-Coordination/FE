@@ -6,6 +6,7 @@ import authService from '../services/authService'
 import adminService from '../services/adminService'
 import { HOME_ROUTE_BY_ROLE, ROLE_ORDER, formatDateTimeVN, normalizeRole, normalizeText } from './adminShared'
 
+// Page admin user management: tải user + role, cho đổi role và khóa/mở khóa ngay trên bảng.
 function AdminUsersPage() {
   const navigate = useNavigate()
   const [currentUser] = useState(() => authService.getUserInfo())
@@ -46,6 +47,7 @@ function AdminUsersPage() {
       }
 
       try {
+        // Cần cả danh sách user lẫn role để dropdown role render đúng ngay lần đầu.
         const [userItems, roleItems] = await Promise.all([adminService.getUsers(), adminService.getRoles()])
         const availableRoles =
           roleItems.length > 0
