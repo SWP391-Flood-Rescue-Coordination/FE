@@ -214,6 +214,11 @@ const normalizeRequest = (item) => {
     latitude: item.latitude ?? null,
     longitude: item.longitude ?? null,
     address: item.address ?? '',
+    // Map các trường số người
+    numberOfAffectedPeople: item.numberOfAffectedPeople ?? item.number_of_affected_people ?? null,
+    adultCount: item.adultCount ?? item.adult_count ?? null,
+    elderlyCount: item.elderlyCount ?? item.elderly_count ?? null,
+    childrenCount: item.childrenCount ?? item.children_count ?? null,
     priority_level_id: priorityLevelId,
     priority_key: priorityInfo.key,
     priority_label: priorityInfo.label,
@@ -756,7 +761,10 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
               <th>Mô tả</th>
               <th>Vị trí</th>
               <th>Địa chỉ</th>
-              <th>Số người ảnh hưởng</th>
+              <th>Tổng số người</th>
+              <th>Người già</th>
+              <th>Người lớn</th>
+              <th>Trẻ em</th>
               <th>Mức ưu tiên</th>
               <th className="status-header-cell">
                 Trạng thái
@@ -826,6 +834,9 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
                     <td>{formatLocation(request.latitude, request.longitude)}</td>
                     <td>{request.address || '-'}</td>
                     <td>{request.numberOfAffectedPeople ?? '-'}</td>
+                    <td>{request.elderlyCount ?? request.elderly ?? '-'}</td>
+                    <td>{request.adultCount ?? '-'}</td>
+                    <td>{request.childrenCount ?? request.children ?? '-'}</td>
                     <td>
                       <span
                         className={`coordinator-priority-badge coordinator-priority-${
