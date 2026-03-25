@@ -878,23 +878,11 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
                             !hasValidRequestId ||
                             !isPending ||
                             verifyLoading ||
-                            duplicateLoading ||
                             assignLoading
                           }
                         >
                           {verifyLoading ? 'Đang xác thực...' : 'Xác thực'}
                         </button>
-
-                        {isPending && (
-                          <button
-                            type="button"
-                            className="action-button duplicate-button"
-                            onClick={() => handleMarkDuplicate(request)}
-                            disabled={!hasValidRequestId || verifyLoading || duplicateLoading || assignLoading}
-                          >
-                            {duplicateLoading ? 'Đang xử lý...' : 'Trùng lặp'}
-                          </button>
-                        )}
                       </div>
                     </td>
                     <td>
