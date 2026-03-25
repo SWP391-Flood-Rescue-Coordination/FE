@@ -1,3 +1,4 @@
+import { formatDateTimeVN } from './adminShared';
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
@@ -324,7 +325,7 @@ function ManagerSuppliesPage() {
                     <span className="label">Ngày nhập:</span>
                     <span className="value">
                       {supply.importDate
-                        ? new Date(supply.importDate).toLocaleDateString('vi-VN')
+                        ? formatDateTimeVN(supply.importDate)
                         : '-'}
                     </span>
                   </div>
@@ -332,7 +333,7 @@ function ManagerSuppliesPage() {
                     <span className="label">Ngày xuất:</span>
                     <span className="value">
                       {supply.exportDate
-                        ? new Date(supply.exportDate).toLocaleDateString('vi-VN')
+                        ? formatDateTimeVN(supply.exportDate)
                         : '-'}
                     </span>
                   </div>

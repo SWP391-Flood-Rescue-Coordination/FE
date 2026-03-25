@@ -1,3 +1,4 @@
+import { formatDateTimeVN } from './adminShared';
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -162,17 +163,7 @@ function ManagerImportReceiptsListPage() {
     setSelectedReceipt(null)
   }
 
-  const formatDateTime = (dateString) => {
-    if (!dateString) return '-'
-    const date = new Date(dateString)
-    return date.toLocaleString('vi-VN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
+  const formatDateTime = (dateString) => formatDateTimeVN(dateString)
 
   if (isLoading) {
     return (

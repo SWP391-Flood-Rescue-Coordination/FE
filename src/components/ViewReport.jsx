@@ -1,3 +1,4 @@
+import { formatDateTimeVN } from '../pages/adminShared';
 import React from 'react';
 import './Dashboard.css';
 
@@ -13,17 +14,7 @@ const ViewReport = ({ reportData, onClose }) => {
     return levels[level] || level;
   };
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    }) + ' CH';
-  };
+  const formatDate = (dateString) => formatDateTimeVN(dateString);
 
   return (
     <div className="popup-overlay" onClick={onClose}>

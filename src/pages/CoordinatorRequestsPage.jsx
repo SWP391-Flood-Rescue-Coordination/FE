@@ -1,4 +1,5 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+﻿import { formatDateTimeVN } from './adminShared';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeftOnRectangleIcon, UserCircleIcon } from '@heroicons/react/24/outline'
 import { BsIncognito } from 'react-icons/bs'
@@ -175,16 +176,7 @@ const getPriorityInfo = (priorityLevelId, priorityRaw) => {
   return { key: '', label: '-' }
 }
 
-const formatDateTime = (value) => {
-  if (!value) {
-    return '-'
-  }
-  const parsed = new Date(value)
-  if (Number.isNaN(parsed.getTime())) {
-    return '-'
-  }
-  return parsed.toLocaleString('vi-VN')
-}
+// Đã chuẩn hóa, dùng formatDateTimeVN
 
 const formatLocation = (latitude, longitude) => {
   const hasLat = latitude !== null && latitude !== undefined && latitude !== ''
@@ -764,6 +756,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
               <th>Mô tả</th>
               <th>Vị trí</th>
               <th>Địa chỉ</th>
+              <th>Số người ảnh hưởng</th>
               <th>Mức ưu tiên</th>
               <th className="status-header-cell">
                 Trạng thái
@@ -832,6 +825,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
                     <td className="description-cell">{request.description || '-'}</td>
                     <td>{formatLocation(request.latitude, request.longitude)}</td>
                     <td>{request.address || '-'}</td>
+                    <td>{request.numberOfAffectedPeople ?? '-'}</td>
                     <td>
                       <span
                         className={`coordinator-priority-badge coordinator-priority-${
@@ -846,8 +840,8 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
                         {getStatusLabel(request.status)}
                       </span>
                     </td>
-                    <td>{formatDateTime(request.created_at)}</td>
-                    <td>{formatDateTime(request.updated_at)}</td>
+                    <td>{formatDateTimeVN(request.created_at)}</td>
+                    <td>{formatDateTimeVN(request.updated_at)}</td>
                     <td>{request.updated_by ?? '-'}</td>
                     <td>{assignedTeamText || '-'}</td>
                     <td>

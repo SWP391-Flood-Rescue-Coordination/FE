@@ -1,4 +1,5 @@
-﻿import { useCallback, useEffect, useState } from 'react'
+﻿import { formatDateTimeVN } from './adminShared';
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   TruckIcon,
@@ -197,12 +198,12 @@ function ManagerVehiclesPage() {
                     <td>{vehicle.currentLocation || '-'}</td>
                     <td>
                       {vehicle.lastMaintenanceDate
-                        ? new Date(vehicle.lastMaintenanceDate).toLocaleDateString('vi-VN')
+                        ? formatDateTimeVN(vehicle.lastMaintenanceDate)
                         : '-'}
                     </td>
                     <td>
                       {vehicle.createdAt
-                        ? new Date(vehicle.createdAt).toLocaleDateString('vi-VN')
+                        ? formatDateTimeVN(vehicle.createdAt)
                         : '-'}
                     </td>
                   </tr>
