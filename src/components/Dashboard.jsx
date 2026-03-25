@@ -441,7 +441,7 @@ function Dashboard() {
             className="dashboard-safe-notice-action"
             onClick={handleOpenStatusDetail}
           >
-            Xem yÃªu cáº§u
+            Xem yêu cầu
           </button>
           <button
             type="button"
@@ -556,7 +556,7 @@ function Dashboard() {
       </div>
 
       <nav className="bottom-nav">
-        <button className="nav-item">Liên hệ</button>
+        <button className="nav-item">Liên hệ: 0936587072</button>
       </nav>
     </div>
   )
