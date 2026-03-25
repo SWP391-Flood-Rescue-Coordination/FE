@@ -90,6 +90,43 @@
   color: #000;
 }
 
+.request-readonly-input,
+.form-field input.request-readonly-input:disabled {
+  background: #eef2f5;
+  border: none;
+  color: #111827;
+  font-weight: 600;
+  opacity: 1;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.request-readonly-display {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 46px;
+  padding: 12px 14px;
+  border: none;
+  border-radius: 8px;
+  background: #eef2f5;
+  color: #111827;
+}
+
+.request-readonly-display span {
+  color: #111827;
+  font-size: 14px;
+  font-weight: 400;
+  word-break: break-word;
+}
+
+.request-readonly-icon {
+  width: 18px;
+  height: 18px;
+  color: #475569;
+  flex-shrink: 0;
+}
+
 /* Ẩn nút spinner của input number */
 .form-field input[type="number"]::-webkit-inner-spin-button,
 .form-field input[type="number"]::-webkit-outer-spin-button {
@@ -111,8 +148,37 @@
 .request-input-hint {
   display: inline-block;
   margin-top: 6px;
-  color: #6b7280;
+  color: #475569;
   font-size: 12px;
+  font-weight: 500;
+}
+
+.form-label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.form-label-row label {
+  margin-bottom: 0;
+}
+
+.form-label-meta {
+  color: #475569;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.form-label-meta-group {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px 14px;
 }
 
 .location-group {

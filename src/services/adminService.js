@@ -24,11 +24,10 @@ const REQUEST_STATUS_TO_API_VALUE = {
 }
 
 const VEHICLE_STATUS_TO_API_VALUE = {
-  AVAILABLE: 'Available',
-  INUSE: 'InUse',
-  IN_USE: 'InUse',
-  MAINTENANCE: 'Maintenance',
-  DISABLED: 'Disabled',
+  AVAILABLE: 'AVAILABLE',
+  INUSE: 'INUSE',
+  IN_USE: 'INUSE',
+  MAINTENANCE: 'MAINTENANCE',
 }
 
 const unwrapApiData = (response) => {
@@ -44,6 +43,25 @@ const unwrapApiData = (response) => {
 }
 
 const normalizeArray = (value) => (Array.isArray(value) ? value : [])
+
+const normalizeVehicle = (vehicle) => ({
+  id: vehicle?.vehicleId ?? vehicle?.VehicleId ?? vehicle?.id ?? null,
+  vehicleId: vehicle?.vehicleId ?? vehicle?.VehicleId ?? vehicle?.id ?? null,
+  vehicleCode: vehicle?.vehicleCode ?? vehicle?.VehicleCode ?? '',
+  vehicleName: vehicle?.vehicleName ?? vehicle?.VehicleName ?? '',
+  name: vehicle?.vehicleName ?? vehicle?.VehicleName ?? vehicle?.name ?? '',
+  vehicleTypeName: vehicle?.vehicleTypeName ?? vehicle?.VehicleTypeName ?? '',
+  licensePlate: vehicle?.licensePlate ?? vehicle?.LicensePlate ?? '',
+  capacity: vehicle?.capacity ?? vehicle?.Capacity ?? null,
+  status: String(vehicle?.status ?? vehicle?.Status ?? '')
+    .trim()
+    .toUpperCase(),
+  currentLocation: vehicle?.currentLocation ?? vehicle?.CurrentLocation ?? '',
+  latitude: vehicle?.latitude ?? vehicle?.Latitude ?? null,
+  longitude: vehicle?.longitude ?? vehicle?.Longitude ?? null,
+  lastMaintenance: vehicle?.lastMaintenance ?? vehicle?.LastMaintenance ?? null,
+  updatedAt: vehicle?.updatedAt ?? vehicle?.UpdatedAt ?? null,
+})
 
 const normalizeRole = (value) =>
   String(value ?? '')
@@ -128,7 +146,7 @@ const adminService = {
     const normalizedStatus = toVehicleApiStatusValue(status)
     const params = normalizedStatus ? { status: normalizedStatus } : undefined
     const response = await api.get('/Vehicle', { params })
-    return normalizeArray(unwrapApiData(response))
+    return normalizeArray(unwrapApiData(response)).map(normalizeVehicle)
   },
 
   updateUserRole: async (userId, role) => {

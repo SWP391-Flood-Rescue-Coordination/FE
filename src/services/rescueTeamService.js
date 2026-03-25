@@ -1,58 +1,40 @@
 import api from './api'
 
-/**
- * Service xử lý API cho Rescue Team
- * Base URL: /api/rescue-team
- * Role yêu cầu: RESCUE_TEAM
- */
+const normalizeStatus = (status) => String(status ?? '').trim()
 
-// ============================================
-// Helper Functions
-// ============================================
+const normalizeStatusKey = (status) =>
+  String(status ?? '')
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, '_')
 
-/**
- * Normalize status string
- */
-const normalizeStatus = (status) => {
-  return String(status ?? '').trim()
-}
+const TERMINAL_REQUEST_STATUS_SET = new Set(['COMPLETED', 'CANCELLED', 'CANCELED', 'DUPLICATE'])
 
-/**
- * Map BE status sang FE display text
- */
 const mapStatusDisplay = (status) => {
   const statusMap = {
-    'Assigned': 'Đã phân công',
-    'Completed': 'Hoàn thành',
-    'Cancelled': 'Đã hủy',
-    'Canceled': 'Đã hủy'
+    Assigned: 'Đã phân công',
+    Completed: 'Hoàn thành',
+    Cancelled: 'Đã hủy',
+    Canceled: 'Đã hủy',
   }
+
   return statusMap[status] || status
 }
 
-/**
- * Map priority level ID sang text
- */
-const mapPriorityDisplay = (priorityName) => {
-  return priorityName || 'Thông thường'
-}
+const mapPriorityDisplay = (priorityName) => priorityName || 'Thông thường'
 
-/**
- * Unwrap API response data
- */
 const unwrapApiData = (response) => {
   if (response?.data?.data !== undefined) {
     return response.data.data
   }
+
   if (response?.data?.Data !== undefined) {
     return response.data.Data
   }
+
   return response?.data
 }
 
-/**
- * Flatten validation errors từ response
- */
 const flattenValidationErrors = (errors) => {
   if (!errors || typeof errors !== 'object') {
     return []
@@ -64,13 +46,6 @@ const flattenValidationErrors = (errors) => {
     .map((value) => String(value))
 }
 
-// ============================================
-// Error Handlers
-// ============================================
-
-/**
- * Parse lỗi khi get operations
- */
 const getOperationsErrorMessage = (error) => {
   const status = error?.response?.status
   const data = error?.response?.data
@@ -90,9 +65,6 @@ const getOperationsErrorMessage = (error) => {
   return data?.message || data?.Message || 'Không thể tải danh sách nhiệm vụ.'
 }
 
-/**
- * Parse lỗi khi update status
- */
 const getUpdateStatusErrorMessage = (error) => {
   const status = error?.response?.status
   const data = error?.response?.data
@@ -102,6 +74,7 @@ const getUpdateStatusErrorMessage = (error) => {
     if (validationMessages.length > 0) {
       return validationMessages.join(' ')
     }
+
     return data?.message || data?.Message || 'Không thể cập nhật trạng thái. Vui lòng kiểm tra lại.'
   }
 
@@ -128,14 +101,9 @@ const getUpdateStatusErrorMessage = (error) => {
   return data?.message || data?.Message || 'Không thể cập nhật trạng thái nhiệm vụ.'
 }
 
-// ============================================
-// Data Transformation
-// ============================================
-
-/**
- * Transform BE operation data sang FE mission format
- */
 const transformOperationToMission = (operation) => {
+  const requestStatus = operation.requestStatus || operation.RequestStatus || ''
+
   return {
     id: operation.operationId || operation.OperationId,
     operationId: operation.operationId || operation.OperationId,
@@ -144,49 +112,41 @@ const transformOperationToMission = (operation) => {
     phone: operation.requestPhone || operation.RequestPhone || 'N/A',
     location: {
       lat: operation.requestLatitude || operation.RequestLatitude || 0,
-      lng: operation.requestLongitude || operation.RequestLongitude || 0
+      lng: operation.requestLongitude || operation.RequestLongitude || 0,
     },
     description: operation.requestDescription || operation.RequestDescription || 'Không có mô tả',
     estimatedTime: 'Đang cập nhật',
     priority: mapPriorityDisplay(operation.priorityName || operation.PriorityName),
     status: mapStatusDisplay(operation.status || operation.Status),
     rawStatus: operation.status || operation.Status,
+    requestStatus: mapStatusDisplay(requestStatus),
+    requestRawStatus: requestStatus,
     teamName: operation.teamName || operation.TeamName || 'N/A',
     vehicles: operation.vehicles || operation.Vehicles || [],
     assignedAt: operation.assignedAt || operation.AssignedAt,
     startedAt: operation.startedAt || operation.StartedAt,
     completedAt: operation.completedAt || operation.CompletedAt,
-    title: operation.requestTitle || operation.RequestTitle || 'Nhiệm vụ cứu hộ'
+    title: operation.requestTitle || operation.RequestTitle || 'Nhiệm vụ cứu hộ',
   }
 }
 
-// ============================================
-// API Methods
-// ============================================
+const filterActiveMissions = (items) =>
+  items.filter((mission) => !TERMINAL_REQUEST_STATUS_SET.has(normalizeStatusKey(mission.requestRawStatus)))
 
 const rescueTeamService = {
-  /**
-   * 1. Lấy danh sách nhiệm vụ được phân công
-   * GET /api/rescue-team/my-operations
-   * 
-   * @returns {Promise<Array>} Danh sách missions
-   * @throws {Error} Nếu có lỗi từ API
-   */
   getMyOperations: async () => {
     try {
       const response = await api.get('/rescue-team/my-operations')
       const data = unwrapApiData(response)
-      
-      // Nếu response là array
+
       if (Array.isArray(data)) {
-        return data.map(transformOperationToMission)
+        return filterActiveMissions(data.map(transformOperationToMission))
       }
-      
-      // Nếu response có Total và Data (format từ BE)
+
       if (data && typeof data === 'object' && Array.isArray(data.Data)) {
-        return data.Data.map(transformOperationToMission)
+        return filterActiveMissions(data.Data.map(transformOperationToMission))
       }
-      
+
       return []
     } catch (error) {
       console.error('[rescueTeamService] getMyOperations error:', error)
@@ -194,26 +154,12 @@ const rescueTeamService = {
     }
   },
 
-  /**
-   * 2. Cập nhật trạng thái nhiệm vụ
-   * PUT /api/rescue-team/operations/{operationId}/status
-   * 
-   * @param {number} operationId - ID của operation
-   * @param {string} newStatus - Trạng thái mới: "Completed" hoặc "Cancelled"
-   * @returns {Promise<Object>} Response từ BE
-   * @throws {Error} Nếu có lỗi từ API
-   */
   updateOperationStatus: async (operationId, newStatus) => {
     try {
-      const payload = {
-        newStatus: newStatus // "Completed" hoặc "Cancelled"
-      }
-      
-      const response = await api.put(
-        `/rescue-team/operations/${operationId}/status`,
-        payload
-      )
-      
+      const response = await api.put(`/rescue-team/operations/${operationId}/status`, {
+        newStatus,
+      })
+
       return response.data
     } catch (error) {
       console.error('[rescueTeamService] updateOperationStatus error:', error)
@@ -221,23 +167,28 @@ const rescueTeamService = {
     }
   },
 
-  /**
-   * 3. Xem chi tiết một nhiệm vụ
-   * GET /api/rescue-team/operations/{operationId}
-   * 
-   * @param {number} operationId - ID của operation
-   * @returns {Promise<Object>} Chi tiết mission
-   * @throws {Error} Nếu có lỗi từ API
-   */
+  cancelMissionRequest: async (requestId) => {
+    try {
+      const response = await api.put(`/RescueRequest/${requestId}/status`, {
+        status: 'Cancelled',
+      })
+
+      return response.data
+    } catch (error) {
+      console.error('[rescueTeamService] cancelMissionRequest error:', error)
+      throw error
+    }
+  },
+
   getOperationDetails: async (operationId) => {
     try {
       const response = await api.get(`/rescue-team/operations/${operationId}`)
       const data = unwrapApiData(response)
-      
+
       if (data && typeof data === 'object') {
         return transformOperationToMission(data)
       }
-      
+
       return null
     } catch (error) {
       console.error('[rescueTeamService] getOperationDetails error:', error)
@@ -245,13 +196,12 @@ const rescueTeamService = {
     }
   },
 
-  // Export helper functions
   getOperationsErrorMessage,
   getUpdateStatusErrorMessage,
   normalizeStatus,
   mapStatusDisplay,
   mapPriorityDisplay,
-  transformOperationToMission
+  transformOperationToMission,
 }
 
 export default rescueTeamService

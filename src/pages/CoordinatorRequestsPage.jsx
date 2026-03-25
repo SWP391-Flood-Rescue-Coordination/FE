@@ -199,12 +199,36 @@ const toNumberIfPossible = (value) => {
   return Number.isNaN(numeric) ? value : numeric
 }
 
+const toNullableNumber = (value) => {
+  if (value === null || value === undefined || value === '') {
+    return null
+  }
+
+  const numeric = Number(value)
+  return Number.isFinite(numeric) ? numeric : null
+}
+
 const normalizeRequest = (item) => {
   const priorityLevelId = item.priority_level_id ?? item.priorityLevelId ?? null
   const priorityRaw =
     item.priority_name ?? item.priorityName ?? item.priority_level_name ?? item.priorityLevelName ?? item.priority ?? null
   const priorityInfo = getPriorityInfo(priorityLevelId, priorityRaw)
   const assignment = extractAssignmentFromRequest(item)
+  const totalPeopleRaw = toNullableNumber(item.numberOfAffectedPeople ?? item.number_of_affected_people)
+  const adultCountRaw = toNullableNumber(item.adultCount ?? item.adult_count)
+  const elderlyCount = toNullableNumber(item.elderlyCount ?? item.elderly_count)
+  const childrenCount = toNullableNumber(item.childrenCount ?? item.children_count)
+  const fallbackTotalPeople =
+    adultCountRaw !== null || elderlyCount !== null || childrenCount !== null
+      ? (adultCountRaw ?? 0) + (elderlyCount ?? 0) + (childrenCount ?? 0)
+      : null
+  const numberOfAffectedPeople = totalPeopleRaw ?? fallbackTotalPeople
+  const adultCount =
+    adultCountRaw !== null
+      ? adultCountRaw
+      : numberOfAffectedPeople !== null
+        ? Math.max(numberOfAffectedPeople - (elderlyCount ?? 0) - (childrenCount ?? 0), 0)
+        : null
 
   return {
     request_id: item.request_id ?? item.requestId ?? item.id ?? null,
@@ -215,10 +239,10 @@ const normalizeRequest = (item) => {
     longitude: item.longitude ?? null,
     address: item.address ?? '',
     // Map các trường số người
-    numberOfAffectedPeople: item.numberOfAffectedPeople ?? item.number_of_affected_people ?? null,
-    adultCount: item.adultCount ?? item.adult_count ?? null,
-    elderlyCount: item.elderlyCount ?? item.elderly_count ?? null,
-    childrenCount: item.childrenCount ?? item.children_count ?? null,
+    numberOfAffectedPeople,
+    adultCount,
+    elderlyCount,
+    childrenCount,
     priority_level_id: priorityLevelId,
     priority_key: priorityInfo.key,
     priority_label: priorityInfo.label,

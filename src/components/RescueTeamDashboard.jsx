@@ -198,7 +198,11 @@ function RescueTeamDashboard() {
     setUpdating(true);
     setUpdatingAction(actionKey);
     try {
-      await rescueTeamService.updateOperationStatus(selectedMission.operationId, nextStatus);
+      if (actionKey === 'cancel') {
+        await rescueTeamService.cancelMissionRequest(selectedMission.requestId);
+      } else {
+        await rescueTeamService.updateOperationStatus(selectedMission.operationId, nextStatus);
+      }
 
       setMissions((prev) => prev.filter((m) => m.id !== selectedMission.id));
       setSelectedMission(null);
@@ -467,7 +471,7 @@ function RescueTeamDashboard() {
                     onClick={handleCancelMission}
                     disabled={updating}
                   >
-                    {updating && updatingAction === 'cancel' ? 'Đang xử lý...' : 'Hủy nhiệm vụ'}
+                    {updating && updatingAction === 'cancel' ? 'Đang xử lý...' : 'Thất bại'}
                   </button>
 
                   <button 
@@ -475,7 +479,7 @@ function RescueTeamDashboard() {
                     onClick={handleComplete}
                     disabled={updating}
                   >
-                    {updating && updatingAction === 'complete' ? 'Đang xử lý...' : 'Hoàn tất nhiệm vụ'}
+                    {updating && updatingAction === 'complete' ? 'Đang xử lý...' : 'Hoàn tất'}
                   </button>
                 </div>
               </div>

@@ -73,7 +73,7 @@ function ManagerVehiclesPage() {
       filtered = filtered.filter(
         (v) =>
           v.vehicleName?.toLowerCase().includes(term) ||
-          v.vehicleType?.toLowerCase().includes(term) ||
+          v.vehicleTypeName?.toLowerCase().includes(term) ||
           v.licensePlate?.toLowerCase().includes(term) ||
           v.vehicleCode?.toLowerCase().includes(term)
       )
@@ -175,12 +175,11 @@ function ManagerVehiclesPage() {
                   <th>Mã phương tiện</th>
                   <th>Tên phương tiện</th>
                   <th>Biển số</th>
-                  <th>Type ID</th>
+                  <th>Loại phương tiện</th>
                   <th>Sức chứa</th>
                   <th>Trạng thái</th>
-                  <th>Cập nhật bởi</th>
                   <th>Vị trí hiện tại</th>
-                  <th>Thời gian bảo hành gần nhất</th>
+                  <th>Thời gian bảo trì gần nhất</th>
                   <th>Thời gian cập nhật</th>
                 </tr>
               </thead>
@@ -191,10 +190,9 @@ function ManagerVehiclesPage() {
                     <td className="vehicle-code">{vehicle.vehicleCode || 'N/A'}</td>
                     <td className="vehicle-name">{vehicle.vehicleName || 'N/A'}</td>
                     <td className="license-plate">{vehicle.licensePlate || 'N/A'}</td>
-                    <td>{vehicle.vehicleTypeId || '-'}</td>
+                    <td>{vehicle.vehicleTypeName || '-'}</td>
                     <td>{vehicle.capacity || '-'}</td>
                     <td>{getStatusBadge(vehicle.status)}</td>
-                    <td>{vehicle.coordinator || '-'}</td>
                     <td>{vehicle.currentLocation || '-'}</td>
                     <td>
                       {vehicle.lastMaintenanceDate
@@ -202,8 +200,8 @@ function ManagerVehiclesPage() {
                         : '-'}
                     </td>
                     <td>
-                      {vehicle.createdAt
-                        ? formatDateTimeVN(vehicle.createdAt)
+                      {vehicle.updatedAt
+                        ? formatDateTimeVN(vehicle.updatedAt)
                         : '-'}
                     </td>
                   </tr>

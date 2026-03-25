@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { HomeIcon, MapPinIcon } from '@heroicons/react/24/outline'
 import authService from '../services/authService'
 import rescueRequestService from '../services/rescueRequestService'
 import './ViewRequest.css'
@@ -7,7 +8,6 @@ const sanitizeNumberText = (value) => String(value ?? '').replace(/[^0-9]/g, '')
 
 const EMPTY_FORM_DATA = {
   requestId: null,
-  accessCode: null,
   phone: '',
   location: '',
   address: '',
@@ -28,8 +28,18 @@ const EMPTY_FORM_DATA = {
 
 const SAFE_PROMPT_MESSAGE =
   'Đội cứu hộ đã xác nhận hoàn tất nhiệm vụ. Nếu bạn đã an toàn, vui lòng bấm "Báo an toàn" để đóng yêu cầu này.'
+const PEOPLE_COUNT_MIN_ERROR_MESSAGE = 'Số người tối thiểu phải là 1.'
 const PEOPLE_COUNT_ERROR_MESSAGE = 'Số người phải lớn hơn hoặc bằng tổng số người già và trẻ em.'
 const PHONE_ERROR_MESSAGE = 'Số điện thoại không hợp lệ!'
+
+function ReadonlyInfoField({ icon: Icon, value, placeholder }) {
+  return (
+    <div className="request-readonly-display" aria-readonly="true">
+      <Icon className="request-readonly-icon" />
+      <span>{value || placeholder}</span>
+    </div>
+  )
+}
 
 function ViewRequest({ onClose, requestData, requestId }) {
   const isAuthenticated = authService.isAuthenticated()
@@ -64,9 +74,6 @@ function ViewRequest({ onClose, requestData, requestId }) {
         let sourceData = null
         const requestDataId = requestData?.requestId ?? requestData?.RequestId ?? null
         const resolvedRequestId = requestId ?? requestDataId ?? null
-        const resolvedAccessCode =
-          requestData?.accessCode ?? requestData?.AccessCode ?? formData?.accessCode ?? null
-
         if (requestData) {
           sourceData = requestData
         }
@@ -82,10 +89,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
             sourceData = await rescueRequestService.getMyLatestRequest()
           }
         } else if (resolvedRequestId) {
-          const detailData = await rescueRequestService.getGuestRequestStatus(
-            resolvedRequestId,
-            resolvedAccessCode,
-          )
+          const detailData = await rescueRequestService.getGuestRequestStatus(resolvedRequestId)
           sourceData = {
             ...(sourceData || {}),
             ...(detailData || {}),
@@ -108,7 +112,6 @@ function ViewRequest({ onClose, requestData, requestId }) {
           ...EMPTY_FORM_DATA,
           ...formatted,
           requestId: resolvedRequestIdForState,
-          accessCode: formatted?.accessCode ?? sourceData?.accessCode ?? null,
           canReportSafe: Boolean(formatted?.canReportSafe),
           conditions: {
             ...EMPTY_FORM_DATA.conditions,
@@ -132,6 +135,11 @@ function ViewRequest({ onClose, requestData, requestId }) {
   const mapContainerRef = useRef(null)
   const mapRef = useRef(null)
   const markerRef = useRef(null)
+  const isEditingRef = useRef(false)
+
+  useEffect(() => {
+    isEditingRef.current = isEditing
+  }, [isEditing])
 
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return
@@ -156,6 +164,10 @@ function ViewRequest({ onClose, requestData, requestId }) {
       mapRef.current = map
 
       map.on('click', async (event) => {
+        if (!isEditingRef.current) {
+          return
+        }
+
         const { lat, lng } = event.latlng
 
         try {
@@ -184,7 +196,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
             setFormData((prev) => ({
               ...prev,
               location: `${lat},${lng}`,
-              address: data.address?.address || data.display_name || `${lat}, ${lng}`,
+              address: data?.display_name || `${lat}, ${lng}`,
             }))
 
             if (markerRef.current) {
@@ -247,33 +259,40 @@ function ViewRequest({ onClose, requestData, requestId }) {
 
   const isVietnamesePhoneNumber = (number) => /^(\+84|84|0)(3|5|7|8|9|1[2689])[0-9]{8}$/.test(number)
 
-  const hasInvalidPeopleCounts = (nextFormData) => {
+  const getPeopleCountValidationMessage = (nextFormData) => {
     const totalPeople = Number.parseInt(String(nextFormData.totalPeople ?? '').trim(), 10)
     const elderlyRaw = Number.parseInt(String(nextFormData.elderly ?? '').trim(), 10)
     const childrenRaw = Number.parseInt(String(nextFormData.children ?? '').trim(), 10)
     const elderly = Number.isFinite(elderlyRaw) ? elderlyRaw : 0
     const children = Number.isFinite(childrenRaw) ? childrenRaw : 0
 
-    return Number.isFinite(totalPeople) && totalPeople < elderly + children
+    if (!Number.isFinite(totalPeople) || totalPeople < 1) {
+      return PEOPLE_COUNT_MIN_ERROR_MESSAGE
+    }
+
+    if (totalPeople < elderly + children) {
+      return PEOPLE_COUNT_ERROR_MESSAGE
+    }
+
+    return ''
   }
 
-  const handlePeopleGroupBlur = (event) => {
+  const clearMessageIfMatches = (messages) => {
+    setErrorMessage((currentMessage) => (messages.includes(currentMessage) ? '' : currentMessage))
+  }
+
+  const handlePeopleFieldBlur = () => {
     if (!isEditing) {
       return
     }
 
-    if (!(event.target instanceof HTMLElement) || !event.target.closest('.people-group')) {
+    const validationMessage = getPeopleCountValidationMessage(formData)
+    if (validationMessage) {
+      setErrorMessage(validationMessage)
       return
     }
 
-    if (hasInvalidPeopleCounts(formData)) {
-      setErrorMessage(PEOPLE_COUNT_ERROR_MESSAGE)
-      return
-    }
-
-    setErrorMessage((currentMessage) =>
-      currentMessage === PEOPLE_COUNT_ERROR_MESSAGE ? '' : currentMessage,
-    )
+    clearMessageIfMatches([PEOPLE_COUNT_MIN_ERROR_MESSAGE, PEOPLE_COUNT_ERROR_MESSAGE])
   }
 
   const handlePhoneBlur = () => {
@@ -286,9 +305,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
       return
     }
 
-    setErrorMessage((currentMessage) =>
-      currentMessage === PHONE_ERROR_MESSAGE ? '' : currentMessage,
-    )
+    clearMessageIfMatches([PHONE_ERROR_MESSAGE])
   }
 
   const handleSubmit = async (event) => {
@@ -303,8 +320,9 @@ function ViewRequest({ onClose, requestData, requestId }) {
       return
     }
 
-    if (hasInvalidPeopleCounts(formData)) {
-      setErrorMessage(PEOPLE_COUNT_ERROR_MESSAGE)
+    const peopleValidationMessage = getPeopleCountValidationMessage(formData)
+    if (peopleValidationMessage) {
+      setErrorMessage(peopleValidationMessage)
       return
     }
 
@@ -327,11 +345,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
     try {
       const updateResult = usesCitizenRequestFlow
         ? await rescueRequestService.updateMyRequest(formData.requestId, formData)
-        : await rescueRequestService.updateGuestRequest(
-            formData.requestId,
-            formData,
-            formData.accessCode,
-          )
+        : await rescueRequestService.updateGuestRequest(formData.requestId, formData)
 
       if (!updateResult?.success) {
         setErrorMessage(updateResult?.message || 'Không thể cập nhật yêu cầu.')
@@ -341,19 +355,17 @@ function ViewRequest({ onClose, requestData, requestId }) {
       const refreshed = usesCitizenRequestFlow
         ? await rescueRequestService.getRequestById(formData.requestId)
         : (await rescueRequestService.getTrackedGuestRequestStatus())
-          || await rescueRequestService.getGuestRequestStatus(formData.requestId, formData.accessCode)
+          || await rescueRequestService.getGuestRequestStatus(formData.requestId)
 
       const formatted = rescueRequestService.toRequestFormData({
         ...formData,
         ...refreshed,
-        accessCode: formData.accessCode,
       })
 
       setFormData((prev) => ({
         ...prev,
         ...formatted,
         requestId: prev.requestId,
-        accessCode: prev.accessCode,
         canReportSafe: Boolean(formatted?.canReportSafe),
         conditions: {
           ...EMPTY_FORM_DATA.conditions,
@@ -417,19 +429,17 @@ function ViewRequest({ onClose, requestData, requestId }) {
       const refreshed = usesCitizenRequestFlow
         ? await rescueRequestService.getRequestById(requestIdValue)
         : (await rescueRequestService.getTrackedGuestRequestStatus())
-          || await rescueRequestService.getGuestRequestStatus(requestIdValue, formData.accessCode)
+          || await rescueRequestService.getGuestRequestStatus(requestIdValue)
 
       const formatted = rescueRequestService.toRequestFormData({
         ...formData,
         ...refreshed,
-        accessCode: formData.accessCode,
       })
 
       setFormData((prev) => ({
         ...prev,
         ...formatted,
         requestId: prev.requestId,
-        accessCode: prev.accessCode,
         canReportSafe: Boolean(formatted?.canReportSafe),
         conditions: {
           ...EMPTY_FORM_DATA.conditions,
@@ -506,7 +516,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} onBlurCapture={handlePeopleGroupBlur}>
+        <form onSubmit={handleSubmit}>
           <div className="form-row">
             <div className="form-left">
               <div className="form-field">
@@ -531,18 +541,20 @@ function ViewRequest({ onClose, requestData, requestId }) {
 
               <div className="form-field">
                 <label>Vị trí</label>
-                <input
-                  type="text"
+                <ReadonlyInfoField
+                  icon={MapPinIcon}
                   value={formData.location}
-                  disabled
-                  required
-                  style={{ width: '100%' }}
+                  placeholder="Chưa chọn vị trí"
                 />
-                <small className="request-input-hint">Chỉ chọn trên bản đồ</small>
               </div>
 
               <div className="form-field">
-                <label>Chọn vị trí trên bản đồ</label>
+                <div className="form-label-row">
+                  <label>Chọn vị trí trên bản đồ</label>
+                  <div className="form-label-meta-group">
+                    <span className="form-label-meta">Chỉ chọn trong khu vực TP.HCM</span>
+                  </div>
+                </div>
                 <div
                   ref={mapContainerRef}
                   id="map-view-request"
@@ -554,21 +566,17 @@ function ViewRequest({ onClose, requestData, requestId }) {
                   }}
                   className="leaflet-container"
                 />
-                {formData.location && (
-                  <small className="request-input-hint">
-                    Vị trí đã chọn: {formData.location}
-                  </small>
-                )}
               </div>
 
               <div className="form-field">
-                <label>Địa chỉ</label>
-                <input
-                  type="text"
+                <div className="form-label-row">
+                  <label>Địa chỉ</label>
+                  <span className="form-label-meta">Địa chỉ được cập nhật tự động theo điểm đã chọn</span>
+                </div>
+                <ReadonlyInfoField
+                  icon={HomeIcon}
                   value={formData.address}
-                  onChange={(event) => setFormData((prev) => ({ ...prev, address: event.target.value }))}
-                  disabled={!isEditing}
-                  required
+                  placeholder="Chọn vị trí trên bản đồ"
                 />
               </div>
 
@@ -579,12 +587,13 @@ function ViewRequest({ onClose, requestData, requestId }) {
                       type="text"
                       inputMode="numeric"
                       pattern="[0-9]*"
-                      min="0"
+                      min="1"
                       value={formData.totalPeople}
                       onChange={isEditing ? (event) => {
                         const numericValue = sanitizeNumberText(event.target.value)
                         setFormData((prev) => ({ ...prev, totalPeople: numericValue }))
                       } : undefined}
+                      onBlur={handlePeopleFieldBlur}
                       disabled={!isEditing}
                     />
                   </div>
@@ -601,6 +610,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
                         const numericValue = sanitizeNumberText(event.target.value)
                         setFormData((prev) => ({ ...prev, elderly: numericValue }))
                       } : undefined}
+                      onBlur={handlePeopleFieldBlur}
                       disabled={!isEditing}
                     />
                   </div>
@@ -617,6 +627,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
                         const numericValue = sanitizeNumberText(event.target.value)
                         setFormData((prev) => ({ ...prev, children: numericValue }))
                       } : undefined}
+                      onBlur={handlePeopleFieldBlur}
                       disabled={!isEditing}
                     />
                   </div>
@@ -631,12 +642,13 @@ function ViewRequest({ onClose, requestData, requestId }) {
                     type="text"
                     inputMode="numeric"
                     pattern="[0-9]*"
-                    min="0"
+                    min="1"
                     value={formData.totalPeople}
                     onChange={isEditing ? (event) => {
                       const numericValue = sanitizeNumberText(event.target.value)
                       setFormData((prev) => ({ ...prev, totalPeople: numericValue }))
                     } : undefined}
+                    onBlur={handlePeopleFieldBlur}
                     disabled={!isEditing}
                   />
                 </div>
@@ -653,6 +665,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
                       const numericValue = sanitizeNumberText(event.target.value)
                       setFormData((prev) => ({ ...prev, elderly: numericValue }))
                     } : undefined}
+                    onBlur={handlePeopleFieldBlur}
                     disabled={!isEditing}
                   />
                 </div>
@@ -669,6 +682,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
                       const numericValue = sanitizeNumberText(event.target.value)
                       setFormData((prev) => ({ ...prev, children: numericValue }))
                     } : undefined}
+                    onBlur={handlePeopleFieldBlur}
                     disabled={!isEditing}
                   />
                 </div>

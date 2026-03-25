@@ -27,11 +27,11 @@ const REQUEST_STATUS_TO_API_VALUE = {
 }
 
 const VEHICLE_STATUS_TO_API_VALUE = {
-  AVAILABLE: 'Available',
-  INUSE: 'InUse',
-  IN_USE: 'InUse',
-  MAINTENANCE: 'Maintenance',
-  DISABLED: 'Disabled',
+  AVAILABLE: 'AVAILABLE',
+  INUSE: 'INUSE',
+  IN_USE: 'INUSE',
+  MAINTENANCE: 'MAINTENANCE',
+  DISABLED: 'DISABLED',
 }
 
 const toApiRequestStatusValue = (status) => {
@@ -62,21 +62,20 @@ const isLowStockSupply = (item) => {
 }
 
 const normalizeVehicle = (vehicle) => ({
-  vehicleId: vehicle?.vehicleId,
-  vehicleCode: vehicle?.vehicleCode || '',
-  vehicleName: vehicle?.vehicleName || '',
-  vehicleTypeId: vehicle?.vehicleTypeId,
-  vehicleTypeName: vehicle?.vehicleTypeName || '',
-  vehicleType: vehicle?.vehicleTypeName || '',
-  licensePlate: vehicle?.licensePlate || '',
-  capacity: vehicle?.capacity,
-  status: vehicle?.status || '',
-  coordinator: vehicle?.coordinator || '-',
-  currentLocation: vehicle?.currentLocation || '',
-  lastMaintenance: vehicle?.lastMaintenance,
-  lastMaintenanceDate: vehicle?.lastMaintenance,
-  updatedAt: vehicle?.updatedAt,
-  createdAt: vehicle?.updatedAt,
+  vehicleId: vehicle?.vehicleId ?? vehicle?.VehicleId ?? null,
+  vehicleCode: vehicle?.vehicleCode ?? vehicle?.VehicleCode ?? '',
+  vehicleName: vehicle?.vehicleName ?? vehicle?.VehicleName ?? '',
+  vehicleTypeName: vehicle?.vehicleTypeName ?? vehicle?.VehicleTypeName ?? '',
+  vehicleType: vehicle?.vehicleTypeName ?? vehicle?.VehicleTypeName ?? '',
+  licensePlate: vehicle?.licensePlate ?? vehicle?.LicensePlate ?? '',
+  capacity: vehicle?.capacity ?? vehicle?.Capacity ?? null,
+  status: vehicle?.status ?? vehicle?.Status ?? '',
+  currentLocation: vehicle?.currentLocation ?? vehicle?.CurrentLocation ?? '',
+  latitude: vehicle?.latitude ?? vehicle?.Latitude ?? null,
+  longitude: vehicle?.longitude ?? vehicle?.Longitude ?? null,
+  lastMaintenance: vehicle?.lastMaintenance ?? vehicle?.LastMaintenance ?? null,
+  lastMaintenanceDate: vehicle?.lastMaintenance ?? vehicle?.LastMaintenance ?? null,
+  updatedAt: vehicle?.updatedAt ?? vehicle?.UpdatedAt ?? null,
 })
 
 const normalizeSupply = (item) => ({

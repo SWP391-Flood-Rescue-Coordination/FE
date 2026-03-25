@@ -114,9 +114,9 @@ var entity = new RescueRequest
 5. **DB Check**: SELECT number_of_affected_people FROM rescue_requests WHERE id = <same>
    - Expected: 15 ✅
 
-### Test 3: Guest Update (AccessCode)
-1. Submit request as citizen → get access code
-2. Use access code to edit request
+### Test 3: Guest Update (RequestId tracking)
+1. Submit request as guest
+2. Use the tracked request id to reopen and edit the request
 3. Change totalPeople = 8
 4. Submit
 5. **DB Check**: SELECT number_of_affected_people FROM rescue_requests WHERE id = <same>

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeftOnRectangleIcon, ArrowRightOnRectangleIcon, UserCircleIcon } from '@heroicons/react/24/outline'
+import { ArrowLeftOnRectangleIcon, ArrowRightOnRectangleIcon, PhoneIcon, UserCircleIcon } from '@heroicons/react/24/outline'
 import authService from '../services/authService'
 import rescueRequestService from '../services/rescueRequestService'
 
@@ -119,7 +119,6 @@ function Dashboard() {
       ...formatted,
       submittedDate: requestItem?.createdAt || formatted?.submittedDate || null,
       requestId: requestItem?.requestId ?? formatted?.requestId ?? null,
-      accessCode: requestItem?.accessCode ?? formatted?.accessCode ?? null,
       status: requestItem?.status || formatted?.status || 'Pending',
     }
   }
@@ -555,9 +554,19 @@ function Dashboard() {
         />
       </div>
 
-      <nav className="bottom-nav">
-        <button className="nav-item">Liên hệ: 0936587072</button>
-      </nav>
+      <a
+        className="hotline-floating"
+        href="tel:0936587072"
+        aria-label="0936 587 072"
+      >
+        <span className="hotline-floating-icon-wrap" aria-hidden="true">
+          <PhoneIcon className="hotline-floating-icon" />
+        </span>
+        <span className="hotline-floating-copy">
+          <span className="hotline-floating-label">Đường dây nóng</span>
+          <strong className="hotline-floating-number">0936 587 072</strong>
+        </span>
+      </a>
     </div>
   )
 }

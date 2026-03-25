@@ -32,7 +32,7 @@
   canReportSafe, ...other fields
 }
 
-// UPDATE Request (Guest - AccessCode only):
+// UPDATE Request (Guest - RequestId based):
 {
   numberOfPeople: <totalPeople>,
   title, contactPhone, description,
