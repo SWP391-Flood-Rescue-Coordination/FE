@@ -72,7 +72,7 @@
 
 /* Header */
 .manager-vehicles-page .page-header {
-  max-width: 1400px;
+  max-width: 1960px;
   margin: 0 auto 2rem;
 }
 
@@ -93,7 +93,7 @@
 }
 
 .manager-vehicles-page .status-toolbar {
-  max-width: 1400px;
+  max-width: 1960px;
   margin: 0 auto 1rem;
   display: flex;
   flex-wrap: wrap;
@@ -145,7 +145,7 @@
 
 /* Content */
 .manager-vehicles-page .page-content {
-  max-width: 1400px;
+  max-width: 1960px;
   margin: 0 auto;
   background: white;
   border-radius: 16px;
@@ -166,6 +166,14 @@
 
 /* Search Section */
 .manager-vehicles-page .search-section {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.manager-vehicles-page .search-toolbar {
+  display: flex;
+  align-items: stretch;
+  gap: 1rem;
   margin-bottom: 1rem;
 }
 
@@ -173,6 +181,7 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  min-height: 52px;
   background: #f9fafb;
   border: 2px solid #e5e7eb;
   border-radius: 8px;
@@ -205,6 +214,35 @@
   color: #9ca3af;
 }
 
+.manager-vehicles-page .vehicle-primary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  min-height: 52px;
+  gap: 0.6rem;
+  padding: 0.9rem 1.2rem;
+  border: none;
+  border-radius: 10px;
+  background: #dc2626;
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.manager-vehicles-page .vehicle-primary-action:hover {
+  background: #b91c1c;
+  transform: translateY(-1px);
+}
+
+.manager-vehicles-page .vehicle-primary-action-icon {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
 /* Empty State */
 .manager-vehicles-page .empty-state {
   text-align: center;
@@ -226,7 +264,7 @@
 
 /* Table */
 .manager-vehicles-page .vehicles-table-container {
-  overflow-x: hidden;
+  overflow-x: auto;
   border-radius: 8px;
   border: 1px solid #e5e7eb;
 }
@@ -235,7 +273,7 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 0.82rem;
-  min-width: 0;
+  min-width: 1980px;
   table-layout: auto;
 }
 
@@ -246,6 +284,7 @@
 .manager-vehicles-page .vehicles-table th {
   padding: 0.8rem 0.45rem;
   text-align: left;
+  vertical-align: middle;
   font-weight: 600;
   color: #374151;
   border-bottom: 2px solid #e5e7eb;
@@ -268,10 +307,22 @@
 .manager-vehicles-page .vehicles-table td {
   padding: 0.75rem 0.45rem;
   color: #1f2937;
+  vertical-align: middle;
   white-space: nowrap;
   word-break: normal;
   overflow-wrap: normal;
   line-height: 1.35;
+}
+
+.manager-vehicles-page .vehicle-license-cell {
+  vertical-align: middle;
+  min-width: 128px;
+}
+
+.manager-vehicles-page .vehicle-license-wrap {
+  display: flex;
+  align-items: center;
+  min-height: 52px;
 }
 
 .manager-vehicles-page .vehicles-table .vehicle-name {
@@ -291,15 +342,169 @@
   color: #1f2937;
   background: #fef3c7;
   padding: 0.25rem 0.5rem;
+  min-height: 28px;
   border-radius: 4px;
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
+  vertical-align: middle;
   white-space: nowrap;
+}
+
+.manager-vehicles-page .vehicle-location-cell {
+  min-width: 260px;
+  max-width: 320px;
+  white-space: normal !important;
+}
+
+.manager-vehicles-page .vehicle-location-text {
+  display: block;
+  overflow: hidden;
+  line-height: 1.45;
+  max-height: calc(1.45em * 3);
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.manager-vehicles-page .vehicle-coordinates-cell {
+  min-width: 160px;
+  max-width: 190px;
+  white-space: normal !important;
+}
+
+.manager-vehicles-page .vehicle-coordinates-text {
+  display: block;
+  line-height: 1.45;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.manager-vehicles-page .vehicle-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 108px;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.manager-vehicles-page .vehicle-status-badge.success {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.manager-vehicles-page .vehicle-status-badge.info {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.manager-vehicles-page .vehicle-status-badge.warning {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.manager-vehicles-page .vehicle-status-badge.default {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.manager-vehicles-page .vehicle-action-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.manager-vehicles-page .vehicle-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  color: #374151;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.manager-vehicles-page .vehicle-action-btn:hover {
+  border-color: #ef4444;
+  color: #b91c1c;
+}
+
+.manager-vehicles-page .vehicle-action-btn.edit {
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+}
+
+.manager-vehicles-page .vehicle-action-btn.edit:hover {
+  border-color: #1d4ed8;
+  background: #eff6ff;
+}
+
+.manager-vehicles-page .vehicle-action-btn.delete {
+  border-color: #fecaca;
+  color: #dc2626;
+}
+
+.manager-vehicles-page .vehicle-action-btn.delete:hover {
+  border-color: #dc2626;
+  background: #fef2f2;
+}
+
+.manager-vehicles-page .vehicle-action-btn.disabled,
+.manager-vehicles-page .vehicle-action-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.manager-vehicles-page .vehicle-action-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.vehicle-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  padding: 0.95rem 1.35rem;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.16);
+  z-index: 2100;
+}
+
+.vehicle-toast.success {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
+}
+
+.vehicle-toast.error {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
 }
 
 /* Responsive */
 @media (max-width: 1024px) {
   .manager-vehicles-page .page-content {
     padding: 1.5rem;
+  }
+
+  .manager-vehicles-page .search-toolbar {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
 
@@ -327,6 +532,11 @@
   .manager-vehicles-page .vehicles-table th,
   .manager-vehicles-page .vehicles-table td {
     padding: 0.75rem 0.5rem;
+  }
+
+  .manager-vehicles-page .vehicle-action-group {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
 

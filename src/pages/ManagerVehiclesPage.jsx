@@ -1,19 +1,22 @@
-﻿import { formatDateTimeVN } from './adminShared';
-import { useCallback, useEffect, useState } from 'react'
+import { formatDateTimeVN } from './adminShared'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  TruckIcon,
   MagnifyingGlassIcon,
+  PencilSquareIcon,
+  PlusIcon,
+  TrashIcon,
+  TruckIcon,
 } from '@heroicons/react/24/outline'
 import authService from '../services/authService'
 import managerService from '../services/managerService'
+import VehicleFormModal from '../components/VehicleFormModal'
 import './ManagerVehiclesPage.css'
 
 const STATUS_MAP = {
   AVAILABLE: { label: 'Sẵn sàng', color: 'success' },
   INUSE: { label: 'Đang sử dụng', color: 'info' },
   MAINTENANCE: { label: 'Bảo trì', color: 'warning' },
-  DISABLED: { label: 'Ngừng hoạt động', color: 'danger' },
 }
 
 const FILTER_BUTTONS = [
@@ -24,16 +27,52 @@ const FILTER_BUTTONS = [
 ]
 
 const normalizeVehicleStatus = (status) => String(status ?? '').trim().toUpperCase().replace(/[\s-]+/g, '')
+const normalizeVehicleTypeKey = (value) => String(value ?? '').trim().toUpperCase().replace(/[\s-]+/g, '')
+const formatCoordinates = (latitude, longitude) => {
+  if (latitude === null || latitude === undefined || longitude === null || longitude === undefined) {
+    return '-'
+  }
+
+  return `${latitude}, ${longitude}`
+}
 
 function ManagerVehiclesPage() {
   const navigate = useNavigate()
-  
   const [isLoading, setIsLoading] = useState(true)
   const [vehicles, setVehicles] = useState([])
-  const [filteredVehicles, setFilteredVehicles] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
+  const [toast, setToast] = useState(null)
+  const [modalMode, setModalMode] = useState(null)
+  const [modalError, setModalError] = useState('')
+  const [isModalSubmitting, setIsModalSubmitting] = useState(false)
+  const [selectedVehicle, setSelectedVehicle] = useState(null)
+
+  const vehicleTypeOptions = useMemo(() => managerService.getVehicleTypeOptions(), [])
+  const vehicleTypeLabelMap = useMemo(
+    () =>
+      new Map(
+        vehicleTypeOptions.map((option) => [normalizeVehicleTypeKey(option.code), option.label]),
+      ),
+    [vehicleTypeOptions],
+  )
+
+  const showToast = useCallback((type, message) => {
+    setToast({ type, message })
+  }, [])
+
+  useEffect(() => {
+    if (!toast) {
+      return undefined
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setToast(null)
+    }, 3200)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [toast])
 
   const fetchVehicles = useCallback(async () => {
     setIsLoading(true)
@@ -41,12 +80,11 @@ function ManagerVehiclesPage() {
 
     try {
       const data = await managerService.getAllVehicles('')
-      setVehicles(data)
-      setFilteredVehicles(data)
+      setVehicles(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error('Error fetching vehicles:', error)
       setErrorMessage(managerService.getErrorMessage(error))
-      
+
       if (error?.response?.status === 401) {
         navigate('/login', { replace: true })
       }
@@ -64,26 +102,26 @@ function ManagerVehiclesPage() {
     fetchVehicles()
   }, [navigate, fetchVehicles])
 
-  useEffect(() => {
+  const filteredVehicles = useMemo(() => {
     let filtered = [...vehicles]
 
-    // Filter by search term
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase()
       filtered = filtered.filter(
-        (v) =>
-          v.vehicleName?.toLowerCase().includes(term) ||
-          v.vehicleTypeName?.toLowerCase().includes(term) ||
-          v.licensePlate?.toLowerCase().includes(term) ||
-          v.vehicleCode?.toLowerCase().includes(term)
+        (vehicle) =>
+          vehicle.vehicleName?.toLowerCase().includes(term)
+          || vehicle.vehicleTypeName?.toLowerCase().includes(term)
+          || vehicle.licensePlate?.toLowerCase().includes(term)
+          || vehicle.vehicleCode?.toLowerCase().includes(term)
+          || vehicle.currentLocation?.toLowerCase().includes(term),
       )
     }
 
     if (statusFilter) {
-      filtered = filtered.filter((v) => normalizeVehicleStatus(v.status) === statusFilter)
+      filtered = filtered.filter((vehicle) => normalizeVehicleStatus(vehicle.status) === statusFilter)
     }
 
-    setFilteredVehicles(filtered)
+    return filtered
   }, [searchTerm, statusFilter, vehicles])
 
   const handleBack = () => {
@@ -91,13 +129,112 @@ function ManagerVehiclesPage() {
   }
 
   const getStatusBadge = (status) => {
-    const statusInfo = STATUS_MAP[normalizeVehicleStatus(status)] || { label: status, color: 'default' }
-    return statusInfo.label
+    const normalizedStatus = normalizeVehicleStatus(status)
+    return STATUS_MAP[normalizedStatus] || { label: status || '-', color: 'default' }
   }
 
   const getStatusCount = (status) => {
-    if (!status) return vehicles.length
-    return vehicles.filter((v) => normalizeVehicleStatus(v.status) === status).length
+    if (!status) {
+      return vehicles.length
+    }
+
+    return vehicles.filter((vehicle) => normalizeVehicleStatus(vehicle.status) === status).length
+  }
+
+  const getVehicleTypeLabel = (vehicle) => {
+    const matchedByCode = vehicleTypeLabelMap.get(normalizeVehicleTypeKey(vehicle.vehicleTypeName))
+    if (matchedByCode) {
+      return matchedByCode
+    }
+
+    const matchedById = vehicleTypeOptions.find((option) => Number(option.id) === Number(vehicle.vehicleTypeId))
+    return matchedById?.label || vehicle.vehicleTypeName || '-'
+  }
+
+  const handleOpenCreate = () => {
+    setSelectedVehicle(null)
+    setModalError('')
+    setModalMode('create')
+  }
+
+  const handleOpenEdit = async (vehicleId) => {
+    setModalError('')
+    setIsModalSubmitting(true)
+
+    try {
+      const vehicle = await managerService.getVehicleById(vehicleId)
+      setSelectedVehicle(vehicle)
+      setModalMode('edit')
+    } catch (error) {
+      showToast('error', managerService.getErrorMessage(error))
+    } finally {
+      setIsModalSubmitting(false)
+    }
+  }
+
+  const handleDeleteVehicle = async (vehicle) => {
+    if (!vehicle?.vehicleId) {
+      return
+    }
+
+    if (normalizeVehicleStatus(vehicle.status) === 'INUSE') {
+      showToast('error', 'Không thể xóa phương tiện đang trong nhiệm vụ.')
+      return
+    }
+
+    const confirmed = window.confirm(`Xóa phương tiện "${vehicle.vehicleCode}"?`)
+    if (!confirmed) {
+      return
+    }
+
+    try {
+      const response = await managerService.deleteVehicle(vehicle.vehicleId)
+      await fetchVehicles()
+      showToast('success', response?.message || response?.Message || 'Xóa phương tiện thành công.')
+    } catch (error) {
+      showToast('error', managerService.getErrorMessage(error))
+    }
+  }
+
+  const handleSubmitVehicle = async (formData) => {
+    setModalError('')
+    setIsModalSubmitting(true)
+
+    try {
+      const response = modalMode === 'create'
+        ? await managerService.createVehicle(formData)
+        : await managerService.updateVehicle(
+          selectedVehicle?.vehicleId,
+          formData,
+          selectedVehicle?.status,
+        )
+
+      await fetchVehicles()
+      setModalMode(null)
+      setSelectedVehicle(null)
+      showToast(
+        'success',
+        response?.message
+        || response?.Message
+        || (modalMode === 'create' ? 'Thêm phương tiện thành công.' : 'Cập nhật phương tiện thành công.'),
+      )
+    } catch (error) {
+      const message = managerService.getErrorMessage(error)
+      setModalError(message)
+      throw error
+    } finally {
+      setIsModalSubmitting(false)
+    }
+  }
+
+  const handleCloseModal = () => {
+    if (isModalSubmitting) {
+      return
+    }
+
+    setModalMode(null)
+    setSelectedVehicle(null)
+    setModalError('')
   }
 
   if (isLoading) {
@@ -142,25 +279,27 @@ function ManagerVehiclesPage() {
       </div>
 
       <div className="page-content">
+        {errorMessage && <div className="error-message">{errorMessage}</div>}
 
-        {errorMessage && (
-          <div className="error-message">{errorMessage}</div>
-        )}
-
-        {/* Search Bar */}
-        <div className="search-section">
-          <div className="search-box">
-            <MagnifyingGlassIcon className="icon" />
-            <input
-              type="text"
-              placeholder="Tìm kiếm theo tên, loại, biển số, mã phương tiện..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+        <div className="search-toolbar">
+          <div className="search-section">
+            <div className="search-box">
+              <MagnifyingGlassIcon className="icon" />
+              <input
+                type="text"
+                placeholder="Tìm kiếm theo tên, loại, biển số, mã phương tiện..."
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+              />
+            </div>
           </div>
+
+          <button type="button" className="vehicle-primary-action" onClick={handleOpenCreate}>
+            <PlusIcon className="vehicle-primary-action-icon" />
+            Thêm phương tiện
+          </button>
         </div>
 
-        {/* Vehicles Table */}
         {filteredVehicles.length === 0 ? (
           <div className="empty-state">
             <TruckIcon className="icon" />
@@ -171,7 +310,7 @@ function ManagerVehiclesPage() {
             <table className="vehicles-table">
               <thead>
                 <tr>
-                  <th>Vehicle ID</th>
+                  <th>STT</th>
                   <th>Mã phương tiện</th>
                   <th>Tên phương tiện</th>
                   <th>Biển số</th>
@@ -179,41 +318,93 @@ function ManagerVehiclesPage() {
                   <th>Sức chứa</th>
                   <th>Trạng thái</th>
                   <th>Vị trí hiện tại</th>
-                  <th>Thời gian bảo trì gần nhất</th>
-                  <th>Thời gian cập nhật</th>
+                  <th>Tọa độ</th>
+                  <th>Bảo trì gần nhất</th>
+                  <th>TG Cập nhật</th>
+                  <th>Thao tác</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredVehicles.map((vehicle) => (
-                  <tr key={vehicle.vehicleId}>
-                    <td>{vehicle.vehicleId}</td>
-                    <td className="vehicle-code">{vehicle.vehicleCode || 'N/A'}</td>
-                    <td className="vehicle-name">{vehicle.vehicleName || 'N/A'}</td>
-                    <td className="license-plate">{vehicle.licensePlate || 'N/A'}</td>
-                    <td>{vehicle.vehicleTypeName || '-'}</td>
-                    <td>{vehicle.capacity || '-'}</td>
-                    <td>{getStatusBadge(vehicle.status)}</td>
-                    <td>{vehicle.currentLocation || '-'}</td>
-                    <td>
-                      {vehicle.lastMaintenanceDate
-                        ? formatDateTimeVN(vehicle.lastMaintenanceDate)
-                        : '-'}
-                    </td>
-                    <td>
-                      {vehicle.updatedAt
-                        ? formatDateTimeVN(vehicle.updatedAt)
-                        : '-'}
-                    </td>
-                  </tr>
-                ))}
+                {filteredVehicles.map((vehicle) => {
+                  const statusInfo = getStatusBadge(vehicle.status)
+                  const isInUseVehicle = normalizeVehicleStatus(vehicle.status) === 'INUSE'
+
+                  return (
+                    <tr key={vehicle.vehicleId}>
+                      <td>{vehicle.vehicleId}</td>
+                      <td className="vehicle-code">{vehicle.vehicleCode || 'N/A'}</td>
+                      <td className="vehicle-name">{vehicle.vehicleName || 'N/A'}</td>
+                      <td className="vehicle-license-cell">
+                        <div className="vehicle-license-wrap">
+                          <span className="license-plate">{vehicle.licensePlate || 'N/A'}</span>
+                        </div>
+                      </td>
+                      <td>{getVehicleTypeLabel(vehicle)}</td>
+                      <td>{vehicle.capacity ?? '-'}</td>
+                      <td>
+                        <span className={`vehicle-status-badge ${statusInfo.color}`}>
+                          {statusInfo.label}
+                        </span>
+                      </td>
+                      <td className="vehicle-location-cell">
+                        <div className="vehicle-location-text">{vehicle.currentLocation || '-'}</div>
+                      </td>
+                      <td className="vehicle-coordinates-cell">
+                        <div className="vehicle-coordinates-text">
+                          {formatCoordinates(vehicle.latitude, vehicle.longitude)}
+                        </div>
+                      </td>
+                      <td>{vehicle.lastMaintenance ? formatDateTimeVN(vehicle.lastMaintenance) : '-'}</td>
+                      <td>{vehicle.updatedAt ? formatDateTimeVN(vehicle.updatedAt) : '-'}</td>
+                      <td>
+                        <div className="vehicle-action-group">
+                          <button
+                            type="button"
+                            className="vehicle-action-btn edit"
+                            onClick={() => handleOpenEdit(vehicle.vehicleId)}
+                          >
+                            <PencilSquareIcon className="vehicle-action-icon" />
+                            Sửa
+                          </button>
+                          <button
+                            type="button"
+                            className={`vehicle-action-btn delete ${isInUseVehicle ? 'disabled' : ''}`}
+                            onClick={() => handleDeleteVehicle(vehicle)}
+                            disabled={isInUseVehicle}
+                          >
+                            <TrashIcon className="vehicle-action-icon" />
+                            Xóa
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
         )}
       </div>
+
+      {modalMode && (
+        <VehicleFormModal
+          mode={modalMode}
+          initialVehicle={selectedVehicle}
+          vehicleTypeOptions={vehicleTypeOptions}
+          isSubmitting={isModalSubmitting}
+          serverError={modalError}
+          onClose={handleCloseModal}
+          onSubmit={handleSubmitVehicle}
+        />
+      )}
+
+      {toast && (
+        <div className={`vehicle-toast ${toast.type === 'error' ? 'error' : 'success'}`}>
+          {toast.message}
+        </div>
+      )}
     </div>
   )
 }
 
 export default ManagerVehiclesPage
-

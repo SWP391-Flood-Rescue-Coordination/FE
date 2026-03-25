@@ -1,0 +1,115 @@
+.vehicle-form-modal {
+  max-width: 1180px;
+}
+
+.vehicle-form-modal .form-row {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: stretch;
+  gap: 26px;
+}
+
+.vehicle-form-modal .form-left,
+.vehicle-form-modal .form-right {
+  min-width: 0;
+  gap: 20px;
+}
+
+.vehicle-form-modal .form-left {
+  justify-content: space-between;
+}
+
+.vehicle-form-modal .form-right {
+  gap: 0;
+}
+
+.vehicle-form-modal .vehicle-map {
+  margin-bottom: 0;
+}
+
+.vehicle-form-modal .vehicle-form-inline-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.vehicle-form-modal .vehicle-form-inline-row-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 152px 96px;
+  width: 100%;
+}
+
+.vehicle-form-modal .vehicle-form-inline-row-bottom {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 0.82fr);
+  align-items: end;
+  width: 100%;
+}
+
+.vehicle-form-modal .vehicle-form-inline-row-top .vehicle-field-name {
+  min-width: 0;
+}
+
+.vehicle-form-modal .vehicle-form-inline-row-bottom .vehicle-field-type,
+.vehicle-form-modal .vehicle-form-inline-row-bottom .vehicle-field-status,
+.vehicle-form-modal .vehicle-form-inline-row-bottom .vehicle-field-coordinates {
+  min-width: 0;
+}
+
+.vehicle-form-modal .vehicle-current-location-display {
+  min-height: 82px;
+  align-items: flex-start;
+}
+
+.vehicle-form-modal .vehicle-current-location-display .request-readonly-icon {
+  margin-top: 2px;
+}
+
+.vehicle-form-modal .vehicle-uppercase-input {
+  text-transform: uppercase;
+}
+
+.vehicle-form-modal .vehicle-select {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  background-color: #fff;
+  color: #000;
+}
+
+.vehicle-form-modal .vehicle-select:focus {
+  outline: none;
+  border-color: #dc2626;
+}
+
+@media (max-width: 900px) {
+  .vehicle-form-modal {
+    max-width: 1120px;
+  }
+
+  .vehicle-form-modal .form-row {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .vehicle-form-modal .vehicle-form-inline-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .vehicle-form-modal .vehicle-form-inline-row-top,
+  .vehicle-form-modal .vehicle-form-inline-row-bottom {
+    grid-template-columns: 1fr;
+  }
+
+  .vehicle-form-modal .vehicle-form-inline-row-top .vehicle-field-name,
+  .vehicle-form-modal .vehicle-form-inline-row-top .vehicle-field-license,
+  .vehicle-form-modal .vehicle-form-inline-row-top .vehicle-field-capacity,
+  .vehicle-form-modal .vehicle-form-inline-row-bottom .vehicle-field-coordinates,
+  .vehicle-form-modal .vehicle-form-inline-row-bottom .vehicle-field-type,
+  .vehicle-form-modal .vehicle-form-inline-row-bottom .vehicle-field-status {
+    width: 100%;
+  }
+}
