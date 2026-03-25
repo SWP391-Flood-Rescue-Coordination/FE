@@ -556,7 +556,6 @@ function Dashboard() {
       </div>
 
       <nav className="bottom-nav">
-        <button className="nav-item">Hướng dẫn</button>
         <button className="nav-item">Liên hệ</button>
       </nav>
     </div>

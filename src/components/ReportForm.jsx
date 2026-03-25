@@ -80,7 +80,7 @@ const ReportForm = ({ onClose }) => {
             />
           </div>
 
-          <div className="form-group">
+          {/* <div className="form-group">
             <label htmlFor="level">Mức độ nguy hiểm <span className="required">*</span></label>
             <select
               id="level"
@@ -95,7 +95,7 @@ const ReportForm = ({ onClose }) => {
               <option value="4">Mức 4 - Cao</option>
               <option value="5">Mức 5 - Rất cao</option>
             </select>
-          </div>
+          </div> */}
 
           <div className="form-group">
             <label htmlFor="people">Số người cần hỗ trợ <span className="required">*</span></label>

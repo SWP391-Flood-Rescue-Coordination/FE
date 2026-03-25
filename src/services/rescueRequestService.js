@@ -403,17 +403,16 @@ const buildCreatePayload = (formData) => {
   const { totalPeople, adultCount, elderlyCount, childrenCount } = parsePeopleCounts(formData)
 
   return {
-    title: buildTitle(formData?.conditions),
-    contactName: String(formData?.contactName ?? '').trim() || null,
-    contactPhone: String(formData?.phone ?? '').trim(),
-    description: buildDescription(formData?.notes, formData?.conditions),
-    latitude,
-    longitude,
-    address: String(formData?.address ?? '').trim(),
-    numberOfPeople: totalPeople,
-    adultCount,
-    elderlyCount,
-    childrenCount,
+    Title: buildTitle(formData?.conditions),
+    ContactName: String(formData?.contactName ?? '').trim() || null,
+    ContactPhone: String(formData?.phone ?? '').trim(),
+    Description: buildDescription(formData?.notes, formData?.conditions),
+    Latitude: latitude,
+    Longitude: longitude,
+    Address: String(formData?.address ?? '').trim(),
+    AdultCount: adultCount,
+    ElderlyCount: elderlyCount,
+    ChildrenCount: childrenCount,
   }
 }
 
@@ -558,16 +557,16 @@ const buildGuestUpdatePayload = (formData) => {
   const { totalPeople, adultCount, elderlyCount, childrenCount } = parsePeopleCounts(formData)
 
   return {
-    title: buildTitle(formData?.conditions),
-    contactPhone: String(formData?.phone ?? '').trim() || null,
-    description: buildDescription(formData?.notes, formData?.conditions),
-    latitude,
-    longitude,
-    address: String(formData?.address ?? '').trim(),
-    numberOfPeople: totalPeople,
-    adultCount,
-    elderlyCount,
-    childrenCount,
+    Title: buildTitle(formData?.conditions),
+    ContactPhone: String(formData?.phone ?? '').trim() || null,
+    Description: buildDescription(formData?.notes, formData?.conditions),
+    Latitude: latitude,
+    Longitude: longitude,
+    Address: String(formData?.address ?? '').trim(),
+    NumberOfAffectedPeople: totalPeople,
+    AdultCount: adultCount,
+    ElderlyCount: elderlyCount,
+    ChildrenCount: childrenCount,
   }
 }
 
