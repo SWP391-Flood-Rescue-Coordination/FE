@@ -751,7 +751,7 @@ function AdminDashboardPage() {
                   </div>
                   <div>
                     <dt>Tạo lúc</dt>
-                    <dd>{formatDateTime(dashboardMetrics.oldestPendingRequest.createdAt)}</dd>
+                    <dd>{formatDateTimeVN(dashboardMetrics.oldestPendingRequest.createdAt)}</dd>
                   </div>
                 </dl>
               </div>
@@ -853,7 +853,7 @@ function AdminDashboardPage() {
                     </div>
                     <div className="admin-compact-side">
                       <span className="admin-badge inactive">Tạm khóa</span>
-                      <small>{formatDateTime(user.createdAt)}</small>
+                      <small>{formatDateTimeVN(user.createdAt)}</small>
                     </div>
                   </article>
                 ))}
