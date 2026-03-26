@@ -313,65 +313,59 @@ function ManagerImportReceiptsListPage() {
             </p>
           </div>
         ) : (
-          <div className="receipts-grid">
-            {filteredReceipts.map((receipt) => {
-              const receiptType = receipt.type || (receipt.source ? 'import' : 'export')
-              return (
-                <div key={`${receiptType}-${receipt.receiptId}`} className={`receipt-card ${receiptType}`}>
-                  <div className="receipt-header">
-                    <div className={`receipt-id ${receiptType}`}>
-                      {receiptType === 'import' ? (
-                        <ArrowDownTrayIcon className="icon" />
-                      ) : (
-                        <ArrowUpTrayIcon className="icon" />
-                      )}
-                      Phiếu {receiptType === 'import' ? 'Nhập' : 'Xuất'} #{receipt.receiptId}
-                    </div>
-                    <div className="receipt-date">
-                      <CalendarIcon className="icon" />
-                      {formatDateTime(receipt.createdAt)}
-                    </div>
-                  </div>
+          <div className="receipts-table-wrap">
+            <table className="receipts-table">
+              <thead>
+                <tr>
+                  <th>Mã phiếu</th>
+                  <th>Loại phiếu</th>
+                  <th>Nguồn / Đơn vị nhận</th>
+                  <th>Địa chỉ</th>
+                  <th>Số loại vật tư</th>
+                  <th>Ngày tạo</th>
+                  <th>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredReceipts.map((receipt) => {
+                  const receiptType = receipt.type || (receipt.source ? 'import' : 'export')
+                  const primaryLabel = receiptType === 'import' ? receipt.source : receipt.destination
+                  const addressLabel =
+                    receiptType === 'import' ? receipt.receiveAddress : receipt.recipientAddress
 
-                  <div className="receipt-body">
-                    {receiptType === 'import' ? (
-                      <>
-                        <div className="receipt-info-row">
-                          <span className="label">Nguồn gốc:</span>
-                          <span className="value">{receipt.source}</span>
+                  return (
+                    <tr key={`${receiptType}-${receipt.receiptId}`}>
+                      <td>
+                        <div className="receipt-code-cell">
+                          <strong>#{receipt.receiptId}</strong>
                         </div>
-                        {/* Địa chỉ nhận đã ẩn khỏi danh sách */}
-                      </>
-                    ) : (
-                      <>
-                        <div className="receipt-info-row">
-                          <span className="label">Đơn vị nhận:</span>
-                          <span className="value">{receipt.destination}</span>
+                      </td>
+                      <td>
+                        <span className={`receipt-type-badge ${receiptType}`}>
+                          {receiptType === 'import' ? 'Phiếu nhập' : 'Phiếu xuất'}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="receipt-main-cell">
+                          <strong>{primaryLabel || '-'}</strong>
                         </div>
-                        {/* Địa chỉ nhận đã ẩn khỏi danh sách */}
-                      </>
-                    )}
-
-                    <div className="receipt-info-row">
-                      <CubeIcon className="icon-small" />
-                      <span className="value small">
-                        {receipt.totalItems} loại vật tư
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="receipt-footer">
-                    <button
-                      className="btn-view-detail"
-                      onClick={() => handleViewDetail(receipt)}
-                    >
-                      <EyeIcon className="icon" />
-                      Xem chi tiết
-                    </button>
-                  </div>
-                </div>
-              )
-            })}
+                      </td>
+                      <td>
+                        <span className="receipt-address-text">{addressLabel || 'Chưa có địa chỉ'}</span>
+                      </td>
+                      <td>{receipt.totalItems}</td>
+                      <td>{formatDateTime(receipt.createdAt)}</td>
+                      <td>
+                        <button className={`btn-view-detail ${receiptType}`} onClick={() => handleViewDetail(receipt)}>
+                          <EyeIcon className="icon" />
+                          Xem chi tiết
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>

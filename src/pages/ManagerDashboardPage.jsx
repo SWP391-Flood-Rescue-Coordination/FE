@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeftOnRectangleIcon,
+  ArrowDownTrayIcon,
   ArrowPathIcon,
+  ArrowUpTrayIcon,
   TruckIcon,
   CubeIcon,
   UserGroupIcon,
@@ -12,7 +14,6 @@ import {
   ChartBarIcon,
   WrenchScrewdriverIcon,
   UserCircleIcon,
-  ClipboardDocumentListIcon,
   DocumentTextIcon,
 } from '@heroicons/react/24/outline'
 import authService from '../services/authService'
@@ -321,11 +322,11 @@ function ManagerDashboardPage() {
         <h1>Hệ Thống Quản Lí Cứu Hộ Cứu Trợ Lũ Lụt</h1>
         <div className="header-buttons">
           <button className="btn-create-receipt" onClick={handleNavigateToImportReceipt}>
-            <ClipboardDocumentListIcon className="icon" />
+            <ArrowDownTrayIcon className="icon" />
             Tạo phiếu nhập 
           </button>
           <button className="btn-relief-export" onClick={handleNavigateToReliefExport}>
-            <TruckIcon className="icon" />
+            <ArrowUpTrayIcon className="icon" />
             Tạo phiếu xuất 
           </button>
           <button className="btn-view-receipts" onClick={handleNavigateToImportReceiptsList}>
@@ -463,7 +464,6 @@ function ManagerDashboardPage() {
         <section className="dashboard-section">
           <div className="section-header">
             <h2>Hoạt động hôm nay</h2>
-            <span className="date-badge">{new Date().toLocaleDateString('vi-VN')}</span>
           </div>
           <div className="metrics-grid today-metrics">
             <div className="metric-card">
@@ -522,7 +522,6 @@ function ManagerDashboardPage() {
         <section className="dashboard-section monthly-section">
           <div className="section-header">
             <h2>Biểu đồ logistics hiện tại</h2>
-            <span className="date-badge">Cập nhật {new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
           </div>
           
           <div className="charts-container">

@@ -2,11 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeftIcon,
+  ArrowDownTrayIcon,
   BuildingOffice2Icon,
+  ChevronUpIcon,
   CheckCircleIcon,
-  ClipboardDocumentListIcon,
   CubeIcon,
   ExclamationTriangleIcon,
+  MagnifyingGlassIcon,
   MapPinIcon,
 } from '@heroicons/react/24/outline'
 import authService from '../services/authService'
@@ -77,6 +79,8 @@ function ManagerImportReceiptPage() {
   const [supplies, setSupplies] = useState([])
   const [categories, setCategories] = useState([])
   const [sourceOptions, setSourceOptions] = useState([])
+  const [supplySearchTerm, setSupplySearchTerm] = useState('')
+  const [showScrollTop, setShowScrollTop] = useState(false)
   
   // Form data
   const [selectedSourceId, setSelectedSourceId] = useState('')
@@ -150,6 +154,16 @@ function ManagerImportReceiptPage() {
     fetchPageData()
   }, [fetchPageData, navigate])
 
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 240)
+    }
+
+    handleScroll()
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
   // Selected supply items with quantity
   const selectedSupplyItems = useMemo(
     () =>
@@ -162,6 +176,18 @@ function ManagerImportReceiptPage() {
         })),
     [supplies, supplyQuantities],
   )
+
+  const filteredSupplies = useMemo(() => {
+    const keyword = String(supplySearchTerm ?? '').trim().toLowerCase()
+    if (!keyword) {
+      return supplies
+    }
+
+    return supplies.filter((supply) => {
+      const haystack = [supply.name, supply.type, supply.unit].join(' ').toLowerCase()
+      return haystack.includes(keyword)
+    })
+  }, [supplies, supplySearchTerm])
 
   // Total quantity
   const totalQuantity = useMemo(() => {
@@ -208,7 +234,7 @@ function ManagerImportReceiptPage() {
       delete newValidation[key]
       setSupplyValidationMap(newValidation)
     } else {
-      newQuantities[key] = ''
+      newQuantities[key] = '1'
     }
     
     setSupplyQuantities(newQuantities)
@@ -301,6 +327,10 @@ function ManagerImportReceiptPage() {
 
   const [note, setNote] = useState('')
 
+  const handleScrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   if (isLoading) {
     return (
       <div className="manager-import-receipt-page">
@@ -325,12 +355,9 @@ function ManagerImportReceiptPage() {
       <header className="page-header">
         <p className="page-kicker">Quản lý kho cứu trợ</p>
         <h1>
-          <ClipboardDocumentListIcon className="icon" />
+          <ArrowDownTrayIcon className="icon" />
           Nhập kho cứu trợ
         </h1>
-        <p className="page-description">
-          Nhập thông tin nguồn hàng và chọn danh sách vật tư cần nhập vào kho.
-        </p>
       </header>
 
       {errorMessage && (
@@ -398,6 +425,20 @@ function ManagerImportReceiptPage() {
               <span className="section-meta">{selectedSupplyItems.length} vật tư đã chọn</span>
             </div>
 
+            <div className="selection-toolbar">
+              <span>Tìm vật tư theo tên, nhóm hoặc đơn vị tính.</span>
+              <label className="supply-search" htmlFor="manager-import-supply-search">
+                <MagnifyingGlassIcon className="icon" />
+                <input
+                  id="manager-import-supply-search"
+                  type="text"
+                  value={supplySearchTerm}
+                  onChange={(event) => setSupplySearchTerm(event.target.value)}
+                  placeholder="Tìm vật tư..."
+                />
+              </label>
+            </div>
+
             <div className="table-wrap">
               <table className="data-table supplies-table">
                 <thead>
@@ -410,15 +451,15 @@ function ManagerImportReceiptPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {supplies.length === 0 && (
+                  {filteredSupplies.length === 0 && (
                     <tr>
                       <td colSpan="5" className="empty-row">
-                        Không có vật tư khả dụng.
+                        {supplies.length === 0 ? 'Không có vật tư khả dụng.' : 'Không tìm thấy vật tư phù hợp.'}
                       </td>
                     </tr>
                   )}
 
-                  {supplies.map((supply) => {
+                  {filteredSupplies.map((supply) => {
                     const key = String(supply.id)
                     const isSelected = hasOwn(supplyQuantities, key)
                     const validationMessage = supplyValidationMap[key]
@@ -443,7 +484,7 @@ function ManagerImportReceiptPage() {
                             <input
                               type="number"
                               min="1"
-                              step="0.01"
+                              step="1"
                               value={isSelected ? supplyQuantities[key] : ''}
                               onChange={(event) => handleChangeSupplyQuantity(supply.id, event.target.value)}
                               disabled={!isSelected || isSubmitting}
@@ -523,6 +564,12 @@ function ManagerImportReceiptPage() {
           </section>
         </aside>
       </div>
+
+      {showScrollTop && (
+        <button type="button" className="scroll-top-button" onClick={handleScrollToTop} aria-label="Lên đầu trang">
+          <ChevronUpIcon className="icon" />
+        </button>
+      )}
     </div>
   )
 }

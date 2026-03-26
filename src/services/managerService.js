@@ -13,6 +13,27 @@ const unwrapApiData = (response) => {
 
 const normalizeArray = (value) => (Array.isArray(value) ? value : [])
 
+const repairDisplayText = (value, fallback = '') => {
+  let text = String(value ?? '').trim()
+  if (!text) {
+    return fallback
+  }
+
+  if (/[ÃÂÄÆáºá»]/.test(text)) {
+    try {
+      text = decodeURIComponent(escape(text))
+    } catch {
+      // Giữ nguyên chuỗi cũ nếu không thể giải mã lại.
+    }
+  }
+
+  return text
+    .replace(/\bH\?p\b/g, 'Hộp')
+    .replace(/\bD\?n v\?\b/g, 'Đơn vị')
+    .replace(/\bDon vi\b/gi, 'Đơn vị')
+    .trim() || fallback
+}
+
 const MAX_RELIEF_ITEM_THRESHOLD = 2147483647
 
 const REQUEST_STATUS_TO_API_VALUE = {
@@ -142,18 +163,18 @@ const isLowStockSupply = (item) => {
 
 const normalizeVehicle = (vehicle) => ({
   vehicleId: vehicle?.vehicleId ?? vehicle?.VehicleId ?? null,
-  vehicleCode: vehicle?.vehicleCode ?? vehicle?.VehicleCode ?? '',
-  vehicleName: vehicle?.vehicleName ?? vehicle?.VehicleName ?? '',
-  vehicleTypeName: vehicle?.vehicleTypeName ?? vehicle?.VehicleTypeName ?? '',
+  vehicleCode: repairDisplayText(vehicle?.vehicleCode ?? vehicle?.VehicleCode ?? '', ''),
+  vehicleName: repairDisplayText(vehicle?.vehicleName ?? vehicle?.VehicleName ?? '', ''),
+  vehicleTypeName: repairDisplayText(vehicle?.vehicleTypeName ?? vehicle?.VehicleTypeName ?? '', ''),
   vehicleTypeId:
     toVehicleTypeId(
       vehicle?.vehicleTypeId ?? vehicle?.VehicleTypeId ?? vehicle?.vehicleTypeName ?? vehicle?.VehicleTypeName,
     ) ?? null,
-  vehicleType: vehicle?.vehicleTypeName ?? vehicle?.VehicleTypeName ?? '',
-  licensePlate: vehicle?.licensePlate ?? vehicle?.LicensePlate ?? '',
+  vehicleType: repairDisplayText(vehicle?.vehicleTypeName ?? vehicle?.VehicleTypeName ?? '', ''),
+  licensePlate: repairDisplayText(vehicle?.licensePlate ?? vehicle?.LicensePlate ?? '', ''),
   capacity: vehicle?.capacity ?? vehicle?.Capacity ?? null,
-  status: vehicle?.status ?? vehicle?.Status ?? '',
-  currentLocation: vehicle?.currentLocation ?? vehicle?.CurrentLocation ?? '',
+  status: repairDisplayText(vehicle?.status ?? vehicle?.Status ?? '', ''),
+  currentLocation: repairDisplayText(vehicle?.currentLocation ?? vehicle?.CurrentLocation ?? '', ''),
   latitude: vehicle?.latitude ?? vehicle?.Latitude ?? null,
   longitude: vehicle?.longitude ?? vehicle?.Longitude ?? null,
   lastMaintenance: vehicle?.lastMaintenance ?? vehicle?.LastMaintenance ?? null,
@@ -164,13 +185,15 @@ const normalizeVehicle = (vehicle) => ({
 const normalizeSupply = (item) => ({
   supplyId: item?.itemId ?? item?.supplyId ?? item?.id,
   id: item?.itemId ?? item?.supplyId ?? item?.id,
-  name: item?.itemName || item?.item_name || item?.name || item?.supplyName || item?.supply_name || '',
-  type:
+  name: repairDisplayText(item?.itemName || item?.item_name || item?.name || item?.supplyName || item?.supply_name || '', ''),
+  type: repairDisplayText(
     item?.categoryName ||
-    item?.category_name ||
-    item?.type ||
-    item?.category ||
-    (item?.categoryId != null ? `Nhóm ${item.categoryId}` : '-'),
+      item?.category_name ||
+      item?.type ||
+      item?.category ||
+      (item?.categoryId != null ? `Nhóm ${item.categoryId}` : '-'),
+    '-',
+  ),
   categoryId: item?.categoryId ?? item?.category_id ?? item?.CategoryId,
   quantity: toNumber(
     item?.quantity ??
@@ -181,7 +204,7 @@ const normalizeSupply = (item) => ({
       item?.quantity_in_stock ??
       item?.availableQuantity,
   ),
-  unit: item?.unit || item?.Unit || item?.unit_name || 'đơn vị',
+  unit: repairDisplayText(item?.unit || item?.Unit || item?.unit_name || 'đơn vị', 'đơn vị'),
   minQuantity: toNumber(item?.minQuantity ?? item?.min_quantity ?? item?.MinQuantity),
   isActive: Boolean(item?.isActive),
   importDate: item?.createdAt ?? item?.created_at,
@@ -251,9 +274,9 @@ const normalizeImportReceipt = (entry, supplyNameMap) => {
   return {
     receiptId: entry.id,
     type: 'import',
-    source: entry.fromTo || 'Không rõ nguồn',
-    note: extractNoteOnly(entry.note),
-    receiveAddress: extractAddressOnly(entry.note),
+    source: repairDisplayText(entry.fromTo || 'Không rõ nguồn', 'Không rõ nguồn'),
+    note: repairDisplayText(extractNoteOnly(entry.note), ''),
+    receiveAddress: repairDisplayText(extractAddressOnly(entry.note), ''),
     createdAt: entry.date,
     createdBy: '-',
     totalItems: items.length,
@@ -266,9 +289,9 @@ const normalizeExportReceipt = (entry, supplyNameMap) => {
   return {
     receiptId: entry.id,
     type: 'export',
-    destination: entry.fromTo || 'Không rõ đơn vị nhận',
-    note: extractNoteOnly(entry.note),
-    recipientAddress: extractAddressOnly(entry.note),
+    destination: repairDisplayText(entry.fromTo || 'Không rõ đơn vị nhận', 'Không rõ đơn vị nhận'),
+    note: repairDisplayText(extractNoteOnly(entry.note), ''),
+    recipientAddress: repairDisplayText(extractAddressOnly(entry.note), ''),
     createdAt: entry.date,
     createdBy: '-',
     totalItems: items.length,
@@ -327,17 +350,17 @@ const normalizeCategory = (item) => {
 const normalizeImportReceiptFromManager = (entry) => {
   const items = normalizeArray(entry?.items).map((item) => ({
     itemId: item?.itemId ?? item?.item_id ?? item?.supplyId,
-    itemName: item?.itemName ?? item?.name ?? item?.supplyName ?? 'Không rõ vật tư',
-    categoryName: item?.categoryName ?? item?.category ?? '-',
+    itemName: repairDisplayText(item?.itemName ?? item?.name ?? item?.supplyName ?? 'Không rõ vật tư', 'Không rõ vật tư'),
+    categoryName: repairDisplayText(item?.categoryName ?? item?.category ?? '-', '-'),
     quantity: toNumber(item?.quantity),
-    unit: item?.unit ?? 'đơn vị',
+    unit: repairDisplayText(item?.unit ?? 'đơn vị', 'đơn vị'),
   }))
 
   return {
     receiptId: entry?.receiptId ?? entry?.id,
     type: 'import',
-    source: entry?.source ?? entry?.fromTo ?? 'Không rõ nguồn',
-    receiveAddress: entry?.receiveAddress ?? entry?.receive_address ?? entry?.note ?? '',
+    source: repairDisplayText(entry?.source ?? entry?.fromTo ?? 'Không rõ nguồn', 'Không rõ nguồn'),
+    receiveAddress: repairDisplayText(entry?.receiveAddress ?? entry?.receive_address ?? entry?.note ?? '', ''),
     createdAt: entry?.createdAt ?? entry?.created_at ?? null,
     createdBy: entry?.createdBy ?? '-',
     totalItems: toNumber(entry?.totalItems, items.length),
@@ -348,17 +371,20 @@ const normalizeImportReceiptFromManager = (entry) => {
 const normalizeExportReceiptFromManager = (entry) => {
   const items = normalizeArray(entry?.items).map((item) => ({
     itemId: item?.itemId ?? item?.item_id ?? item?.supplyId,
-    itemName: item?.itemName ?? item?.name ?? item?.supplyName ?? 'Không rõ vật tư',
-    categoryName: item?.categoryName ?? item?.category ?? '-',
+    itemName: repairDisplayText(item?.itemName ?? item?.name ?? item?.supplyName ?? 'Không rõ vật tư', 'Không rõ vật tư'),
+    categoryName: repairDisplayText(item?.categoryName ?? item?.category ?? '-', '-'),
     quantity: toNumber(item?.quantity),
-    unit: item?.unit ?? 'đơn vị',
+    unit: repairDisplayText(item?.unit ?? 'đơn vị', 'đơn vị'),
   }))
 
   return {
     receiptId: entry?.receiptId ?? entry?.id,
     type: 'export',
-    destination: entry?.destination ?? entry?.recipientUnitName ?? entry?.fromTo ?? 'Không rõ đơn vị nhận',
-    recipientAddress: entry?.recipientAddress ?? entry?.recipient_address ?? entry?.note ?? '',
+    destination: repairDisplayText(
+      entry?.destination ?? entry?.recipientUnitName ?? entry?.fromTo ?? 'Không rõ đơn vị nhận',
+      'Không rõ đơn vị nhận',
+    ),
+    recipientAddress: repairDisplayText(entry?.recipientAddress ?? entry?.recipient_address ?? entry?.note ?? '', ''),
     createdAt: entry?.createdAt ?? entry?.created_at ?? null,
     createdBy: entry?.createdBy ?? '-',
     totalItems: toNumber(entry?.totalItems, items.length),
@@ -531,9 +557,7 @@ const managerService = {
 
   getSupplies: async () => {
     try {
-      const response = await api.get('/ReliefItem/low-stock', {
-        params: { n: MAX_RELIEF_ITEM_THRESHOLD },
-      })
+      const response = await api.get('/ReliefItem')
       const payload = response?.data
       const items = payload?.items ?? payload?.Items ?? unwrapApiData(response)
       return normalizeArray(items).map(normalizeSupply)

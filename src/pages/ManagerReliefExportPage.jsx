@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  ArchiveBoxArrowDownIcon,
   ArrowLeftIcon,
+  ArrowUpTrayIcon,
   BuildingOffice2Icon,
+  ChevronUpIcon,
   CheckCircleIcon,
   CubeIcon,
   ExclamationTriangleIcon,
+  MagnifyingGlassIcon,
   MapPinIcon,
 } from '@heroicons/react/24/outline'
 import authService from '../services/authService'
@@ -123,6 +125,8 @@ function ManagerReliefExportPage() {
   const [errorMessage, setErrorMessage] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
   const [note, setNote] = useState('')
+  const [supplySearchTerm, setSupplySearchTerm] = useState('')
+  const [showScrollTop, setShowScrollTop] = useState(false)
 
   const fetchPageData = useCallback(async () => {
     setIsLoading(true)
@@ -170,6 +174,16 @@ function ManagerReliefExportPage() {
     fetchPageData()
   }, [fetchPageData, navigate])
 
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 240)
+    }
+
+    handleScroll()
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
   const selectedRecipient = useMemo(
     () => recipientOptions.find((item) => String(item.id) === String(selectedRecipientId)) || null,
     [recipientOptions, selectedRecipientId],
@@ -186,6 +200,18 @@ function ManagerReliefExportPage() {
         })),
     [supplies, supplyQuantities],
   )
+
+  const filteredSupplies = useMemo(() => {
+    const keyword = String(supplySearchTerm ?? '').trim().toLowerCase()
+    if (!keyword) {
+      return supplies
+    }
+
+    return supplies.filter((supply) => {
+      const haystack = [supply.name, supply.type, supply.unit].join(' ').toLowerCase()
+      return haystack.includes(keyword)
+    })
+  }, [supplies, supplySearchTerm])
 
   const supplyValidationMap = useMemo(() => {
     const next = {}
@@ -274,6 +300,10 @@ function ManagerReliefExportPage() {
     setSupplyQuantities({})
   }
 
+  const handleScrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   const handleSubmit = async () => {
     if (!selectedRecipient) {
       setErrorMessage('Vui lòng chọn đơn vị nhận cứu trợ.')
@@ -354,12 +384,9 @@ function ManagerReliefExportPage() {
       <header className="page-header">
         <p className="page-kicker">Điều phối kho cứu trợ</p>
         <h1>
-          <ArchiveBoxArrowDownIcon className="icon" />
+          <ArrowUpTrayIcon className="icon" />
           Xuất kho cứu trợ
         </h1>
-        <p className="page-description">
-          Chọn đơn vị nhận, danh sách vật tư và phương tiện vận chuyển trước khi gửi phiếu xuất kho.
-        </p>
       </header>
 
       {errorMessage && (
@@ -420,6 +447,20 @@ function ManagerReliefExportPage() {
               <span className="section-meta">{selectedSupplyItems.length} vật tư đã chọn</span>
             </div>
 
+            <div className="selection-toolbar">
+              <span>Tìm vật tư theo tên, nhóm hoặc đơn vị tính.</span>
+              <label className="supply-search" htmlFor="manager-export-supply-search">
+                <MagnifyingGlassIcon className="icon" />
+                <input
+                  id="manager-export-supply-search"
+                  type="text"
+                  value={supplySearchTerm}
+                  onChange={(event) => setSupplySearchTerm(event.target.value)}
+                  placeholder="Tìm vật tư..."
+                />
+              </label>
+            </div>
+
             <div className="table-wrap">
               <table className="data-table supplies-table">
                 <thead>
@@ -433,15 +474,15 @@ function ManagerReliefExportPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {supplies.length === 0 && (
+                  {filteredSupplies.length === 0 && (
                     <tr>
                       <td colSpan="6" className="empty-row">
-                        Không có vật tư khả dụng.
+                        {supplies.length === 0 ? 'Không có vật tư khả dụng.' : 'Không tìm thấy vật tư phù hợp.'}
                       </td>
                     </tr>
                   )}
 
-                  {supplies.map((supply) => {
+                  {filteredSupplies.map((supply) => {
                     const key = String(supply.id)
                     const isSelected = hasOwn(supplyQuantities, key)
                     const validationMessage = supplyValidationMap[key]
@@ -467,6 +508,7 @@ function ManagerReliefExportPage() {
                             <input
                               type="number"
                               min="1"
+                              step="1"
                               max={supply.stockQuantity ?? undefined}
                               value={isSelected ? supplyQuantities[key] : ''}
                               onChange={(event) => handleChangeSupplyQuantity(supply.id, event.target.value)}
@@ -541,6 +583,12 @@ function ManagerReliefExportPage() {
           </section>
         </aside>
       </div>
+
+      {showScrollTop && (
+        <button type="button" className="scroll-top-button" onClick={handleScrollToTop} aria-label="Lên đầu trang">
+          <ChevronUpIcon className="icon" />
+        </button>
+      )}
     </div>
   )
 }

@@ -74,7 +74,8 @@
 
 /* Header */
 .manager-vehicles-page .page-header {
-  max-width: 1960px;
+  max-width: none;
+  width: calc(100vw - 4rem);
   margin: 0 auto 2rem;
 }
 
@@ -95,7 +96,8 @@
 }
 
 .manager-vehicles-page .status-toolbar {
-  max-width: 1960px;
+  max-width: none;
+  width: calc(100vw - 4rem);
   margin: 0 auto 1rem;
   display: flex;
   flex-wrap: wrap;
@@ -147,7 +149,8 @@
 
 /* Content */
 .manager-vehicles-page .page-content {
-  max-width: 1960px;
+  max-width: none;
+  width: calc(100vw - 4rem);
   margin: 0 auto;
   background: white;
   border-radius: 16px;
@@ -513,6 +516,12 @@
 @media (max-width: 768px) {
   .manager-vehicles-page {
     padding: 1rem;
+  }
+
+  .manager-vehicles-page .page-header,
+  .manager-vehicles-page .status-toolbar,
+  .manager-vehicles-page .page-content {
+    width: calc(100vw - 2rem);
   }
 
   .manager-vehicles-page .page-header h1 {

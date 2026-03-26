@@ -16,14 +16,17 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  border: none;
-  background: transparent;
-  color: #4b5563;
+  border: 1px solid #e5e7eb;
+  background: rgba(255, 255, 255, 0.95);
+  color: #374151;
   font-size: 1.15rem;
   font-weight: 600;
   cursor: pointer;
   transition: transform 0.2s ease, color 0.2s ease;
-  z-index: 20;
+  z-index: 30;
+  padding: 0.8rem 1rem;
+  border-radius: 999px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
 }
 
 .manager-import-receipt-page .back-button:hover {
@@ -73,14 +76,6 @@
 .manager-import-receipt-page .page-header h1 .icon {
   width: 2.15rem;
   height: 2.15rem;
-}
-
-.manager-import-receipt-page .page-description {
-  margin: 0.85rem 0 0;
-  max-width: 720px;
-  color: #4b5563;
-  font-size: 1rem;
-  line-height: 1.6;
 }
 
 .manager-import-receipt-page .page-loading {
@@ -203,8 +198,52 @@
 /* Recipient Grid */
 .manager-import-receipt-page .recipient-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1rem;
+}
+
+.manager-import-receipt-page .selection-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.9rem;
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  background: #f9fafb;
+  color: #4b5563;
+  font-size: 0.95rem;
+}
+
+.manager-import-receipt-page .supply-search {
+  position: relative;
+  min-width: min(100%, 320px);
+}
+
+.manager-import-receipt-page .supply-search .icon {
+  position: absolute;
+  left: 0.95rem;
+  top: 50%;
+  width: 1.1rem;
+  height: 1.1rem;
+  transform: translateY(-50%);
+  color: #9ca3af;
+}
+
+.manager-import-receipt-page .supply-search input {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  padding: 0.8rem 0.95rem 0.8rem 2.8rem;
+  background: #fff;
+  font-size: 0.92rem;
+  color: #111827;
+}
+
+.manager-import-receipt-page .supply-search input:focus {
+  outline: none;
+  border-color: #f87171;
+  box-shadow: 0 0 0 4px rgba(248, 113, 113, 0.14);
 }
 
 .manager-import-receipt-page .recipient-card {
@@ -472,6 +511,29 @@
   opacity: 0.7;
 }
 
+.manager-import-receipt-page .scroll-top-button {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  width: 3rem;
+  height: 3rem;
+  border: none;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 14px 28px rgba(220, 38, 38, 0.28);
+  cursor: pointer;
+  z-index: 30;
+}
+
+.manager-import-receipt-page .scroll-top-button .icon {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
   .manager-import-receipt-page .page-grid {
@@ -480,6 +542,10 @@
 
   .manager-import-receipt-page .summary-panel {
     position: static;
+  }
+
+  .manager-import-receipt-page .recipient-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -494,6 +560,15 @@
   }
 
   .manager-import-receipt-page .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .manager-import-receipt-page .selection-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .manager-import-receipt-page .recipient-grid {
     grid-template-columns: 1fr;
   }
 }
