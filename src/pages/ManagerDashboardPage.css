@@ -536,8 +536,15 @@
 .chart-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  gap: 1rem;
   margin-bottom: 1rem;
+}
+
+.chart-header > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
 }
 
 .chart-header h3 {
@@ -547,23 +554,17 @@
   margin: 0;
 }
 
+.chart-header p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
 .chart-total {
   font-size: 1.5rem;
   font-weight: 700;
   color: #667eea;
-}
-
-.chart-wrapper {
-  width: 100%;
-  height: 200px;
-  margin: 1rem 0;
-  position: relative;
-}
-
-.line-chart,
-.bar-chart {
-  width: 100%;
-  height: 100%;
 }
 
 .chart-label {
@@ -571,6 +572,144 @@
   font-size: 0.875rem;
   color: #6b7280;
   margin-top: 0.5rem;
+}
+
+.manager-chart-shell {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 14px;
+  margin: 1.2rem 0 0.8rem;
+}
+
+.manager-chart-axis {
+  min-height: 280px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 700;
+  padding-bottom: 54px;
+}
+
+.manager-chart-columns {
+  min-height: 280px;
+  display: grid;
+  gap: 14px;
+}
+
+.manager-chart-column {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 12px;
+  text-align: center;
+}
+
+.manager-chart-value {
+  align-self: end;
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #111827;
+}
+
+.manager-chart-bar-stage {
+  position: relative;
+  min-height: 210px;
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(248, 250, 252, 0.96) 0%, rgba(241, 245, 249, 0.98) 100%);
+  border: 1px solid #e2e8f0;
+  padding: 12px;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+}
+
+.manager-chart-gridline {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  height: 1px;
+  background: rgba(148, 163, 184, 0.32);
+}
+
+.manager-chart-gridline.top {
+  top: 18%;
+}
+
+.manager-chart-gridline.middle {
+  top: 50%;
+}
+
+.manager-chart-gridline.base {
+  bottom: 12px;
+}
+
+.manager-chart-anchor {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  z-index: 1;
+}
+
+.manager-chart-bar {
+  width: 100%;
+  min-height: 12px;
+  border-radius: 14px 14px 8px 8px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 12px 20px rgba(15, 23, 42, 0.14);
+}
+
+.manager-chart-bar.primary {
+  background: linear-gradient(180deg, #4f46e5 0%, #2563eb 100%);
+}
+
+.manager-chart-bar.success {
+  background: linear-gradient(180deg, #34d399 0%, #059669 100%);
+}
+
+.manager-chart-bar.info {
+  background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
+}
+
+.manager-chart-bar.warning {
+  background: linear-gradient(180deg, #fbbf24 0%, #d97706 100%);
+}
+
+.manager-chart-bar.danger {
+  background: linear-gradient(180deg, #f87171 0%, #dc2626 100%);
+}
+
+.manager-chart-bar.neutral {
+  background: linear-gradient(180deg, #cbd5e1 0%, #64748b 100%);
+}
+
+.manager-chart-meta {
+  display: flex;
+  justify-content: center;
+}
+
+.manager-chart-label-text {
+  color: #475569;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.manager-chart-empty {
+  min-height: 280px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 1.5rem;
+  margin: 1.2rem 0 0.8rem;
 }
 
 /* Responsive */
@@ -598,6 +737,10 @@
   .metrics-grid {
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     gap: 1rem;
+  }
+
+  .manager-chart-bar-stage {
+    min-height: 190px;
   }
 }
 
@@ -659,6 +802,26 @@
 
   .metric-label {
     font-size: 0.875rem;
+  }
+
+  .manager-chart-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .manager-chart-axis {
+    display: none;
+  }
+
+  .manager-chart-columns {
+    min-height: auto;
+  }
+
+  .manager-chart-bar-stage {
+    min-height: 180px;
+  }
+
+  .chart-total {
+    font-size: 1.25rem;
   }
 }
 

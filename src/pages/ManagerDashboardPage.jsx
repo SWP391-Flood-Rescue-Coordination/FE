@@ -19,6 +19,30 @@ import authService from '../services/authService'
 import managerService from '../services/managerService'
 import './ManagerDashboardPage.css'
 
+const formatNumberVN = (value) => {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) {
+    return '0'
+  }
+
+  return new Intl.NumberFormat('vi-VN', {
+    maximumFractionDigits: 0,
+  }).format(numeric)
+}
+
+const toChartItems = (entries) => {
+  const normalizedEntries = entries.map((entry) => ({
+    ...entry,
+    value: Math.max(0, Number(entry?.value) || 0),
+  }))
+  const maxValue = Math.max(...normalizedEntries.map((entry) => entry.value), 0)
+
+  return normalizedEntries.map((entry) => ({
+    ...entry,
+    heightPercent: maxValue > 0 ? Math.max((entry.value / maxValue) * 100, entry.value > 0 ? 16 : 0) : 0,
+  }))
+}
+
 // Dashboard manager là điểm vào để xem số liệu xe, vật tư và điều hướng sang các page nghiệp vụ.
 function ManagerDashboardPage() {
   const navigate = useNavigate()
@@ -52,15 +76,52 @@ function ManagerDashboardPage() {
     consumptionRate: 0,
   })
 
-  const monthlyStats = useMemo(() => {
-    const currentDay = new Date().getDate()
-    return {
-      requestsServed: [Number(todayStats?.requestsServed) || 0],
-      suppliesDistributed: [Number(todayStats?.suppliesDistributed) || 0],
-      peopleHelped: [Number(todayStats?.peopleHelped) || 0],
-      vehiclesUsed: [Number(todayStats?.vehiclesUsed) || 0],
-      days: [currentDay],
+  const vehicleChartItems = useMemo(() => {
+    const totalVehicles = Number(vehicleStats?.total) || 0
+    const availableVehicles = Number(vehicleStats?.available) || 0
+    const inUseVehicles = Number(vehicleStats?.inUse) || 0
+    const maintenanceVehicles = Number(vehicleStats?.maintenance) || 0
+    const trackedVehicles = availableVehicles + inUseVehicles + maintenanceVehicles
+    const otherVehicles = Math.max(totalVehicles - trackedVehicles, 0)
+    const chartItems = [
+      { key: 'available', label: 'Sẵn sàng', value: availableVehicles, tone: 'success' },
+      { key: 'inUse', label: 'Đang dùng', value: inUseVehicles, tone: 'info' },
+      { key: 'maintenance', label: 'Bảo trì', value: maintenanceVehicles, tone: 'warning' },
+    ]
+
+    if (otherVehicles > 0) {
+      chartItems.push({ key: 'other', label: 'Khác', value: otherVehicles, tone: 'neutral' })
     }
+
+    return toChartItems(chartItems)
+  }, [vehicleStats])
+
+  const supplyChartItems = useMemo(() => {
+    const totalSupplyTypes = Number(supplyStats?.totalTypes) || 0
+    const lowStockSupplies = Number(supplyStats?.lowStock) || 0
+
+    return toChartItems([
+      { key: 'stable', label: 'Ổn định', value: Math.max(totalSupplyTypes - lowStockSupplies, 0), tone: 'success' },
+      { key: 'lowStock', label: 'Sắp hết', value: lowStockSupplies, tone: 'danger' },
+    ])
+  }, [supplyStats])
+
+  const todayActivityChartItems = useMemo(() => {
+    return toChartItems([
+      { key: 'requests', label: 'Yêu cầu', value: todayStats?.requestsServed, tone: 'primary' },
+      { key: 'people', label: 'Người', value: todayStats?.peopleHelped, tone: 'info' },
+      { key: 'supplies', label: 'Vật tư', value: todayStats?.suppliesDistributed, tone: 'warning' },
+      { key: 'vehicles', label: 'Xe dùng', value: todayStats?.vehiclesUsed, tone: 'danger' },
+    ])
+  }, [todayStats])
+
+  const consumptionChartItems = useMemo(() => {
+    const normalizedConsumptionRate = Math.min(Math.max(Number(todayStats?.consumptionRate) || 0, 0), 100)
+
+    return toChartItems([
+      { key: 'used', label: 'Đã tiêu thụ', value: normalizedConsumptionRate, tone: 'danger' },
+      { key: 'remaining', label: 'Còn lại', value: Math.max(100 - normalizedConsumptionRate, 0), tone: 'neutral' },
+    ])
   }, [todayStats])
 
   const fetchDashboardData = useCallback(async () => {
@@ -187,64 +248,48 @@ function ManagerDashboardPage() {
     navigate('/manager/relief-export')
   }
 
-  // Chart rendering helper functions
-  const renderLineChart = (data, color = '#667eea') => {
-    if (!Array.isArray(data) || data.length === 0) {
-      return null
+  const renderComparisonChart = (items, emptyMessage) => {
+    const maxValue = Math.max(...items.map((item) => item.value), 0)
+
+    if (!items.length || maxValue <= 0) {
+      return <div className="manager-chart-empty">{emptyMessage}</div>
     }
 
-    const maxValue = Math.max(...data)
-    const safeMax = maxValue > 0 ? maxValue : 1
-    const denominator = data.length > 1 ? data.length - 1 : 1
-    const points = data.map((value, index) => {
-      const x = (index / denominator) * 100
-      const y = 100 - (value / safeMax) * 80
-      return `${x},${y}`
-    }).join(' ')
-
     return (
-      <svg viewBox="0 0 100 100" className="line-chart" preserveAspectRatio="none">
-        <polyline
-          points={points}
-          fill="none"
-          stroke={color}
-          strokeWidth="2"
-          vectorEffect="non-scaling-stroke"
-        />
-      </svg>
-    )
-  }
+      <div className="manager-chart-shell">
+        <div className="manager-chart-axis" aria-hidden="true">
+          <span>{formatNumberVN(maxValue)}</span>
+          <span>{formatNumberVN(Math.round(maxValue / 2))}</span>
+          <span>0</span>
+        </div>
+        <div
+          className="manager-chart-columns"
+          style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
+        >
+          {items.map((item) => (
+            <article
+              key={item.key}
+              className="manager-chart-column"
+              aria-label={`${item.label}: ${formatNumberVN(item.value)}`}
+            >
+              <strong className="manager-chart-value">{formatNumberVN(item.value)}</strong>
 
-  const renderBarChart = (data, colors = ['#667eea', '#764ba2']) => {
-    if (!Array.isArray(data) || data.length === 0) {
-      return null
-    }
+              <div className="manager-chart-bar-stage">
+                <span className="manager-chart-gridline top" />
+                <span className="manager-chart-gridline middle" />
+                <span className="manager-chart-gridline base" />
+                <div className="manager-chart-anchor" style={{ height: `${item.heightPercent}%` }}>
+                  <div className={`manager-chart-bar ${item.tone}`} style={{ height: '100%' }} />
+                </div>
+              </div>
 
-    const maxValue = Math.max(...data)
-    const safeMax = maxValue > 0 ? maxValue : 1
-    const barWidth = 100 / data.length - 1
-    
-    return (
-      <svg viewBox="0 0 100 100" className="bar-chart" preserveAspectRatio="none">
-        {data.map((value, index) => {
-          const height = (value / safeMax) * 90
-          const x = index * (100 / data.length)
-          const y = 100 - height
-          const color = colors[index % colors.length]
-          
-          return (
-            <rect
-              key={index}
-              x={x}
-              y={y}
-              width={barWidth}
-              height={height}
-              fill={color}
-              opacity="0.8"
-            />
-          )
-        })}
-      </svg>
+              <div className="manager-chart-meta">
+                <span className="manager-chart-label-text">{item.label}</span>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
     )
   }
 
@@ -380,7 +425,7 @@ function ManagerDashboardPage() {
               </div>
               <div className="metric-content">
                 <div className="metric-value">{vehicleStats.maintenance}</div>
-                <div className="metric-label">Báo trì</div>
+                <div className="metric-label">Bảo trì</div>
               </div>
             </div>
           </div>
@@ -457,7 +502,7 @@ function ManagerDashboardPage() {
               </div>
               <div className="metric-content">
                 <div className="metric-value">{todayStats.vehiclesUsed}</div>
-                <div className="metric-label">Số dụng vehicle hôm nay</div>
+                <div className="metric-label">Số xe sử dụng hôm nay</div>
               </div>
             </div>
 
@@ -473,61 +518,63 @@ function ManagerDashboardPage() {
           </div>
         </section>
 
-        {/* Section: Hoạt động trong tháng */}
+        {/* Section: Biểu đồ logistics */}
         <section className="dashboard-section monthly-section">
           <div className="section-header">
-            <h2>Hoạt động trong tháng</h2>
-            <span className="date-badge">Tháng {new Date().getMonth() + 1}/{new Date().getFullYear()}</span>
+            <h2>Biểu đồ logistics hiện tại</h2>
+            <span className="date-badge">Cập nhật {new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
           </div>
           
           <div className="charts-container">
-            {/* Line Charts */}
             <div className="chart-group">
               <div className="chart-card">
                 <div className="chart-header">
-                  <h3>Requests đã cấp hàng</h3>
-                  <span className="chart-total">{monthlyStats.requestsServed.reduce((a, b) => a + b, 0)}</span>
+                  <div>
+                    <h3>Phương tiện theo trạng thái</h3>
+                    <p>Phân bố năng lực vận chuyển đang sẵn sàng, hoạt động hoặc bảo trì.</p>
+                  </div>
+                  <span className="chart-total">{formatNumberVN(vehicleStats.total)}</span>
                 </div>
-                <div className="chart-wrapper">
-                  {renderLineChart(monthlyStats.requestsServed, '#667eea')}
-                </div>
-                <div className="chart-label">Trong {monthlyStats.days.length} ngày</div>
+                {renderComparisonChart(vehicleChartItems, 'Chưa có dữ liệu phương tiện để hiển thị biểu đồ.')}
+                <div className="chart-label">Tổng số phương tiện hiện có trong hệ thống</div>
               </div>
 
               <div className="chart-card">
                 <div className="chart-header">
-                  <h3>Người được hỗ trợ</h3>
-                  <span className="chart-total">{monthlyStats.peopleHelped.reduce((a, b) => a + b, 0)}</span>
+                  <div>
+                    <h3>Tình trạng vật tư</h3>
+                    <p>Tách rõ nhóm vật tư ổn định và nhóm đang chạm ngưỡng cảnh báo.</p>
+                  </div>
+                  <span className="chart-total">{formatNumberVN(supplyStats.totalTypes)}</span>
                 </div>
-                <div className="chart-wrapper">
-                  {renderLineChart(monthlyStats.peopleHelped, '#10b981')}
-                </div>
-                <div className="chart-label">Trong {monthlyStats.days.length} ngày</div>
+                {renderComparisonChart(supplyChartItems, 'Chưa có dữ liệu vật tư để hiển thị biểu đồ.')}
+                <div className="chart-label">Tổng số loại vật tư đang được theo dõi</div>
               </div>
             </div>
 
-            {/* Bar Charts */}
             <div className="chart-group">
               <div className="chart-card">
                 <div className="chart-header">
-                  <h3>Vật tư đã phát</h3>
-                  <span className="chart-total">{monthlyStats.suppliesDistributed.reduce((a, b) => a + b, 0)}</span>
+                  <div>
+                    <h3>Chỉ số vận hành hôm nay</h3>
+                    <p>So sánh nhanh số yêu cầu, số người, lượng vật tư và số xe đã dùng trong ngày.</p>
+                  </div>
+                  <span className="chart-total">{formatNumberVN(todayStats.requestsServed)}</span>
                 </div>
-                <div className="chart-wrapper">
-                  {renderBarChart(monthlyStats.suppliesDistributed.slice(-7), ['#667eea', '#764ba2'])}
-                </div>
-                <div className="chart-label">7 ngày gần nhất</div>
+                {renderComparisonChart(todayActivityChartItems, 'Hôm nay chưa phát sinh đủ dữ liệu để hiển thị biểu đồ hoạt động.')}
+                <div className="chart-label">Dữ liệu được tổng hợp từ dashboard logistics hôm nay</div>
               </div>
 
               <div className="chart-card">
                 <div className="chart-header">
-                  <h3>Vehicles sử dụng</h3>
-                  <span className="chart-total">{monthlyStats.vehiclesUsed.reduce((a, b) => a + b, 0)}</span>
+                  <div>
+                    <h3>Tỷ lệ tiêu thụ hôm nay</h3>
+                    <p>Cho biết phần tồn kho đã được xuất trong ngày so với tổng lượng đang theo dõi.</p>
+                  </div>
+                  <span className="chart-total">{formatNumberVN(todayStats.consumptionRate)}%</span>
                 </div>
-                <div className="chart-wrapper">
-                  {renderBarChart(monthlyStats.vehiclesUsed.slice(-7), ['#f59e0b', '#ef4444'])}
-                </div>
-                <div className="chart-label">7 ngày gần nhất</div>
+                {renderComparisonChart(consumptionChartItems, 'Chưa có dữ liệu tiêu thụ để hiển thị biểu đồ.')}
+                <div className="chart-label">Tỷ lệ dựa trên tổng lượng vật tư đã xuất trong ngày</div>
               </div>
             </div>
           </div>
