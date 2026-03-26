@@ -116,7 +116,7 @@ const transformOperationToMission = (operation) => {
       lng: operation.requestLongitude || operation.RequestLongitude || 0,
     },
     description: operation.requestDescription || operation.RequestDescription || 'Không có mô tả',
-    estimatedTime: 'Đang cập nhật',
+    estimatedTime: operation.estimatedTime || operation.EstimatedTime || 'Đang cập nhật',
     priority: mapPriorityDisplay(operation.priorityName || operation.PriorityName),
     status: mapStatusDisplay(operation.status || operation.Status),
     rawStatus: operation.status || operation.Status,
