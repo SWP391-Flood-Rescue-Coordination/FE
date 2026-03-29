@@ -1,7 +1,9 @@
 import { formatDateTimeVN } from './adminShared'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
+  ArrowLeftIcon,
+  ChevronUpIcon,
   MagnifyingGlassIcon,
   PencilSquareIcon,
   PlusIcon,
@@ -40,16 +42,18 @@ const formatCoordinates = (latitude, longitude) => {
 
 function ManagerVehiclesPage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [isLoading, setIsLoading] = useState(true)
   const [vehicles, setVehicles] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState(() => normalizeVehicleStatus(searchParams.get('status') || ''))
   const [errorMessage, setErrorMessage] = useState('')
   const [toast, setToast] = useState(null)
   const [modalMode, setModalMode] = useState(null)
   const [modalError, setModalError] = useState('')
   const [isModalSubmitting, setIsModalSubmitting] = useState(false)
   const [selectedVehicle, setSelectedVehicle] = useState(null)
+  const [showScrollTop, setShowScrollTop] = useState(false)
 
   const vehicleTypeOptions = useMemo(() => managerService.getVehicleTypeOptions(), [])
   const vehicleTypeLabelMap = useMemo(
@@ -75,6 +79,16 @@ function ManagerVehiclesPage() {
 
     return () => window.clearTimeout(timeoutId)
   }, [toast])
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 420)
+    }
+
+    handleScroll()
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   const fetchVehicles = useCallback(async () => {
     setIsLoading(true)
@@ -104,6 +118,10 @@ function ManagerVehiclesPage() {
     fetchVehicles()
   }, [navigate, fetchVehicles])
 
+  useEffect(() => {
+    setStatusFilter(normalizeVehicleStatus(searchParams.get('status') || ''))
+  }, [searchParams])
+
   const filteredVehicles = useMemo(() => {
     let filtered = [...vehicles]
 
@@ -128,6 +146,21 @@ function ManagerVehiclesPage() {
 
   const handleBack = () => {
     navigate('/manager')
+  }
+
+  const handleScrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleChangeStatusFilter = (nextStatus) => {
+    setStatusFilter(nextStatus)
+
+    if (nextStatus) {
+      setSearchParams({ status: nextStatus })
+      return
+    }
+
+    setSearchParams({})
   }
 
   const getStatusBadge = (status) => {
@@ -243,8 +276,8 @@ function ManagerVehiclesPage() {
   if (isLoading) {
     return (
       <div className="manager-vehicles-page">
-        <button className="back-button" onClick={handleBack} aria-label="Quay lại" title="Quay lại">
-          <span className="arrow-icon">←</span>
+        <button type="button" className="back-button" onClick={handleBack} aria-label="Quay lại" title="Quay lại">
+          <ArrowLeftIcon className="icon" />
         </button>
         <div className="page-loading">
           <div className="loading-spinner"></div>
@@ -256,8 +289,8 @@ function ManagerVehiclesPage() {
 
   return (
     <div className="manager-vehicles-page">
-      <button className="back-button" onClick={handleBack} aria-label="Quay lại" title="Quay lại">
-        <span className="arrow-icon">←</span>
+      <button type="button" className="back-button" onClick={handleBack} aria-label="Quay lại" title="Quay lại">
+        <ArrowLeftIcon className="icon" />
       </button>
 
       <header className="page-header">
@@ -272,7 +305,7 @@ function ManagerVehiclesPage() {
           <button
             key={filter.key}
             className={`status-chip ${statusFilter === filter.key ? 'active' : ''}`}
-            onClick={() => setStatusFilter(filter.key)}
+            onClick={() => handleChangeStatusFilter(filter.key)}
             type="button"
           >
             <span>{filter.label}</span>
@@ -405,6 +438,12 @@ function ManagerVehiclesPage() {
         <div className={`vehicle-toast ${toast.type === 'error' ? 'error' : 'success'}`}>
           {toast.message}
         </div>
+      )}
+
+      {showScrollTop && (
+        <button type="button" className="scroll-top-button" onClick={handleScrollToTop} aria-label="Lên đầu trang">
+          <ChevronUpIcon className="icon" />
+        </button>
       )}
     </div>
   )

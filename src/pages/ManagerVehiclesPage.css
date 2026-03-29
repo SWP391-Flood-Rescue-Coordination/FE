@@ -2,7 +2,7 @@
   min-height: 100vh;
   background: #eef4fb;
   padding: 2rem;
-  padding-top: 5rem;
+  padding-top: 2rem;
   overflow-x: hidden;
   position: relative;
 }
@@ -40,42 +40,39 @@
 }
 
 .manager-vehicles-page .back-button {
-  position: fixed;
-  top: 20px;
-  left: 20px;
+  position: static;
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
+  justify-content: flex-start;
+  width: fit-content;
+  max-width: none;
+  margin: 0 0 1rem;
   background: transparent;
   border: none;
-  color: #666;
-  padding: 12px 20px;
-  border-radius: 6px;
-  font-size: 28px;
-  font-weight: 500;
+  color: #374151;
+  padding: 0;
+  border-radius: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
-  z-index: 1000;
-}
-
-.manager-vehicles-page .back-button .arrow-icon {
-  font-size: 28px;
+  transition: color 0.2s ease;
+  z-index: 10;
 }
 
 .manager-vehicles-page .back-button:hover {
-  color: #333;
-  transform: translateX(-4px);
+  color: #111827;
 }
 
 .manager-vehicles-page .back-button .icon {
-  width: 1.25rem;
-  height: 1.25rem;
+  width: 1.35rem;
+  height: 1.35rem;
 }
 
 /* Header */
 .manager-vehicles-page .page-header {
   max-width: none;
-  width: calc(100vw - 4rem);
+  width: 100%;
   margin: 0 auto 2rem;
 }
 
@@ -97,7 +94,7 @@
 
 .manager-vehicles-page .status-toolbar {
   max-width: none;
-  width: calc(100vw - 4rem);
+  width: 100%;
   margin: 0 auto 1rem;
   display: flex;
   flex-wrap: wrap;
@@ -150,7 +147,7 @@
 /* Content */
 .manager-vehicles-page .page-content {
   max-width: none;
-  width: calc(100vw - 4rem);
+  width: 100%;
   margin: 0 auto;
   background: white;
   border-radius: 16px;
@@ -246,6 +243,29 @@
 .manager-vehicles-page .vehicle-primary-action-icon {
   width: 1.1rem;
   height: 1.1rem;
+}
+
+.manager-vehicles-page .scroll-top-button {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  width: 3rem;
+  height: 3rem;
+  border: none;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 14px 28px rgba(220, 38, 38, 0.28);
+  cursor: pointer;
+  z-index: 30;
+}
+
+.manager-vehicles-page .scroll-top-button .icon {
+  width: 1.35rem;
+  height: 1.35rem;
 }
 
 /* Empty State */
@@ -521,7 +541,7 @@
   .manager-vehicles-page .page-header,
   .manager-vehicles-page .status-toolbar,
   .manager-vehicles-page .page-content {
-    width: calc(100vw - 2rem);
+    width: 100%;
   }
 
   .manager-vehicles-page .page-header h1 {

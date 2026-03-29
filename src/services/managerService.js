@@ -13,6 +13,14 @@ const unwrapApiData = (response) => {
 
 const normalizeArray = (value) => (Array.isArray(value) ? value : [])
 
+const RELIEF_CATEGORY_LABEL_MAP = {
+  1: 'Lương thực',
+  2: 'Nước',
+  3: 'Y tế',
+  4: 'Quần áo',
+  5: 'Nơi ở',
+}
+
 const repairDisplayText = (value, fallback = '') => {
   let text = String(value ?? '').trim()
   if (!text) {
@@ -32,6 +40,22 @@ const repairDisplayText = (value, fallback = '') => {
     .replace(/\bD\?n v\?\b/g, 'Đơn vị')
     .replace(/\bDon vi\b/gi, 'Đơn vị')
     .trim() || fallback
+}
+
+const resolveReliefCategoryLabel = (name, categoryId) => {
+  const repairedName = repairDisplayText(name, '')
+  const matchedGroup = repairedName.match(/^Nh[oó]m\s*(\d+)$/i)
+  const normalizedCategoryId = Number.isFinite(Number(categoryId))
+    ? Number(categoryId)
+    : matchedGroup
+      ? Number(matchedGroup[1])
+      : NaN
+
+  if (Number.isFinite(normalizedCategoryId) && RELIEF_CATEGORY_LABEL_MAP[normalizedCategoryId]) {
+    return RELIEF_CATEGORY_LABEL_MAP[normalizedCategoryId]
+  }
+
+  return repairedName || '-'
 }
 
 const MAX_RELIEF_ITEM_THRESHOLD = 2147483647
@@ -186,13 +210,13 @@ const normalizeSupply = (item) => ({
   supplyId: item?.itemId ?? item?.supplyId ?? item?.id,
   id: item?.itemId ?? item?.supplyId ?? item?.id,
   name: repairDisplayText(item?.itemName || item?.item_name || item?.name || item?.supplyName || item?.supply_name || '', ''),
-  type: repairDisplayText(
+  type: resolveReliefCategoryLabel(
     item?.categoryName ||
       item?.category_name ||
       item?.type ||
       item?.category ||
       (item?.categoryId != null ? `Nhóm ${item.categoryId}` : '-'),
-    '-',
+    item?.categoryId ?? item?.category_id ?? item?.CategoryId,
   ),
   categoryId: item?.categoryId ?? item?.category_id ?? item?.CategoryId,
   quantity: toNumber(
@@ -461,15 +485,27 @@ const managerService = {
     }
   },
 
+  getRescueTeamStatus: async (status = '') => {
+    try {
+      const params = status ? { status } : undefined
+      const response = await api.get('/rescue-team/status', { params })
+      return normalizeArray(unwrapApiData(response))
+    } catch (error) {
+      console.error('[managerService] getRescueTeamStatus error:', error)
+      throw error
+    }
+  },
+
   getTodayStats: async () => {
     try {
-      const [stats, outTransactions, inUseVehicles, supplies] = await Promise.all([
+      const [stats, outTransactions, inUseVehicles, rescueTeams, supplies] = await Promise.all([
         getStatistics(),
         api
           .get('/StockHistory', { params: { type: 'OUT' } })
           .then((response) => normalizeArray(unwrapApiData(response)).map(normalizeStockEntry))
           .catch(() => []),
         managerService.getAllVehicles('INUSE'),
+        managerService.getRescueTeamStatus(),
         managerService.getSupplies(),
       ])
 
@@ -493,7 +529,8 @@ const managerService = {
 
       return {
         requestsServed: toNumber(stats?.todayRequests ?? stats?.TodayRequests),
-        peopleHelped: 0,
+        rescueTeams: normalizeArray(rescueTeams).length,
+        peopleHelped: normalizeArray(rescueTeams).length,
         suppliesDistributed,
         vehiclesUsed: inUseVehicles.length,
         consumptionRate,
@@ -502,6 +539,7 @@ const managerService = {
       console.error('[managerService] getTodayStats error:', error)
       return {
         requestsServed: 0,
+        rescueTeams: 0,
         peopleHelped: 0,
         suppliesDistributed: 0,
         vehiclesUsed: 0,
@@ -806,7 +844,12 @@ const managerService = {
         })
       })
 
-      return Array.from(dedup.values())
+      const normalizedCategories = Array.from(dedup.values()).map((item) => ({
+        ...item,
+        name: resolveReliefCategoryLabel(item?.name, item?.categoryId),
+      }))
+
+      return normalizedCategories
     } catch (error) {
       console.error('[managerService] getCategories error:', error)
       throw error

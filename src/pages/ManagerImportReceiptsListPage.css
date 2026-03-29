@@ -149,9 +149,17 @@
 }
 
 /* Search Bar */
+.manager-import-receipts-list-page .list-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
 .manager-import-receipts-list-page .search-bar {
   position: relative;
-  margin-bottom: 1.75rem;
+  margin-bottom: 0;
+  flex: 0 1 420px;
 }
 
 .manager-import-receipts-list-page .search-bar .search-icon {
@@ -168,19 +176,24 @@
 .manager-import-receipts-list-page .search-bar input {
   width: 100%;
   padding: 1rem 1.1rem 1rem 3.2rem;
-  border: 2px solid #e5e7eb;
-  border-radius: 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 0;
   font-size: 1rem;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
   background: white;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  box-shadow: none;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.manager-import-receipts-list-page .search-bar input:hover {
+  border-color: #d1d5db;
+  box-shadow: none;
 }
 
 .manager-import-receipts-list-page .search-bar input:focus {
   outline: none;
-  border-color: #dc2626;
-  box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.12), 0 4px 12px rgba(220, 38, 38, 0.1);
+  border-color: #f87171;
+  box-shadow: 0 0 0 4px rgba(248, 113, 113, 0.14);
 }
 
 .manager-import-receipts-list-page .search-bar input::placeholder {
@@ -191,39 +204,44 @@
 .manager-import-receipts-list-page .receipts-table-wrap {
   overflow-x: auto;
   border: 1px solid #e5e7eb;
-  border-radius: 18px;
+  border-radius: 0;
   background: #fff;
 }
 
 .manager-import-receipts-list-page .receipts-table {
   width: 100%;
-  min-width: 1080px;
+  min-width: 980px;
   border-collapse: collapse;
 }
 
 .manager-import-receipts-list-page .receipts-table thead {
-  background: #f8fafc;
+  background: #fee2e2;
 }
 
 .manager-import-receipts-list-page .receipts-table th,
 .manager-import-receipts-list-page .receipts-table td {
-  padding: 1rem;
+  padding: 0.95rem 0.85rem;
   border-bottom: 1px solid #eef2f7;
-  text-align: left;
+  text-align: center;
   vertical-align: middle;
-  font-size: 0.94rem;
+  font-size: 0.92rem;
 }
 
 .manager-import-receipts-list-page .receipts-table th {
-  color: #475569;
+  color: #b91c1c;
   font-size: 0.84rem;
-  font-weight: 800;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
 
-.manager-import-receipts-list-page .receipts-table tbody tr:hover {
-  background: #fdf4f4;
+.manager-import-receipts-list-page .receipts-table tbody tr.receipt-row {
+  cursor: pointer;
+}
+
+.manager-import-receipts-list-page .receipts-table tbody tr.receipt-row:hover,
+.manager-import-receipts-list-page .receipts-table tbody tr.receipt-row:focus-visible {
+  background: #fafafa;
 }
 
 .manager-import-receipts-list-page .receipt-code-cell strong,
@@ -241,24 +259,28 @@
   line-height: 1.6;
 }
 
+.manager-import-receipts-list-page .receipt-code-cell,
+.manager-import-receipts-list-page .receipt-main-cell {
+  text-align: center;
+}
+
 .manager-import-receipts-list-page .receipt-type-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 2rem;
-  padding: 0.35rem 0.85rem;
-  border-radius: 999px;
-  font-size: 0.83rem;
+  min-height: auto;
+  padding: 0;
+  border-radius: 0;
+  white-space: nowrap;
+  font-size: 0.88rem;
   font-weight: 800;
 }
 
 .manager-import-receipts-list-page .receipt-type-badge.import {
-  background: #fee2e2;
   color: #b91c1c;
 }
 
 .manager-import-receipts-list-page .receipt-type-badge.export {
-  background: #dbeafe;
   color: #1d4ed8;
 }
 
@@ -408,29 +430,31 @@
 }
 
 .manager-import-receipts-list-page .btn-view-detail {
-  width: fit-content;
-  display: flex;
+  width: auto;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.6rem;
-  padding: 0.85rem;
-  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-weight: 700;
-  font-size: 0.95rem;
+  gap: 0;
+  padding: 0.55rem 0.95rem;
+  background: #fff;
+  color: #374151;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.88rem;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.28);
+  transition: border-color 0.2s ease, color 0.2s ease, background-color 0.2s ease;
+  box-shadow: none;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   margin: 0 auto;
+  white-space: nowrap;
 }
 
 .manager-import-receipts-list-page .receipt-card.export .btn-view-detail,
 .manager-import-receipts-list-page .btn-view-detail.export {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.28);
+  background: #fff;
+  color: #374151;
+  border-color: #cbd5e1;
 }
 
 .manager-import-receipts-list-page .btn-view-detail .icon {
@@ -439,13 +463,16 @@
 }
 
 .manager-import-receipts-list-page .btn-view-detail:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 22px rgba(220, 38, 38, 0.38);
+  color: #b91c1c;
+  border-color: #f87171;
+  background: #fff5f5;
 }
 
 .manager-import-receipts-list-page .receipt-card.export .btn-view-detail:hover,
 .manager-import-receipts-list-page .btn-view-detail.export:hover {
-  box-shadow: 0 8px 22px rgba(37, 99, 235, 0.38);
+  color: #b91c1c;
+  border-color: #f87171;
+  background: #fff5f5;
 }
 
 /* Empty State */
@@ -727,23 +754,27 @@
 
 /* Filter Header */
 .manager-import-receipts-list-page .filter-header {
-  margin-bottom: 1.25rem;
+  margin-bottom: 0;
+  margin-left: auto;
+  flex: 0 0 210px;
 }
 
 .manager-import-receipts-list-page .filter-toggle-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.65rem;
-  padding: 0.85rem 1.5rem;
-  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
-  border: 2px solid #e5e7eb;
-  border-radius: 12px;
-  font-size: 1rem;
+  width: 100%;
+  padding: 0.95rem 1rem;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 0;
+  font-size: 0.95rem;
   font-weight: 700;
   color: #374151;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  transition: border-color 0.2s ease, color 0.2s ease;
+  box-shadow: none;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   position: relative;
 }
@@ -752,19 +783,13 @@
   width: 1.2rem;
   height: 1.2rem;
   color: #6b7280;
-  transition: transform 0.3s ease;
+  transition: none;
 }
 
 .manager-import-receipts-list-page .filter-toggle-btn:hover {
-  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-  color: white;
-  border-color: #dc2626;
-  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.2);
-}
-
-.manager-import-receipts-list-page .filter-toggle-btn:hover .icon {
-  color: white;
-  transform: rotate(180deg);
+  background: #ffffff;
+  color: #374151;
+  border-color: #f87171;
 }
 
 .manager-import-receipts-list-page .filter-active-badge {
@@ -960,6 +985,17 @@
     padding: 0.75rem 1.25rem;
     font-size: 0.9rem;
     white-space: nowrap;
+  }
+
+  .manager-import-receipts-list-page .list-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .manager-import-receipts-list-page .search-bar,
+  .manager-import-receipts-list-page .filter-header {
+    flex: 1 1 auto;
+    width: 100%;
   }
 
   .manager-import-receipts-list-page .filters-row {

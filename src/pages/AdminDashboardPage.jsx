@@ -80,8 +80,40 @@ const toBarHeightPercent = (value, maxValue) => {
     return 0
   }
 
-  return Math.max((value / maxValue) * 100, value > 0 ? 12 : 0)
+  return (value / maxValue) * 100
 }
+
+const getChartAxisStep = (maxValue) => {
+  const safeMax = Math.max(0, Number(maxValue) || 0)
+
+  if (safeMax <= 0) {
+    return 1
+  }
+
+  if (safeMax < 100) {
+    return 1
+  }
+
+  const magnitude = 10 ** Math.max(String(Math.floor(safeMax)).length - 2, 1)
+  return magnitude
+}
+
+const buildChartAxisMarks = (maxValue) => {
+  const step = getChartAxisStep(maxValue)
+  const roundedMax = Math.max(step, Math.ceil(maxValue / step) * step)
+  const marks = []
+
+  for (let value = 0; value <= roundedMax; value += step) {
+    marks.push(value)
+  }
+
+  return { marks, roundedMax }
+}
+
+const ADMIN_ROLE_CHART_VALUE_ROW_HEIGHT = 40
+const ADMIN_ROLE_CHART_STAGE_MIN_HEIGHT = 220
+const ADMIN_ROLE_CHART_LABEL_ROW_HEIGHT = 78
+const ADMIN_ROLE_CHART_ROW_GAP = 10
 
 const formatElapsedTime = (value) => {
   const parsedDate = toValidDate(value)
@@ -272,6 +304,43 @@ function AdminDashboardPage() {
     [roleCards],
   )
 
+  const { axisMarks: roleAxisMarks, roundedMax: roundedRoleMax } = useMemo(() => {
+    const { marks, roundedMax } = buildChartAxisMarks(maxRoleTotal)
+    return {
+      axisMarks: [...marks].reverse(),
+      roundedMax,
+    }
+  }, [maxRoleTotal])
+
+  const roleChartMinHeight = useMemo(
+    () =>
+      Math.max(
+        ADMIN_ROLE_CHART_VALUE_ROW_HEIGHT +
+          ADMIN_ROLE_CHART_STAGE_MIN_HEIGHT +
+          ADMIN_ROLE_CHART_LABEL_ROW_HEIGHT +
+          ADMIN_ROLE_CHART_ROW_GAP * 2,
+        (roleAxisMarks.length || 3) * 14 +
+          ADMIN_ROLE_CHART_VALUE_ROW_HEIGHT +
+          ADMIN_ROLE_CHART_LABEL_ROW_HEIGHT +
+          ADMIN_ROLE_CHART_ROW_GAP * 2,
+      ),
+    [roleAxisMarks.length],
+  )
+
+  const getRoleAxisMarkerStyle = (value) => {
+    const ratio = roundedRoleMax > 0 ? value / roundedRoleMax : 0
+    return {
+      bottom: `${ratio * 100}%`,
+    }
+  }
+
+  const getRoleGridlineStyle = (value) => {
+    const ratio = roundedRoleMax > 0 ? value / roundedRoleMax : 0
+    return {
+      bottom: `${ratio * 100}%`,
+    }
+  }
+
   const dashboardMetrics = useMemo(() => {
     // Gom thêm các chỉ số phục vụ review: user mới, user khóa, request chờ lâu, request flagged.
     const activeUsers = users.filter((user) => user.isActive)
@@ -360,13 +429,19 @@ function AdminDashboardPage() {
 
           <div className="admin-role-chart-card">
             <div className="admin-role-chart-wrap">
-              <div className="admin-role-chart-axis">
-                <span>{maxRoleTotal || 0}</span>
-                <span>{Math.round((maxRoleTotal || 0) / 2)}</span>
-                <span>0</span>
+              <div className="admin-role-chart-axis-shell" style={{ minHeight: `${roleChartMinHeight}px` }}>
+                <div className="admin-role-chart-axis-top-gap" aria-hidden="true" />
+                <div className="admin-role-chart-axis">
+                  {roleAxisMarks.map((mark) => (
+                    <span key={`admin-role-axis-${mark}`} style={getRoleAxisMarkerStyle(mark)}>
+                      {mark}
+                    </span>
+                  ))}
+                </div>
+                <div className="admin-role-chart-axis-bottom-gap" aria-hidden="true" />
               </div>
 
-              <div className="admin-role-chart">
+              <div className="admin-role-chart" style={{ minHeight: `${roleChartMinHeight}px` }}>
                 {roleCards.map((card) => {
                   const RoleIcon = card.icon
                   const totalHeight = toBarHeightPercent(card.total, maxRoleTotal)
@@ -383,9 +458,13 @@ function AdminDashboardPage() {
                       <div className="admin-role-bar-value">{card.total}</div>
 
                       <div className="admin-role-bar-stage">
-                        <div className="admin-role-bar-gridline top" />
-                        <div className="admin-role-bar-gridline middle" />
-                        <div className="admin-role-bar-gridline base" />
+                        {roleAxisMarks.map((mark) => (
+                          <div
+                            key={`${card.key}-grid-${mark}`}
+                            className={`admin-role-bar-gridline${mark === 0 ? ' base' : ''}`}
+                            style={getRoleGridlineStyle(mark)}
+                          />
+                        ))}
 
                         <div
                           className="admin-role-bar-anchor"

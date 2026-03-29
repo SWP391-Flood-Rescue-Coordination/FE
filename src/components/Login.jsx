@@ -7,14 +7,28 @@ const Login = ({ onClose, onShowForgotPassword, onShowRegister, onLoginSuccess }
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
+  const [fieldErrors, setFieldErrors] = useState({})
+
+  const clearFieldError = (fieldName) => {
+    setFieldErrors((prev) => {
+      if (!prev[fieldName]) {
+        return prev
+      }
+
+      const next = { ...prev }
+      delete next[fieldName]
+      return next
+    })
+  }
 
   const handleSubmit = async (event) => {
     event.preventDefault()
     setErrorMessage('')
 
     const validation = authService.validateLoginInput(phone, password)
+    setFieldErrors(validation.errors || {})
+
     if (!validation.valid) {
-      setErrorMessage(validation.message)
       return
     }
 
@@ -76,28 +90,42 @@ const Login = ({ onClose, onShowForgotPassword, onShowRegister, onLoginSuccess }
 
         {errorMessage && <div className="login-error-message">{errorMessage}</div>}
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
           <div className="form-group">
-            <label htmlFor="phone">Số điện thoại</label>
+            <div className="form-label-row">
+              <label htmlFor="phone">Số điện thoại</label>
+              {fieldErrors.phone && <span className="field-error">{fieldErrors.phone}</span>}
+            </div>
             <input
               type="tel"
               id="phone"
+              className={fieldErrors.phone ? 'input-error' : ''}
               placeholder="Nhập số điện thoại của bạn"
               value={phone}
-              onChange={(event) => setPhone(event.target.value)}
+              onChange={(event) => {
+                setPhone(event.target.value)
+                clearFieldError('phone')
+              }}
               disabled={loading}
               required
             />
           </div>
 
           <div className="form-group">
-            <label htmlFor="password">Mật khẩu</label>
+            <div className="form-label-row">
+              <label htmlFor="password">Mật khẩu</label>
+              {fieldErrors.password && <span className="field-error">{fieldErrors.password}</span>}
+            </div>
             <input
               type="password"
               id="password"
+              className={fieldErrors.password ? 'input-error' : ''}
               placeholder="Nhập mật khẩu của bạn"
               value={password}
-              onChange={(event) => setPassword(event.target.value)}
+              onChange={(event) => {
+                setPassword(event.target.value)
+                clearFieldError('password')
+              }}
               disabled={loading}
               required
             />

@@ -1,7 +1,10 @@
 ﻿import { formatDateTimeVN } from './adminShared';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeftOnRectangleIcon, UserCircleIcon } from '@heroicons/react/24/outline'
+import {
+  ArrowLeftOnRectangleIcon,
+  UserCircleIcon,
+} from '@heroicons/react/24/outline'
 import { BsIncognito } from 'react-icons/bs'
 import authService from '../services/authService'
 import coordinatorService from '../services/coordinatorService'
@@ -313,8 +316,8 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
   const [successMessage, setSuccessMessage] = useState('')
   const [currentUser, setCurrentUser] = useState(() => authService.getUserInfo())
   const [showUserMenu, setShowUserMenu] = useState(false)
-
   const userMenuRef = useRef(null)
+  const tableScrollRef = useRef(null)
   const roleLabel = ROLE_LABEL_MAP[String(currentUser?.role ?? '').toUpperCase()] || currentUser?.role || '-'
 
   const setActionLoading = (requestId, actionName, value) => {
@@ -779,7 +782,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
 
   const requestTableSection = (
     <section className="coordinator-table-container">
-      <div className="coordinator-table-scroll">
+      <div ref={tableScrollRef} className="coordinator-table-scroll">
         <table className="coordinator-table">
           <thead>
             <tr>
@@ -789,10 +792,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
               <th>Mô tả</th>
               <th>Vị trí</th>
               <th>Địa chỉ</th>
-              <th>Tổng số người</th>
-              <th>Người già</th>
-              <th>Người lớn</th>
-              <th>Trẻ em</th>
+              <th>Số người</th>
               <th>Mức ưu tiên</th>
               <th className="status-header-cell">
                 Trạng thái
@@ -802,8 +802,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
               <th>Cập nhật bởi</th>
               <th>Đội cứu hộ</th>
               <th>Phương tiện</th>
-              <th>Xác thực</th>
-              <th>Phân công</th>
+              <th>Thao tác</th>
             </tr>
           </thead>
           <tbody>
@@ -843,7 +842,11 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
                     : assignment?.vehicleIds?.length > 0
                       ? assignment.vehicleIds.map((id) => `Xe #${id}`)
                       : []
-                const hasCitizenId = request.citizen_id !== null && request.citizen_id !== undefined && String(request.citizen_id).trim() !== '' && String(request.citizen_id).trim() !== '-'
+                const hasCitizenId = request.citizen_id !== null && request.citizen_id !== undefined && String(request.citizen_id).trim() !== '' && String(request.citizen_id).trim() !== '-' 
+                const elderlyCount = request.elderlyCount ?? request.elderly ?? 0
+                const adultCount = request.adultCount ?? 0
+                const childrenCount = request.childrenCount ?? request.children ?? 0
+                const totalPeopleCount = request.numberOfAffectedPeople ?? '-'
 
                 return (
                   <tr key={requestKey}>
@@ -860,11 +863,10 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
                     <td>{request.phone || '-'}</td>
                     <td className="description-cell">{request.description || '-'}</td>
                     <td>{formatLocation(request.latitude, request.longitude)}</td>
-                    <td>{request.address || '-'}</td>
-                    <td>{request.numberOfAffectedPeople ?? '-'}</td>
-                    <td>{request.elderlyCount ?? request.elderly ?? '-'}</td>
-                    <td>{request.adultCount ?? '-'}</td>
-                    <td>{request.childrenCount ?? request.children ?? '-'}</td>
+                    <td className="address-cell">{request.address || '-'}</td>
+                    <td className="people-summary-cell">
+                      {`${totalPeopleCount} (${elderlyCount}/${adultCount}/${childrenCount})`}
+                    </td>
                     <td>
                       <span
                         className={`coordinator-priority-badge coordinator-priority-${
@@ -896,8 +898,8 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
                         '-'
                       )}
                     </td>
-                    <td className="verify-action-cell">
-                      <div className="action-button-group">
+                    <td className="action-stack-cell">
+                      <div className="action-button-stack">
                         <button
                           type="button"
                           className="action-button verify-button"
@@ -911,22 +913,20 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
                         >
                           {verifyLoading ? 'Đang xác thực...' : 'Xác thực'}
                         </button>
+                        <button
+                          type="button"
+                          className="action-button assign-button"
+                          onClick={() => openAssignModal(request)}
+                          disabled={
+                            !hasValidRequestId ||
+                            !isVerified ||
+                            assignLoading ||
+                            verifyLoading
+                          }
+                        >
+                          {assignLoading ? 'Đang phân công...' : 'Phân công'}
+                        </button>
                       </div>
-                    </td>
-                    <td>
-                      <button
-                        type="button"
-                        className="action-button assign-button"
-                        onClick={() => openAssignModal(request)}
-                        disabled={
-                          !hasValidRequestId ||
-                          !isVerified ||
-                          assignLoading ||
-                          verifyLoading
-                        }
-                      >
-                        {assignLoading ? 'Đang phân công...' : 'Phân công'}
-                      </button>
                     </td>
                   </tr>
                 )

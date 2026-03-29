@@ -4,34 +4,32 @@
     radial-gradient(circle at top right, rgba(248, 113, 113, 0.12), transparent 32%),
     linear-gradient(180deg, #eef4fb 0%, #f8fbff 100%);
   padding: 2rem;
-  padding-top: 5rem;
+  padding-top: 2rem;
   color: #1f2937;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 .manager-relief-export-page .back-button {
-  position: fixed;
-  top: 20px;
-  left: 20px;
+  position: static;
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  border: 1px solid #e5e7eb;
-  background: rgba(255, 255, 255, 0.95);
+  justify-content: flex-start;
+  width: fit-content;
+  max-width: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  border: none;
+  background: transparent;
   color: #374151;
   font-size: 1.15rem;
   font-weight: 600;
   cursor: pointer;
-  transition: transform 0.2s ease, color 0.2s ease;
-  z-index: 30;
-  padding: 0.8rem 1rem;
-  border-radius: 999px;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+  transition: color 0.2s ease;
 }
 
 .manager-relief-export-page .back-button:hover {
   color: #111827;
-  transform: translateX(-3px);
 }
 
 .manager-relief-export-page .back-button .icon {
@@ -137,6 +135,14 @@
   margin-bottom: 1rem;
 }
 
+.manager-relief-export-page .section-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+}
+
 .manager-relief-export-page .section-title {
   display: flex;
   align-items: center;
@@ -178,8 +184,8 @@
 
 .manager-relief-export-page .recipient-card {
   border: 1px solid #fbcfe8;
-  border-radius: 18px;
-  background: linear-gradient(180deg, #ffffff 0%, #fff8f8 100%);
+  border-radius: 0;
+  background: #ffffff;
   padding: 1rem;
   text-align: left;
   cursor: pointer;
@@ -190,15 +196,15 @@
 }
 
 .manager-relief-export-page .recipient-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 24px rgba(220, 38, 38, 0.12);
+  transform: none;
+  box-shadow: none;
   border-color: #f87171;
 }
 
 .manager-relief-export-page .recipient-card.selected {
   border-color: #dc2626;
-  box-shadow: 0 14px 30px rgba(220, 38, 38, 0.16);
-  background: linear-gradient(180deg, #fff7f7 0%, #ffeaea 100%);
+  box-shadow: none;
+  background: #fff3f3;
 }
 
 .manager-relief-export-page .recipient-card strong {
@@ -240,19 +246,6 @@
   color: #dc2626;
 }
 
-.manager-relief-export-page .selection-toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 0.9rem;
-  padding: 0.85rem 1rem;
-  border-radius: 14px;
-  background: #f9fafb;
-  color: #374151;
-  font-size: 0.95rem;
-}
-
 .manager-relief-export-page .supply-search {
   position: relative;
   min-width: min(100%, 320px);
@@ -271,7 +264,7 @@
 .manager-relief-export-page .supply-search input {
   width: 100%;
   border: 1px solid #d1d5db;
-  border-radius: 12px;
+  border-radius: 0;
   padding: 0.8rem 0.95rem 0.8rem 2.8rem;
   background: #fff;
   font-size: 0.92rem;
@@ -287,30 +280,30 @@
 .manager-relief-export-page .table-wrap {
   overflow-x: auto;
   border: 1px solid #e5e7eb;
-  border-radius: 18px;
+  border-radius: 0;
 }
 
 .manager-relief-export-page .data-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 820px;
+  min-width: 980px;
 }
 
 .manager-relief-export-page .data-table thead {
-  background: #f9fafb;
+  background: #fee2e2;
 }
 
 .manager-relief-export-page .data-table th,
 .manager-relief-export-page .data-table td {
   padding: 0.95rem 0.85rem;
   border-bottom: 1px solid #f1f5f9;
-  text-align: left;
-  vertical-align: top;
+  text-align: center;
+  vertical-align: middle;
   font-size: 0.92rem;
 }
 
 .manager-relief-export-page .data-table th {
-  color: #374151;
+  color: #b91c1c;
   font-size: 0.84rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -318,21 +311,24 @@
 }
 
 .manager-relief-export-page .data-table tbody tr.is-selected {
-  background: #fff7f7;
+  background: #fff3f3;
 }
 
-.manager-relief-export-page .data-table tbody tr:hover {
-  background: #fafafa;
+.manager-relief-export-page .data-table tbody tr.supply-row {
+  cursor: pointer;
 }
 
-.manager-relief-export-page .data-table input[type='checkbox'] {
-  width: 1rem;
-  height: 1rem;
-  accent-color: #dc2626;
+.manager-relief-export-page .data-table tbody tr.supply-row:hover {
+  background: #fff3f3;
+}
+
+.manager-relief-export-page .data-table tbody tr.supply-row td {
+  vertical-align: middle;
 }
 
 .manager-relief-export-page .quantity-input-wrap {
-  min-width: 170px;
+  width: 148px;
+  margin: 0 auto;
 }
 
 .manager-relief-export-page .quantity-input-wrap input {
@@ -360,6 +356,8 @@
 
 .manager-relief-export-page .supply-name-cell strong {
   color: #111827;
+  display: block;
+  text-align: center;
 }
 
 .manager-relief-export-page .empty-row {
@@ -375,6 +373,8 @@
 .manager-relief-export-page .summary-panel {
   position: sticky;
   top: 5.5rem;
+  display: flex;
+  flex-direction: column;
 }
 
 .manager-relief-export-page .summary-stats {
@@ -385,7 +385,7 @@
 
 .manager-relief-export-page .summary-item {
   padding: 0.95rem 1rem;
-  border-radius: 16px;
+  border-radius: 0;
   background: #f9fafb;
   border: 1px solid #f1f5f9;
 }
@@ -406,6 +406,7 @@
 
 .manager-relief-export-page .summary-block {
   margin-top: 1.2rem;
+  order: 6;
 }
 
 .manager-relief-export-page .summary-block h3 {
@@ -420,21 +421,38 @@
   font-size: 0.9rem;
 }
 
-.manager-relief-export-page .chip-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.55rem;
+.manager-relief-export-page .summary-table-wrap {
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  border-radius: 0;
+  background: #fff;
 }
 
-.manager-relief-export-page .info-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.45rem 0.7rem;
-  border-radius: 999px;
+.manager-relief-export-page .summary-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.manager-relief-export-page .summary-table th,
+.manager-relief-export-page .summary-table td {
+  padding: 0.78rem 0.82rem;
+  border-bottom: 1px solid #eef2f7;
+  text-align: left;
+  font-size: 0.9rem;
+  color: #1f2937;
+}
+
+.manager-relief-export-page .summary-table th {
   background: #fee2e2;
-  color: #991b1b;
-  font-size: 0.84rem;
+  color: #b91c1c;
+  font-size: 0.78rem;
   font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.manager-relief-export-page .summary-table tr:last-child td {
+  border-bottom: none;
 }
 
 .manager-relief-export-page .vehicle-list {
@@ -465,20 +483,30 @@
   width: 100%;
   margin-top: 1.35rem;
   border: none;
-  border-radius: 14px;
+  border-radius: 999px;
   background: #dc2626;
   color: #fff;
   padding: 0.95rem 1.2rem;
   font-size: 1rem;
   font-weight: 800;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+  order: 3;
 }
 
 .manager-relief-export-page .submit-button:hover:not(:disabled) {
   background: #b91c1c;
   transform: translateY(-1px);
   box-shadow: 0 14px 24px rgba(220, 38, 38, 0.22);
+}
+
+.manager-relief-export-page .note-label {
+  display: block;
+  margin: 1.35rem 0 0.85rem;
+  color: #111827;
+  font-size: 0.98rem;
+  font-weight: 700;
+  order: 4;
 }
 
 .manager-relief-export-page .submit-button:disabled {
@@ -553,6 +581,10 @@
   .manager-relief-export-page .recipient-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .manager-relief-export-page .section-heading {
+    align-items: flex-start;
+  }
 }
 
 @media (max-width: 768px) {
@@ -575,29 +607,30 @@
     align-items: flex-start;
   }
 
-  .manager-relief-export-page .selection-toolbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
   .manager-relief-export-page .recipient-grid {
     grid-template-columns: 1fr;
+  }
+
+  .manager-relief-export-page .section-tools {
+    width: 100%;
+    justify-content: space-between;
   }
 }
 
 .manager-relief-export-page .form-field {
   background: transparent;
   border: none;
-  border-radius: 16px;
-  padding: 0.95rem 1rem;
-  margin-bottom: 1rem;
+  border-radius: 0;
+  padding: 0;
+  margin-bottom: 0;
+  order: 5;
 }
 
-.manager-relief-export-page .form-field textarea {
+.manager-relief-export-page .note-textarea {
   background: #fff;
   border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 1.1rem;
+  border-radius: 0;
+  padding: 1rem 1.05rem;
   font-size: 1rem;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   color: #374151;
@@ -606,6 +639,24 @@
   min-height: 120px;
   box-sizing: border-box;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.manager-relief-export-page .note-textarea:focus {
+  border-color: #f87171;
+  box-shadow: 0 0 0 4px rgba(248, 113, 113, 0.14);
+}
+
+.manager-relief-export-page .supply-search input:hover {
+  border-color: #d1d5db;
+  box-shadow: none;
+}
+
+.manager-relief-export-page .recipient-card strong {
+  color: #b91c1c;
+}
+
+.manager-relief-export-page .recipient-region {
+  color: #111827;
 }
 
 /* Style riêng cho bảng ghi chú */

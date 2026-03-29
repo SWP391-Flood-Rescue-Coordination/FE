@@ -72,12 +72,6 @@ const REQUEST_STATUS_ITEMS = [
   },
 ]
 
-const PRIORITY_BREAKDOWN_ITEMS = [
-  { key: 'HIGH', label: 'Cao' },
-  { key: 'MEDIUM', label: 'Trung bình' },
-  { key: 'LOW', label: 'Thấp' },
-]
-
 const normalizeStatus = (value) =>
   String(value ?? '')
     .trim()
@@ -113,6 +107,11 @@ const ROLE_LABEL_MAP = {
   ADMIN: 'Quản trị viên',
   CITIZEN: 'Công dân',
 }
+
+const REQUEST_CHART_VALUE_ROW_HEIGHT = 40
+const REQUEST_CHART_STAGE_MIN_HEIGHT = 220
+const REQUEST_CHART_LABEL_ROW_HEIGHT = 78
+const REQUEST_CHART_ROW_GAP = 10
 
 const createInitialStatusSummary = () =>
   REQUEST_STATUS_ITEMS.reduce(
@@ -186,7 +185,34 @@ const toBarHeightPercent = (value, maxValue) => {
     return 0
   }
 
-  return Math.max((value / maxValue) * 100, value > 0 ? 12 : 0)
+  return (value / maxValue) * 100
+}
+
+const getChartAxisStep = (maxValue) => {
+  const safeMax = Math.max(0, Number(maxValue) || 0)
+
+  if (safeMax <= 0) {
+    return 1
+  }
+
+  if (safeMax < 100) {
+    return 1
+  }
+
+  const magnitude = 10 ** Math.max(String(Math.floor(safeMax)).length - 2, 1)
+  return magnitude
+}
+
+const buildChartAxisMarks = (maxValue) => {
+  const step = getChartAxisStep(maxValue)
+  const roundedMax = Math.max(step, Math.ceil(maxValue / step) * step)
+  const marks = []
+
+  for (let value = 0; value <= roundedMax; value += step) {
+    marks.push(value)
+  }
+
+  return { marks, roundedMax }
 }
 
 function CoordinatorDashboardPage() {
@@ -291,34 +317,28 @@ function CoordinatorDashboardPage() {
     [requestStatusSummary],
   )
 
-  const requestPriorityBreakdown = useMemo(() => {
-    const initial = REQUEST_STATUS_ITEMS.reduce((accumulator, item) => {
-      if (item.key !== 'PENDING') {
-        accumulator[item.key] = PRIORITY_BREAKDOWN_ITEMS.reduce(
-          (priorityAccumulator, priorityItem) => ({
-            ...priorityAccumulator,
-            [priorityItem.key]: 0,
-          }),
-          {},
-        )
-      }
-      return accumulator
-    }, {})
+  const { axisMarks: requestAxisMarks, roundedMax: roundedStatusMax } = useMemo(() => {
+    const { marks, roundedMax } = buildChartAxisMarks(maxStatusCount)
+    return {
+      axisMarks: [...marks].reverse(),
+      roundedMax,
+    }
+  }, [maxStatusCount])
 
-    requestItems.forEach((item) => {
-      const statusKey = normalizeRequestStatusKey(normalizeStatus(item.status))
-      if (!initial[statusKey]) {
-        return
-      }
-
-      const priorityKey = getPriorityKey(item)
-      if (initial[statusKey][priorityKey] !== undefined) {
-        initial[statusKey][priorityKey] += 1
-      }
-    })
-
-    return initial
-  }, [requestItems])
+  const requestChartMinHeight = useMemo(
+    () =>
+      Math.max(
+        REQUEST_CHART_VALUE_ROW_HEIGHT +
+          REQUEST_CHART_STAGE_MIN_HEIGHT +
+          REQUEST_CHART_LABEL_ROW_HEIGHT +
+          REQUEST_CHART_ROW_GAP * 2,
+        (requestAxisMarks.length || 3) * 14 +
+          REQUEST_CHART_VALUE_ROW_HEIGHT +
+          REQUEST_CHART_LABEL_ROW_HEIGHT +
+          REQUEST_CHART_ROW_GAP * 2,
+      ),
+    [requestAxisMarks.length],
+  )
 
   const requestChartItems = useMemo(
     () =>
@@ -326,14 +346,8 @@ function CoordinatorDashboardPage() {
         ...item,
         count: requestStatusSummary[item.key] ?? 0,
         heightPercent: toBarHeightPercent(requestStatusSummary[item.key] ?? 0, maxStatusCount),
-        priorityBreakdown:
-          item.key === 'PENDING' || item.key === 'DUPLICATE' ? null : requestPriorityBreakdown[item.key] ?? null,
-        activeHeightPercent:
-          item.key !== 'PENDING' && item.key !== 'DUPLICATE' && requestStatusSummary[item.key] > 0
-            ? ((requestPriorityBreakdown[item.key]?.HIGH ?? 0) / requestStatusSummary[item.key]) * 100
-            : 0,
       })),
-    [maxStatusCount, requestPriorityBreakdown, requestStatusSummary],
+    [maxStatusCount, requestStatusSummary],
   )
 
   const topMetricCards = useMemo(
@@ -377,6 +391,20 @@ function CoordinatorDashboardPage() {
 
   const handleToggleUserMenu = () => {
     setShowUserMenu((prev) => !prev)
+  }
+
+  const getAxisMarkerStyle = (value) => {
+    const ratio = roundedStatusMax > 0 ? value / roundedStatusMax : 0
+    return {
+      bottom: `${ratio * 100}%`,
+    }
+  }
+
+  const getGridlineStyle = (value) => {
+    const ratio = roundedStatusMax > 0 ? value / roundedStatusMax : 0
+    return {
+      bottom: `${ratio * 100}%`,
+    }
   }
 
   return (
@@ -449,62 +477,53 @@ function CoordinatorDashboardPage() {
               <div className="coordinator-status-empty">Chưa có yêu cầu để hiển thị biểu đồ trạng thái.</div>
             ) : (
               <div className="coordinator-request-chart-wrap">
-                <div className="coordinator-request-chart-axis">
-                  <span>{isLoading ? '...' : maxStatusCount}</span>
-                  <span>{isLoading ? '...' : Math.round(maxStatusCount / 2)}</span>
-                  <span>0</span>
+                <div className="coordinator-request-chart-axis-shell" style={{ minHeight: `${requestChartMinHeight}px` }}>
+                  <div className="coordinator-request-chart-axis-top-gap" aria-hidden="true" />
+                  <div className="coordinator-request-chart-axis">
+                    {requestAxisMarks.map((mark) => (
+                      <span key={`axis-left-${mark}`} style={getAxisMarkerStyle(mark)}>
+                        {isLoading ? '...' : mark}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="coordinator-request-chart-axis-bottom-gap" aria-hidden="true" />
                 </div>
-                <div className="coordinator-request-chart">
-                  {requestChartItems.map((item) => (
-                    <button
-                      key={item.key}
-                      type="button"
-                      className={`coordinator-request-bar-card ${item.barClass} ${requestsStatusFilter === item.key ? 'active' : ''}`}
-                      onClick={() => handleSelectStatusSegment(item.key)}
-                      disabled={isLoading}
-                      aria-pressed={requestsStatusFilter === item.key}
-                    >
-                      <strong className="coordinator-request-bar-value">{isLoading ? '...' : item.count}</strong>
-                      <div className="coordinator-request-bar-stage">
-                        <span className="coordinator-request-bar-gridline top" />
-                        <span className="coordinator-request-bar-gridline middle" />
-                        <span className="coordinator-request-bar-gridline base" />
-                      <div
-                        className="coordinator-request-bar-anchor"
-                        style={{ height: `${item.heightPercent}%` }}
+                <div className="coordinator-request-chart-plot">
+                  <div className="coordinator-request-chart" style={{ minHeight: `${requestChartMinHeight}px` }}>
+                    {requestChartItems.map((item) => (
+                      <button
+                        key={item.key}
+                        type="button"
+                        className={`coordinator-request-bar-card ${item.barClass} ${requestsStatusFilter === item.key ? 'active' : ''}`}
+                        onClick={() => handleSelectStatusSegment(item.key)}
+                        disabled={isLoading}
+                        aria-pressed={requestsStatusFilter === item.key}
                       >
-                          {item.priorityBreakdown && (
-                            <div className="coordinator-request-tooltip">
-                              <strong>{item.label}</strong>
-                              {PRIORITY_BREAKDOWN_ITEMS.map((priorityItem) => (
-                                <div key={priorityItem.key} className="coordinator-request-tooltip-row">
-                                  <i className={priorityItem.key.toLowerCase()} />
-                                  <span>{priorityItem.label}</span>
-                                  <strong>{item.priorityBreakdown[priorityItem.key] ?? 0}</strong>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          <div className={`coordinator-request-bar ${item.barClass}`} style={{ height: '100%' }}>
-                            <div
-                              className="coordinator-request-bar-segment active"
-                              style={{ height: `${item.activeHeightPercent}%` }}
+                        <strong className="coordinator-request-bar-value">{isLoading ? '...' : item.count}</strong>
+                        <div className="coordinator-request-bar-stage">
+                          {requestAxisMarks.map((mark) => (
+                            <span
+                              key={`${item.key}-grid-${mark}`}
+                              className={`coordinator-request-bar-gridline ${mark === 0 ? 'base' : ''}`}
+                              style={getGridlineStyle(mark)}
                             />
-                            <div
-                              className="coordinator-request-bar-segment inactive"
-                              style={{ height: `${Math.max(100 - item.activeHeightPercent, 0)}%` }}
-                            />
+                          ))}
+                          <div
+                            className="coordinator-request-bar-anchor"
+                            style={{ height: `${item.heightPercent}%` }}
+                          >
+                            <div className={`coordinator-request-bar ${item.barClass}`} style={{ height: '100%' }} />
                           </div>
                         </div>
-                      </div>
-                      <div className="coordinator-request-bar-label">
-                        <span className={`coordinator-request-bar-icon ${item.iconClass}`}>
-                          <item.icon className="coordinator-request-bar-svg" />
-                        </span>
-                        <strong>{item.label}</strong>
-                      </div>
-                    </button>
-                  ))}
+                        <div className="coordinator-request-bar-label">
+                          <span className={`coordinator-request-bar-icon ${item.iconClass}`}>
+                            <item.icon className="coordinator-request-bar-svg" />
+                          </span>
+                          <strong>{item.label}</strong>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}

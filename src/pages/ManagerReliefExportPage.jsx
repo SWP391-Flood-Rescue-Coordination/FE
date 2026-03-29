@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeftIcon,
-  ArrowUpTrayIcon,
+  ArrowUpOnSquareIcon,
   BuildingOffice2Icon,
   ChevronUpIcon,
   CheckCircleIcon,
@@ -176,7 +176,7 @@ function ManagerReliefExportPage() {
 
   useEffect(() => {
     const handleScroll = () => {
-      setShowScrollTop(window.scrollY > 240)
+      setShowScrollTop(window.scrollY > 420)
     }
 
     handleScroll()
@@ -384,7 +384,7 @@ function ManagerReliefExportPage() {
       <header className="page-header">
         <p className="page-kicker">Điều phối kho cứu trợ</p>
         <h1>
-          <ArrowUpTrayIcon className="icon" />
+          <ArrowUpOnSquareIcon className="icon" />
           Xuất kho cứu trợ
         </h1>
       </header>
@@ -411,7 +411,6 @@ function ManagerReliefExportPage() {
                 <BuildingOffice2Icon className="icon" />
                 <h2>Chọn đơn vị nhận</h2>
               </div>
-              <span className="section-meta">{recipientOptions.length} đơn vị khả dụng</span>
             </div>
 
             <div className="recipient-grid">
@@ -444,28 +443,27 @@ function ManagerReliefExportPage() {
                 <CubeIcon className="icon" />
                 <h2>Chọn danh sách vật tư điều phối</h2>
               </div>
-              <span className="section-meta">{selectedSupplyItems.length} vật tư đã chọn</span>
-            </div>
-
-            <div className="selection-toolbar">
-              <span>Tìm vật tư theo tên, nhóm hoặc đơn vị tính.</span>
-              <label className="supply-search" htmlFor="manager-export-supply-search">
-                <MagnifyingGlassIcon className="icon" />
-                <input
-                  id="manager-export-supply-search"
-                  type="text"
-                  value={supplySearchTerm}
-                  onChange={(event) => setSupplySearchTerm(event.target.value)}
-                  placeholder="Tìm vật tư..."
-                />
-              </label>
+              <div className="section-tools">
+                {selectedSupplyItems.length > 0 && (
+                  <span className="section-meta">{selectedSupplyItems.length} vật tư đã chọn</span>
+                )}
+                <label className="supply-search" htmlFor="manager-export-supply-search">
+                  <MagnifyingGlassIcon className="icon" />
+                  <input
+                    id="manager-export-supply-search"
+                    type="text"
+                    value={supplySearchTerm}
+                    onChange={(event) => setSupplySearchTerm(event.target.value)}
+                    placeholder="Tìm vật tư..."
+                  />
+                </label>
+              </div>
             </div>
 
             <div className="table-wrap">
               <table className="data-table supplies-table">
                 <thead>
                   <tr>
-                    <th>Chọn</th>
                     <th>Vật tư</th>
                     <th>Loại</th>
                     <th>Tồn kho</th>
@@ -476,7 +474,7 @@ function ManagerReliefExportPage() {
                 <tbody>
                   {filteredSupplies.length === 0 && (
                     <tr>
-                      <td colSpan="6" className="empty-row">
+                      <td colSpan="5" className="empty-row">
                         {supplies.length === 0 ? 'Không có vật tư khả dụng.' : 'Không tìm thấy vật tư phù hợp.'}
                       </td>
                     </tr>
@@ -488,15 +486,11 @@ function ManagerReliefExportPage() {
                     const validationMessage = supplyValidationMap[key]
 
                     return (
-                      <tr key={supply.id} className={isSelected ? 'is-selected' : ''}>
-                        <td>
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => handleToggleSupply(supply.id)}
-                            disabled={isSubmitting}
-                          />
-                        </td>
+                      <tr
+                        key={supply.id}
+                        className={`supply-row ${isSelected ? 'is-selected' : ''}`}
+                        onClick={() => !isSubmitting && handleToggleSupply(supply.id)}
+                      >
                         <td className="supply-name-cell">
                           <strong>{supply.name}</strong>
                         </td>
@@ -512,6 +506,7 @@ function ManagerReliefExportPage() {
                               max={supply.stockQuantity ?? undefined}
                               value={isSelected ? supplyQuantities[key] : ''}
                               onChange={(event) => handleChangeSupplyQuantity(supply.id, event.target.value)}
+                              onClick={(event) => event.stopPropagation()}
                               disabled={!isSelected || isSubmitting}
                               placeholder="Nhập số lượng"
                             />
@@ -545,25 +540,43 @@ function ManagerReliefExportPage() {
               </div>
             </div>
 
+            <button type="button" className="submit-button" onClick={handleSubmit} disabled={!canSubmit}>
+              {isSubmitting ? 'Đang tạo phiếu xuất kho...' : 'Gửi phiếu xuất kho'}
+            </button>
+
             <div className="summary-block">
               <h3>Vật tư đã chọn</h3>
               {validSelectedSupplyItems.length === 0 ? (
                 <p className="summary-empty">Chưa có vật tư hợp lệ.</p>
               ) : (
-                <div className="chip-list">
-                  {validSelectedSupplyItems.map((item) => (
-                    <span key={item.id} className="info-chip">
-                      {item.name}: {item.parsedQuantity} {item.unit}
-                    </span>
-                  ))}
+                <div className="summary-table-wrap">
+                  <table className="summary-table">
+                    <thead>
+                      <tr>
+                        <th>Vật tư</th>
+                        <th>Đơn vị</th>
+                        <th>Số lượng</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {validSelectedSupplyItems.map((item) => (
+                        <tr key={item.id}>
+                          <td>{item.name}</td>
+                          <td>{item.unit}</td>
+                          <td>{item.parsedQuantity}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
 
             {/* Ô ghi chú giống UI RequestForm */}
-            <label style={{fontSize: '0.98rem', color: '#111827', fontWeight: 700, marginBottom: '0.75rem', display: 'block'}}>Ghi chú (tùy chọn)</label>
+            <label className="note-label">Ghi chú (tùy chọn)</label>
             <div className="form-field">
               <textarea
+                className="note-textarea"
                 rows="4"
                 value={note || ''}
                 onChange={e => setNote(e.target.value)}
@@ -572,10 +585,6 @@ function ManagerReliefExportPage() {
                 disabled={isSubmitting}
               />
             </div>
-
-            <button type="button" className="submit-button" onClick={handleSubmit} disabled={!canSubmit}>
-              {isSubmitting ? 'Đang tạo phiếu xuất kho...' : 'Gửi phiếu xuất kho'}
-            </button>
 
             <p className="summary-note">
               

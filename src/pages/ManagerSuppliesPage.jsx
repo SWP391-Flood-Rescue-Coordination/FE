@@ -1,14 +1,12 @@
-import { formatDateTimeVN } from './adminShared';
+import { formatDateTimeVN } from './adminShared'
 import { useCallback, useEffect, useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   ArrowLeftIcon,
+  ChevronUpIcon,
   CubeIcon,
-  MagnifyingGlassIcon,
-  PlusIcon,
-  PencilIcon,
-  TrashIcon,
   ExclamationTriangleIcon,
+  MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline'
 import authService from '../services/authService'
 import managerService from '../services/managerService'
@@ -17,7 +15,7 @@ import './ManagerSuppliesPage.css'
 function ManagerSuppliesPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  
+
   const [isLoading, setIsLoading] = useState(true)
   const [supplies, setSupplies] = useState([])
   const [filteredSupplies, setFilteredSupplies] = useState([])
@@ -28,7 +26,8 @@ function ManagerSuppliesPage() {
   const [showEditModal, setShowEditModal] = useState(false)
   const [showSetMinModal, setShowSetMinModal] = useState(false)
   const [selectedSupply, setSelectedSupply] = useState(null)
-  
+  const [showScrollTop, setShowScrollTop] = useState(false)
+
   const [formData, setFormData] = useState({
     name: '',
     type: '',
@@ -44,13 +43,12 @@ function ManagerSuppliesPage() {
 
     try {
       const data = await managerService.getSupplies()
-      
       setSupplies(data)
       setFilteredSupplies(data)
     } catch (error) {
       console.error('Error fetching supplies:', error)
       setErrorMessage(managerService.getErrorMessage(error))
-      
+
       if (error?.response?.status === 401) {
         navigate('/login', { replace: true })
       }
@@ -65,39 +63,55 @@ function ManagerSuppliesPage() {
       return
     }
 
-    // Check URL params for filter
     const params = new URLSearchParams(location.search)
     const filter = params.get('filter')
-    if (filter === 'lowStock') {
-      setFilterMode('lowStock')
+
+    if (filter === 'lowStock' || filter === 'stable') {
+      setFilterMode(filter)
+    } else {
+      setFilterMode('')
     }
 
     fetchSupplies()
-  }, [navigate, fetchSupplies, location.search])
+  }, [fetchSupplies, location.search, navigate])
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 420)
+    }
+
+    handleScroll()
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   useEffect(() => {
     let filtered = supplies
 
-    // Apply lowStock filter first
     if (filterMode === 'lowStock') {
-      filtered = filtered.filter((s) => s.quantity <= s.minQuantity)
+      filtered = filtered.filter((supply) => supply.quantity <= supply.minQuantity)
+    } else if (filterMode === 'stable') {
+      filtered = filtered.filter((supply) => supply.quantity > supply.minQuantity)
     }
 
-    // Then apply search term
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase()
       filtered = filtered.filter(
-        (s) =>
-          s.name?.toLowerCase().includes(term) ||
-          s.type?.toLowerCase().includes(term)
+        (supply) =>
+          supply.name?.toLowerCase().includes(term)
+          || supply.type?.toLowerCase().includes(term),
       )
     }
 
     setFilteredSupplies(filtered)
-  }, [searchTerm, supplies, filterMode])
+  }, [filterMode, searchTerm, supplies])
 
   const handleBack = () => {
     navigate('/manager')
+  }
+
+  const handleScrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const handleAddSupply = () => {
@@ -129,11 +143,11 @@ function ManagerSuppliesPage() {
     setShowSetMinModal(true)
   }
 
-  const handleSubmitSetMin = async (e) => {
-    e.preventDefault()
-    
+  const handleSubmitSetMin = async (event) => {
+    event.preventDefault()
+
     const newMin = Number(minValue)
-    if (isNaN(newMin) || newMin < 0) {
+    if (Number.isNaN(newMin) || newMin < 0) {
       alert('Vui lòng nhập giá trị hợp lệ!')
       return
     }
@@ -146,7 +160,7 @@ function ManagerSuppliesPage() {
       setShowSetMinModal(false)
       fetchSupplies()
     } catch (error) {
-      alert('Lỗi: ' + managerService.getErrorMessage(error))
+      alert(`Lỗi: ${managerService.getErrorMessage(error)}`)
     }
   }
 
@@ -160,13 +174,13 @@ function ManagerSuppliesPage() {
       alert('Xóa vật tư thành công!')
       fetchSupplies()
     } catch (error) {
-      alert('Lỗi: ' + managerService.getErrorMessage(error))
+      alert(`Lỗi: ${managerService.getErrorMessage(error)}`)
     }
   }
 
-  const handleSubmitAdd = async (e) => {
-    e.preventDefault()
-    
+  const handleSubmitAdd = async (event) => {
+    event.preventDefault()
+
     try {
       await managerService.addSupply({
         ...formData,
@@ -177,13 +191,13 @@ function ManagerSuppliesPage() {
       setShowAddModal(false)
       fetchSupplies()
     } catch (error) {
-      alert('Lỗi: ' + managerService.getErrorMessage(error))
+      alert(`Lỗi: ${managerService.getErrorMessage(error)}`)
     }
   }
 
-  const handleSubmitEdit = async (e) => {
-    e.preventDefault()
-    
+  const handleSubmitEdit = async (event) => {
+    event.preventDefault()
+
     try {
       await managerService.updateSupply(selectedSupply.supplyId, {
         ...formData,
@@ -194,21 +208,20 @@ function ManagerSuppliesPage() {
       setShowEditModal(false)
       fetchSupplies()
     } catch (error) {
-      alert('Lỗi: ' + managerService.getErrorMessage(error))
+      alert(`Lỗi: ${managerService.getErrorMessage(error)}`)
     }
   }
 
-  const isLowStock = (supply) => {
-    return Number(supply.quantity) <= Number(supply.minQuantity)
-  }
+  const isLowStock = (supply) => Number(supply.quantity) <= Number(supply.minQuantity)
 
   const lowStockCount = supplies.filter(isLowStock).length
 
   if (isLoading) {
     return (
       <div className="manager-supplies-page">
-        <button className="back-button" onClick={handleBack} aria-label="Quay lại" title="Quay lại">
-          <span className="arrow-icon">←</span>
+        <button type="button" className="back-button" onClick={handleBack} aria-label="Quay lại">
+          <ArrowLeftIcon className="icon" />
+          <span>Quay lại</span>
         </button>
         <div className="page-loading">
           <div className="loading-spinner"></div>
@@ -220,20 +233,20 @@ function ManagerSuppliesPage() {
 
   return (
     <div className="manager-supplies-page">
-      <button className="back-button" onClick={handleBack} aria-label="Quay lại" title="Quay lại">
-        <span className="arrow-icon">←</span>
+      <button type="button" className="back-button" onClick={handleBack} aria-label="Quay lại">
+        <ArrowLeftIcon className="icon" />
+        <span>Quay lại</span>
       </button>
+
       <header className="page-header">
         <h1>
           <CubeIcon className="icon" />
-          Quản lý Vật tư
+          Quản lý vật tư
         </h1>
       </header>
 
       <div className="page-content">
-        {errorMessage && (
-          <div className="error-message">{errorMessage}</div>
-        )}
+        {errorMessage && <div className="error-message">{errorMessage}</div>}
 
         {lowStockCount > 0 && (
           <div className="warning-banner">
@@ -242,7 +255,6 @@ function ManagerSuppliesPage() {
           </div>
         )}
 
-        {/* Filters */}
         <div className="filters-section">
           <div className="search-box">
             <MagnifyingGlassIcon className="icon" />
@@ -250,14 +262,18 @@ function ManagerSuppliesPage() {
               type="text"
               placeholder="Tìm kiếm theo tên, loại vật tư..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(event) => setSearchTerm(event.target.value)}
             />
           </div>
-          {filterMode === 'lowStock' && (
+
+          {(filterMode === 'lowStock' || filterMode === 'stable') && (
             <div className="active-filter-badge">
               <ExclamationTriangleIcon className="icon" />
-              <span>Chỉ hiển thị: Vật tư sắp hết</span>
-              <button 
+              <span>
+                {filterMode === 'lowStock' ? 'Chỉ hiển thị: Vật tư sắp hết' : 'Chỉ hiển thị: Vật tư ổn định'}
+              </span>
+              <button
+                type="button"
                 className="clear-filter-btn"
                 onClick={() => {
                   setFilterMode('')
@@ -265,13 +281,12 @@ function ManagerSuppliesPage() {
                 }}
                 title="Xóa bộ lọc"
               >
-                ✕
+                ×
               </button>
             </div>
           )}
         </div>
 
-        {/* Stats */}
         <div className="stats-summary">
           <div className="stat-item">
             <span className="stat-label">Tổng loại:</span>
@@ -283,7 +298,6 @@ function ManagerSuppliesPage() {
           </div>
         </div>
 
-        {/* Supplies Grid */}
         {filteredSupplies.length === 0 ? (
           <div className="empty-state">
             <CubeIcon className="icon" />
@@ -302,7 +316,7 @@ function ManagerSuppliesPage() {
                     Sắp hết
                   </div>
                 )}
-                
+
                 <div className="supply-header">
                   <h3>{supply.name}</h3>
                   <span className="supply-type">{supply.type}</span>
@@ -323,25 +337,17 @@ function ManagerSuppliesPage() {
                   </div>
                   <div className="stat">
                     <span className="label">Ngày nhập:</span>
-                    <span className="value">
-                      {supply.importDate
-                        ? formatDateTimeVN(supply.importDate)
-                        : '-'}
-                    </span>
+                    <span className="value">{supply.importDate ? formatDateTimeVN(supply.importDate) : '-'}</span>
                   </div>
                   <div className="stat">
                     <span className="label">Ngày xuất:</span>
-                    <span className="value">
-                      {supply.exportDate
-                        ? formatDateTimeVN(supply.exportDate)
-                        : '-'}
-                    </span>
+                    <span className="value">{supply.exportDate ? formatDateTimeVN(supply.exportDate) : '-'}</span>
                   </div>
                 </div>
 
-                {/* Action Buttons */}
                 <div className="supply-actions">
-                  <button 
+                  <button
+                    type="button"
                     className="btn-set-min"
                     onClick={() => handleSetMinimum(supply)}
                     title="Đặt mức tối thiểu"
@@ -355,10 +361,9 @@ function ManagerSuppliesPage() {
         )}
       </div>
 
-      {/* Add Modal */}
       {showAddModal && (
         <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content" onClick={(event) => event.stopPropagation()}>
             <h2>Thêm vật tư mới</h2>
             <form onSubmit={handleSubmitAdd}>
               <div className="form-group">
@@ -366,7 +371,7 @@ function ManagerSuppliesPage() {
                 <input
                   type="text"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(event) => setFormData({ ...formData, name: event.target.value })}
                   required
                 />
               </div>
@@ -375,7 +380,7 @@ function ManagerSuppliesPage() {
                 <input
                   type="text"
                   value={formData.type}
-                  onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                  onChange={(event) => setFormData({ ...formData, type: event.target.value })}
                   required
                 />
               </div>
@@ -385,7 +390,7 @@ function ManagerSuppliesPage() {
                   <input
                     type="number"
                     value={formData.quantity}
-                    onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                    onChange={(event) => setFormData({ ...formData, quantity: event.target.value })}
                     required
                     min="0"
                   />
@@ -395,7 +400,7 @@ function ManagerSuppliesPage() {
                   <input
                     type="text"
                     value={formData.unit}
-                    onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+                    onChange={(event) => setFormData({ ...formData, unit: event.target.value })}
                     required
                   />
                 </div>
@@ -405,7 +410,7 @@ function ManagerSuppliesPage() {
                 <input
                   type="number"
                   value={formData.minQuantity}
-                  onChange={(e) => setFormData({ ...formData, minQuantity: e.target.value })}
+                  onChange={(event) => setFormData({ ...formData, minQuantity: event.target.value })}
                   required
                   min="0"
                 />
@@ -423,10 +428,9 @@ function ManagerSuppliesPage() {
         </div>
       )}
 
-      {/* Edit Modal */}
       {showEditModal && (
         <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content" onClick={(event) => event.stopPropagation()}>
             <h2>Chỉnh sửa vật tư</h2>
             <form onSubmit={handleSubmitEdit}>
               <div className="form-group">
@@ -434,7 +438,7 @@ function ManagerSuppliesPage() {
                 <input
                   type="text"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(event) => setFormData({ ...formData, name: event.target.value })}
                   required
                 />
               </div>
@@ -443,7 +447,7 @@ function ManagerSuppliesPage() {
                 <input
                   type="text"
                   value={formData.type}
-                  onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                  onChange={(event) => setFormData({ ...formData, type: event.target.value })}
                   required
                 />
               </div>
@@ -453,7 +457,7 @@ function ManagerSuppliesPage() {
                   <input
                     type="number"
                     value={formData.quantity}
-                    onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                    onChange={(event) => setFormData({ ...formData, quantity: event.target.value })}
                     required
                     min="0"
                   />
@@ -463,7 +467,7 @@ function ManagerSuppliesPage() {
                   <input
                     type="text"
                     value={formData.unit}
-                    onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+                    onChange={(event) => setFormData({ ...formData, unit: event.target.value })}
                     required
                   />
                 </div>
@@ -473,7 +477,7 @@ function ManagerSuppliesPage() {
                 <input
                   type="number"
                   value={formData.minQuantity}
-                  onChange={(e) => setFormData({ ...formData, minQuantity: e.target.value })}
+                  onChange={(event) => setFormData({ ...formData, minQuantity: event.target.value })}
                   required
                   min="0"
                 />
@@ -491,10 +495,9 @@ function ManagerSuppliesPage() {
         </div>
       )}
 
-      {/* Set Minimum Modal */}
       {showSetMinModal && selectedSupply && (
         <div className="modal-overlay" onClick={() => setShowSetMinModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content" onClick={(event) => event.stopPropagation()}>
             <h2>Đặt mức tối thiểu - {selectedSupply.name}</h2>
             <form onSubmit={handleSubmitSetMin}>
               <div className="form-group">
@@ -503,7 +506,7 @@ function ManagerSuppliesPage() {
                   <input
                     type="number"
                     value={minValue}
-                    onChange={(e) => setMinValue(e.target.value)}
+                    onChange={(event) => setMinValue(event.target.value)}
                     required
                     min="0"
                     placeholder="Nhập giá trị"
@@ -523,6 +526,12 @@ function ManagerSuppliesPage() {
             </form>
           </div>
         </div>
+      )}
+
+      {showScrollTop && (
+        <button type="button" className="scroll-top-button" onClick={handleScrollToTop} aria-label="Lên đầu trang">
+          <ChevronUpIcon className="icon" />
+        </button>
       )}
     </div>
   )

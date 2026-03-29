@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeftOnRectangleIcon, ArrowRightOnRectangleIcon, PhoneIcon, UserCircleIcon } from '@heroicons/react/24/outline'
 import authService from '../services/authService'
@@ -449,9 +449,9 @@ function Dashboard() {
             type="button"
             className="dashboard-safe-notice-close"
             onClick={dismissSafeCompletionNotice}
-            aria-label="ÄÃ³ng thÃ´ng bÃ¡o"
+            aria-label="Đóng thông báo"
           >
-            Ã—
+            ×
           </button>
         </div>
       )}

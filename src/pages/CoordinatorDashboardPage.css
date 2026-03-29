@@ -208,18 +208,45 @@
   gap: 14px;
 }
 
+.coordinator-request-chart-axis-shell {
+  display: grid;
+  grid-template-rows: 40px minmax(220px, 1fr) 78px;
+  gap: 10px;
+}
+
+.coordinator-request-chart-axis-top-gap,
+.coordinator-request-chart-axis-bottom-gap {
+  width: 100%;
+}
+
 .coordinator-request-chart-axis {
-  min-height: 320px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
+  position: relative;
+  min-height: 220px;
   color: #667085;
   font-size: 12px;
   font-weight: 600;
-  padding-bottom: 52px;
+}
+
+.coordinator-request-chart-axis span {
+  position: absolute;
+  right: 0;
+  transform: translateY(50%);
+  min-width: 2rem;
+  text-align: right;
+  color: #64748b;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.coordinator-request-chart-plot {
+  position: relative;
+  min-width: 0;
 }
 
 .coordinator-request-chart {
+  position: relative;
+  z-index: 1;
   min-height: 320px;
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -229,7 +256,7 @@
 .coordinator-request-bar-card {
   position: relative;
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: 40px minmax(220px, 1fr) 78px;
   gap: 10px;
   border: none;
   background: transparent;
@@ -283,17 +310,9 @@
   border-top: 1px dashed #dbe5f1;
 }
 
-.coordinator-request-bar-gridline.top {
-  top: 0;
-}
-
-.coordinator-request-bar-gridline.middle {
-  top: 50%;
-}
-
 .coordinator-request-bar-gridline.base {
-  bottom: 0;
   border-top-style: solid;
+  border-top-color: rgba(100, 116, 139, 0.42);
 }
 
 .coordinator-request-bar {
@@ -301,90 +320,8 @@
   min-height: 10px;
   border-radius: 14px 14px 8px 8px;
   overflow: hidden;
-  display: flex;
-  flex-direction: column-reverse;
-  justify-content: flex-start;
   transition: none;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4);
-}
-
-.coordinator-request-tooltip {
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 8px);
-  transform: translateX(-50%) translateY(8px);
-  min-width: 150px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: rgba(15, 23, 42, 0.94);
-  color: #ffffff;
-  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.2);
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition: opacity 0.18s ease, transform 0.18s ease;
-  z-index: 4;
-}
-
-.coordinator-request-tooltip::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: 100%;
-  transform: translateX(-50%);
-  border-width: 8px 7px 0 7px;
-  border-style: solid;
-  border-color: rgba(15, 23, 42, 0.94) transparent transparent transparent;
-}
-
-.coordinator-request-bar-card:hover .coordinator-request-tooltip,
-.coordinator-request-bar-card:focus-visible .coordinator-request-tooltip {
-  opacity: 1;
-  visibility: visible;
-  transform: translateX(-50%) translateY(0);
-}
-
-.coordinator-request-tooltip > strong {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 13px;
-  line-height: 1.4;
-}
-
-.coordinator-request-tooltip-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.coordinator-request-tooltip-row + .coordinator-request-tooltip-row {
-  margin-top: 4px;
-}
-
-.coordinator-request-tooltip-row i {
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  display: inline-block;
-  flex-shrink: 0;
-}
-
-.coordinator-request-tooltip-row i.high {
-  background: #dc2626;
-}
-
-.coordinator-request-tooltip-row i.medium {
-  background: #facc15;
-}
-
-.coordinator-request-tooltip-row i.low {
-  background: #66ff66;
-}
-
-.coordinator-request-tooltip-row strong {
-  margin-left: auto;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.42);
 }
 
 .coordinator-request-bar-card:hover .coordinator-request-bar,
@@ -394,165 +331,31 @@
 }
 
 .coordinator-request-bar.pending {
-  background: linear-gradient(180deg, #dd6b6b 0%, #b91c1c 100%);
+  background: #f4a7ae;
 }
 
 .coordinator-request-bar.verified {
-  background: linear-gradient(180deg, #63d5b3 0%, #0f766e 100%);
+  background: #8edfd3;
 }
 
 .coordinator-request-bar.assigned {
-  background: linear-gradient(180deg, #eeaa61 0%, #c96b16 100%);
+  background: #ffd27b;
 }
 
 .coordinator-request-bar.confirmed {
-  background: linear-gradient(180deg, #6ea9ff 0%, #2563eb 100%);
+  background: #97c8ff;
 }
 
 .coordinator-request-bar.completed {
-  background: linear-gradient(180deg, #70d18c 0%, #15803d 100%);
+  background: #8fddab;
 }
 
 .coordinator-request-bar.cancelled {
-  background: #cbd5e1;
+  background: #cfd8e4;
 }
 
 .coordinator-request-bar.duplicate {
-  background: #ddd6fe;
-}
-
-.coordinator-request-bar-segment {
-  width: 100%;
-  position: relative;
-  margin-top: 0;
-  border-radius: 0;
-  box-shadow: none;
-}
-
-.coordinator-request-bar-segment:first-child {
-  margin-top: 0;
-  border-radius: 0;
-  box-shadow: none;
-}
-
-.coordinator-request-bar-segment.active {
-  background: rgba(255, 255, 255, 0.56);
-}
-
-.coordinator-request-bar-segment.inactive {
-  background: rgba(15, 23, 42, 0.34);
-}
-
-.coordinator-request-bar.pending .coordinator-request-bar-segment.active {
-  background: rgba(255, 255, 255, 0.56);
-}
-
-.coordinator-request-bar.verified .coordinator-request-bar-segment.active {
-  background: rgba(255, 255, 255, 0.56);
-}
-
-.coordinator-request-bar.assigned .coordinator-request-bar-segment.active {
-  background: rgba(255, 255, 255, 0.56);
-}
-
-.coordinator-request-bar.confirmed .coordinator-request-bar-segment.active {
-  background: rgba(255, 255, 255, 0.56);
-}
-
-.coordinator-request-bar.completed .coordinator-request-bar-segment.active {
-  background: rgba(255, 255, 255, 0.56);
-}
-
-.coordinator-request-bar.cancelled .coordinator-request-bar-segment.active {
-  background: #475569;
-}
-
-.coordinator-request-bar.duplicate .coordinator-request-bar-segment.active {
-  background: #7c3aed;
-}
-
-.coordinator-request-bar.pending .coordinator-request-bar-segment.high {
-  background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
-}
-
-.coordinator-request-bar.pending .coordinator-request-bar-segment.medium {
-  background: linear-gradient(180deg, #fca5a5 0%, #f87171 100%);
-}
-
-.coordinator-request-bar.pending .coordinator-request-bar-segment.low {
-  background: linear-gradient(180deg, #fecaca 0%, #fca5a5 100%);
-}
-
-.coordinator-request-bar.verified .coordinator-request-bar-segment.high {
-  background: linear-gradient(180deg, #f97316 0%, #ea580c 100%);
-}
-
-.coordinator-request-bar.verified .coordinator-request-bar-segment.medium {
-  background: linear-gradient(180deg, #fdba74 0%, #fb923c 100%);
-}
-
-.coordinator-request-bar.verified .coordinator-request-bar-segment.low {
-  background: linear-gradient(180deg, #fed7aa 0%, #fdba74 100%);
-}
-
-.coordinator-request-bar.assigned .coordinator-request-bar-segment.high {
-  background: linear-gradient(180deg, #f59e0b 0%, #d97706 100%);
-}
-
-.coordinator-request-bar.assigned .coordinator-request-bar-segment.medium {
-  background: linear-gradient(180deg, #fcd34d 0%, #f59e0b 100%);
-}
-
-.coordinator-request-bar.assigned .coordinator-request-bar-segment.low {
-  background: linear-gradient(180deg, #fde68a 0%, #fcd34d 100%);
-}
-
-.coordinator-request-bar.confirmed .coordinator-request-bar-segment.high {
-  background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
-}
-
-.coordinator-request-bar.confirmed .coordinator-request-bar-segment.medium {
-  background: linear-gradient(180deg, #93c5fd 0%, #60a5fa 100%);
-}
-
-.coordinator-request-bar.confirmed .coordinator-request-bar-segment.low {
-  background: linear-gradient(180deg, #bfdbfe 0%, #93c5fd 100%);
-}
-
-.coordinator-request-bar.completed .coordinator-request-bar-segment.high {
-  background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
-}
-
-.coordinator-request-bar.completed .coordinator-request-bar-segment.medium {
-  background: linear-gradient(180deg, #86efac 0%, #4ade80 100%);
-}
-
-.coordinator-request-bar.completed .coordinator-request-bar-segment.low {
-  background: linear-gradient(180deg, #bbf7d0 0%, #86efac 100%);
-}
-
-.coordinator-request-bar.cancelled .coordinator-request-bar-segment.high {
-  background: linear-gradient(180deg, #64748b 0%, #475569 100%);
-}
-
-.coordinator-request-bar.cancelled .coordinator-request-bar-segment.medium {
-  background: linear-gradient(180deg, #cbd5e1 0%, #94a3b8 100%);
-}
-
-.coordinator-request-bar.cancelled .coordinator-request-bar-segment.low {
-  background: linear-gradient(180deg, #e2e8f0 0%, #cbd5e1 100%);
-}
-
-.coordinator-request-bar.duplicate .coordinator-request-bar-segment.high {
-  background: linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%);
-}
-
-.coordinator-request-bar.duplicate .coordinator-request-bar-segment.medium {
-  background: linear-gradient(180deg, #c4b5fd 0%, #a78bfa 100%);
-}
-
-.coordinator-request-bar.duplicate .coordinator-request-bar-segment.low {
-  background: linear-gradient(180deg, #ddd6fe 0%, #c4b5fd 100%);
+  background: #cdbdff;
 }
 
 .coordinator-request-bar-label {
@@ -747,10 +550,6 @@
   .coordinator-request-chart {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
-
-  .coordinator-request-chart-axis {
-    padding-bottom: 52px;
-  }
 }
 
 @media (max-width: 860px) {
@@ -789,8 +588,6 @@
 
   .coordinator-request-chart-axis {
     min-height: auto;
-    padding-bottom: 0;
-    flex-direction: row;
   }
 
   .coordinator-request-chart {

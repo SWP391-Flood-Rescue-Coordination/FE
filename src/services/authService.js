@@ -26,7 +26,7 @@ const parseStoredUser = () => {
 
 const normalizeValidPhone = (value) => {
   const candidate = String(value ?? '').trim()
-  return PHONE_REGEX.test(candidate) ? candidate : ''
+  return RESCUE_REQUEST_PHONE_REGEX.test(candidate) ? candidate : ''
 }
 
 const resolveDefaultPhone = () => {
@@ -196,6 +196,86 @@ const restoreGuestRequestContextAfterLogout = () => {
   sessionStorage.removeItem(GUEST_REQUEST_DETAILS_BACKUP_KEY)
 }
 
+const createValidationResult = (errors) => {
+  const fieldErrors = Object.fromEntries(
+    Object.entries(errors).filter(([, value]) => Boolean(value)),
+  )
+
+  const messages = Object.values(fieldErrors)
+
+  return {
+    valid: messages.length === 0,
+    message: messages[0] || '',
+    errors: fieldErrors,
+  }
+}
+
+const buildLoginValidationErrors = (phone, password) => {
+  const errors = {}
+  const trimmedPhone = String(phone ?? '').trim()
+  const passwordValue = String(password ?? '')
+
+  if (!trimmedPhone) {
+    errors.phone = 'Vui lòng nhập số điện thoại.'
+  } else if (!RESCUE_REQUEST_PHONE_REGEX.test(trimmedPhone)) {
+    errors.phone = 'Số điện thoại không đúng định dạng.'
+  }
+
+  if (!passwordValue) {
+    errors.password = 'Vui lòng nhập mật khẩu.'
+  } else if (passwordValue.length < 5 || passwordValue.length > 20) {
+    errors.password = 'Mật khẩu phải từ 5 đến 20 ký tự.'
+  }
+
+  return errors
+}
+
+const buildRegisterValidationErrors = (username, phone, email, password, confirmPassword, fullName) => {
+  const errors = {}
+  const trimmedUsername = String(username ?? '').trim()
+  const trimmedPhone = String(phone ?? '').trim()
+  const trimmedEmail = String(email ?? '').trim()
+  const passwordValue = String(password ?? '')
+  const confirmPasswordValue = String(confirmPassword ?? '')
+  const trimmedFullName = String(fullName ?? '').trim()
+
+  if (!trimmedUsername) {
+    errors.username = 'Vui lòng nhập tên đăng nhập.'
+  } else if (trimmedUsername.length < 3) {
+    errors.username = 'Tên đăng nhập phải có ít nhất 3 ký tự.'
+  }
+
+  if (!trimmedFullName) {
+    errors.fullName = 'Vui lòng nhập họ và tên.'
+  }
+
+  if (!trimmedPhone) {
+    errors.phone = 'Vui lòng nhập số điện thoại.'
+  } else if (!RESCUE_REQUEST_PHONE_REGEX.test(trimmedPhone)) {
+    errors.phone = 'Số điện thoại không đúng định dạng.'
+  }
+
+  if (!trimmedEmail) {
+    errors.email = 'Vui lòng nhập email.'
+  } else if (!EMAIL_REGEX.test(trimmedEmail)) {
+    errors.email = 'Email không đúng định dạng.'
+  }
+
+  if (!passwordValue) {
+    errors.password = 'Vui lòng nhập mật khẩu.'
+  } else if (passwordValue.length < 5 || passwordValue.length > 20) {
+    errors.password = 'Mật khẩu phải từ 5 đến 20 ký tự.'
+  }
+
+  if (!confirmPasswordValue) {
+    errors.confirmPassword = 'Vui lòng nhập lại mật khẩu.'
+  } else if (passwordValue !== confirmPasswordValue) {
+    errors.confirmPassword = 'Mật khẩu xác nhận không khớp.'
+  }
+
+  return errors
+}
+
 const authService = {
   validateLoginInput: (phone, password) => {
     const trimmedPhone = String(phone ?? '').trim()
@@ -246,6 +326,13 @@ const authService = {
 
     return { valid: true, message: '' }
   },
+
+  validateLoginInput: (phone, password) => createValidationResult(buildLoginValidationErrors(phone, password)),
+
+  validateRegisterInput: (username, phone, email, password, confirmPassword, fullName) =>
+    createValidationResult(
+      buildRegisterValidationErrors(username, phone, email, password, confirmPassword, fullName),
+    ),
 
   validateForgotPasswordPhone: (phone) => {
     const trimmedPhone = String(phone ?? '').trim()

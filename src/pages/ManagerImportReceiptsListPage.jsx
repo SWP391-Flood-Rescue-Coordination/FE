@@ -8,7 +8,6 @@ import {
   CalendarIcon,
   MapPinIcon,
   CubeIcon,
-  EyeIcon,
   ArrowDownTrayIcon,
   ArrowUpTrayIcon,
   FunnelIcon,
@@ -221,18 +220,35 @@ function ManagerImportReceiptsListPage() {
           </div>
         )}
 
-        {/* Filter Toggle Button */}
-        <div className="filter-header">
-          <button 
-            className="filter-toggle-btn"
-            onClick={() => setShowFilters(!showFilters)}
-          >
-            <FunnelIcon className="icon" />
-            <span>Bộ lọc tổng hợp</span>
-            {(startDate || endDate) && (
-              <span className="filter-active-badge">●</span>
-            )}
-          </button>
+        <div className="list-toolbar">
+          <div className="search-bar">
+            <MagnifyingGlassIcon className="search-icon" />
+            <input
+              type="text"
+              placeholder={
+                activeTab === 'all'
+                  ? 'Tìm kiếm theo nguồn/đích, địa chỉ...'
+                  : activeTab === 'import'
+                  ? 'Tìm kiếm theo nguồn gốc, địa chỉ tiếp nhận...'
+                  : 'Tìm kiếm theo đơn vị nhận, địa chỉ...'
+              }
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+
+          <div className="filter-header compact">
+            <button
+              className="filter-toggle-btn"
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              <FunnelIcon className="icon" />
+              <span>Bộ lọc tổng hợp</span>
+              {(startDate || endDate) && (
+                <span className="filter-active-badge">•</span>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Advanced Filters */}
@@ -282,23 +298,6 @@ function ManagerImportReceiptsListPage() {
           </div>
         )}
 
-        {/* Search Bar */}
-        <div className="search-bar">
-          <MagnifyingGlassIcon className="search-icon" />
-          <input
-            type="text"
-            placeholder={
-              activeTab === 'all'
-                ? 'Tìm kiếm theo nguồn/đích, địa chỉ...'
-                : activeTab === 'import'
-                ? 'Tìm kiếm theo nguồn gốc, địa chỉ tiếp nhận...'
-                : 'Tìm kiếm theo đơn vị nhận, địa chỉ...'
-            }
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-
         {/* Receipts List */}
         {filteredReceipts.length === 0 ? (
           <div className="empty-state">
@@ -323,7 +322,6 @@ function ManagerImportReceiptsListPage() {
                   <th>Địa chỉ</th>
                   <th>Số loại vật tư</th>
                   <th>Ngày tạo</th>
-                  <th>Thao tác</th>
                 </tr>
               </thead>
               <tbody>
@@ -334,7 +332,18 @@ function ManagerImportReceiptsListPage() {
                     receiptType === 'import' ? receipt.receiveAddress : receipt.recipientAddress
 
                   return (
-                    <tr key={`${receiptType}-${receipt.receiptId}`}>
+                    <tr
+                      key={`${receiptType}-${receipt.receiptId}`}
+                      className={`receipt-row ${receiptType}`}
+                      onClick={() => handleViewDetail(receipt)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault()
+                          handleViewDetail(receipt)
+                        }
+                      }}
+                      tabIndex={0}
+                    >
                       <td>
                         <div className="receipt-code-cell">
                           <strong>#{receipt.receiptId}</strong>
@@ -355,12 +364,6 @@ function ManagerImportReceiptsListPage() {
                       </td>
                       <td>{receipt.totalItems}</td>
                       <td>{formatDateTime(receipt.createdAt)}</td>
-                      <td>
-                        <button className={`btn-view-detail ${receiptType}`} onClick={() => handleViewDetail(receipt)}>
-                          <EyeIcon className="icon" />
-                          Xem chi tiết
-                        </button>
-                      </td>
                     </tr>
                   )
                 })}
@@ -479,3 +482,4 @@ function ManagerImportReceiptsListPage() {
 }
 
 export default ManagerImportReceiptsListPage
+
