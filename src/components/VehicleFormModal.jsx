@@ -215,10 +215,6 @@ function VehicleFormModal({
     setFormData((prev) => ({
       ...prev,
       status: value,
-      lastMaintenance:
-        mode === 'edit' && value === 'MAINTENANCE' && prev.status !== 'MAINTENANCE'
-          ? new Date().toISOString().split('T')[0]
-          : prev.lastMaintenance,
     }))
 
     if (localError) {

@@ -147,6 +147,7 @@ const buildVehiclePayload = (vehicleData, { isCreate = false, originalStatus = '
     .trim()
     .toUpperCase()
     .replace(/[\s-]+/g, '')
+  const isMaintenanceTransition = !isCreate && normalizedOriginalStatus !== 'MAINTENANCE' && status === 'MAINTENANCE'
 
   const payload = {
     VehicleName: toNullableText(vehicleData?.vehicleName),
@@ -167,7 +168,7 @@ const buildVehiclePayload = (vehicleData, { isCreate = false, originalStatus = '
   }
 
   const explicitLastMaintenance = toNullableText(vehicleData?.lastMaintenance)
-  if (explicitLastMaintenance) {
+  if (explicitLastMaintenance && !isMaintenanceTransition) {
     payload.LastMaintenance = explicitLastMaintenance
   }
 

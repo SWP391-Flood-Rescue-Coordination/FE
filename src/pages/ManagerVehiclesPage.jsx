@@ -1,4 +1,4 @@
-import { formatDateTimeVN } from './adminShared'
+import { formatDateTimeVN, toVietnamTime } from './adminShared'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
@@ -38,6 +38,23 @@ const formatCoordinates = (latitude, longitude) => {
   }
 
   return `${latitude}, ${longitude}`
+}
+
+const formatDateTimeWithSecondsVN = (value) => {
+  const date = toVietnamTime(value)
+  if (!date || Number.isNaN(date.getTime())) {
+    return '-'
+  }
+
+  return date.toLocaleString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  })
 }
 
 function ManagerVehiclesPage() {
@@ -390,7 +407,7 @@ function ManagerVehiclesPage() {
                           {formatCoordinates(vehicle.latitude, vehicle.longitude)}
                         </div>
                       </td>
-                      <td>{vehicle.lastMaintenance ? formatDateTimeVN(vehicle.lastMaintenance) : '-'}</td>
+                      <td>{vehicle.lastMaintenance ? formatDateTimeWithSecondsVN(vehicle.lastMaintenance) : '-'}</td>
                       <td>{vehicle.updatedAt ? formatDateTimeVN(vehicle.updatedAt) : '-'}</td>
                       <td>
                         <div className="vehicle-action-group">
