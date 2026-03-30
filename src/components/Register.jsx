@@ -3,12 +3,12 @@ import authService from '../services/authService'
 import './Register.css'
 
 const Register = ({ onClose, onShowLogin }) => {
-  const [username, setUsername] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [fullName, setFullName] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState({})
@@ -31,12 +31,12 @@ const Register = ({ onClose, onShowLogin }) => {
     setError('')
 
     const validation = authService.validateRegisterInput(
-      username,
       phone,
       email,
       password,
       confirmPassword,
-      fullName,
+      firstName,
+      lastName,
     )
 
     setFieldErrors(validation.errors || {})
@@ -47,7 +47,7 @@ const Register = ({ onClose, onShowLogin }) => {
 
     try {
       setLoading(true)
-      await authService.register(username, phone, email, password, fullName)
+      await authService.register(phone, email, password, firstName, lastName)
       setShowSuccessPopup(true)
     } catch (err) {
       const errorMessage = authService.getRegisterErrorMessage(err)
@@ -105,125 +105,130 @@ const Register = ({ onClose, onShowLogin }) => {
           </div>
         )}
 
+
         <form onSubmit={handleSubmit} noValidate>
-          <div className="form-group">
-            <div className="form-label-row">
-              <label htmlFor="username">Tên đăng nhập *</label>
-              {fieldErrors.username && <span className="field-error">{fieldErrors.username}</span>}
+
+
+          <div className="form-row">
+            <label>Họ và tên *</label>
+            <div className="name-fields">
+              <div style={{width: '50%'}}>
+                <input
+                  type="text"
+                  id="lastName"
+                  className={fieldErrors.lastName ? 'input-error' : ''}
+                  placeholder="Họ"
+                  value={lastName}
+                  onChange={(e) => {
+                    setLastName(e.target.value)
+                    clearFieldError('lastName')
+                  }}
+                  required
+                  disabled={loading}
+                />
+                {fieldErrors.lastName && (
+                  <span className="field-error"><span className="error-icon">&#9888;</span> Vui lòng nhập họ.</span>
+                )}
+              </div>
+              <div style={{width: '50%'}}>
+                <input
+                  type="text"
+                  id="firstName"
+                  className={fieldErrors.firstName ? 'input-error' : ''}
+                  placeholder="Tên"
+                  value={firstName}
+                  onChange={(e) => {
+                    setFirstName(e.target.value)
+                    clearFieldError('firstName')
+                  }}
+                  required
+                  disabled={loading}
+                />
+                {fieldErrors.firstName && (
+                  <span className="field-error"><span className="error-icon">&#9888;</span> Vui lòng nhập tên.</span>
+                )}
+              </div>
             </div>
-            <input
-              type="text"
-              id="username"
-              className={fieldErrors.username ? 'input-error' : ''}
-              placeholder="Nhập tên đăng nhập (tối thiểu 3 ký tự)"
-              value={username}
-              onChange={(e) => {
-                setUsername(e.target.value)
-                clearFieldError('username')
-              }}
-              required
-              disabled={loading}
-            />
           </div>
 
-          <div className="form-group">
-            <div className="form-label-row">
-              <label htmlFor="fullName">Họ và tên *</label>
-              {fieldErrors.fullName && <span className="field-error">{fieldErrors.fullName}</span>}
+          <div className="form-row">
+            <label htmlFor="phone">Số điện thoại *</label>
+            <div style={{width: '100%'}}>
+              <input
+                type="tel"
+                id="phone"
+                className={fieldErrors.phone ? 'input-error' : ''}
+                placeholder="Nhập số điện thoại (VD: 0912345678)"
+                value={phone}
+                onChange={(e) => {
+                  setPhone(e.target.value)
+                  clearFieldError('phone')
+                }}
+                required
+                disabled={loading}
+              />
+              {fieldErrors.phone && <span className="field-error"><span className="error-icon">&#9888;</span> Vui lòng nhập số điện thoại hợp lệ.</span>}
             </div>
-            <input
-              type="text"
-              id="fullName"
-              className={fieldErrors.fullName ? 'input-error' : ''}
-              placeholder="Nhập họ và tên của bạn"
-              value={fullName}
-              onChange={(e) => {
-                setFullName(e.target.value)
-                clearFieldError('fullName')
-              }}
-              required
-              disabled={loading}
-            />
           </div>
 
-          <div className="form-group">
-            <div className="form-label-row">
-              <label htmlFor="phone">Số điện thoại *</label>
-              {fieldErrors.phone && <span className="field-error">{fieldErrors.phone}</span>}
+          <div className="form-row">
+            <label htmlFor="email">Email *</label>
+            <div style={{width: '100%', display: 'flex', flexDirection: 'column'}}>
+              <input
+                type="email"
+                id="email"
+                className={fieldErrors.email ? 'input-error' : ''}
+                placeholder="Nhập địa chỉ email của bạn"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value)
+                  clearFieldError('email')
+                }}
+                required
+                disabled={loading}
+              />
+              {fieldErrors.email && <span className="field-error"><span className="error-icon">&#9888;</span> Vui lòng nhập email hợp lệ.</span>}
             </div>
-            <input
-              type="tel"
-              id="phone"
-              className={fieldErrors.phone ? 'input-error' : ''}
-              placeholder="Nhập số điện thoại (VD: 0912345678)"
-              value={phone}
-              onChange={(e) => {
-                setPhone(e.target.value)
-                clearFieldError('phone')
-              }}
-              required
-              disabled={loading}
-            />
           </div>
 
-          <div className="form-group">
-            <div className="form-label-row">
-              <label htmlFor="email">Email *</label>
-              {fieldErrors.email && <span className="field-error">{fieldErrors.email}</span>}
+          <div className="form-row">
+            <label htmlFor="password">Mật khẩu *</label>
+            <div style={{width: '100%'}}>
+              <input
+                type="password"
+                id="password"
+                className={fieldErrors.password ? 'input-error' : ''}
+                placeholder="Nhập mật khẩu (5-20 ký tự)"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value)
+                  clearFieldError('password')
+                }}
+                required
+                disabled={loading}
+              />
+              {fieldErrors.password && <span className="field-error"><span className="error-icon">&#9888;</span> Mật khẩu phải từ 5-20 ký tự, bao gồm chữ và số.</span>}
             </div>
-            <input
-              type="email"
-              id="email"
-              className={fieldErrors.email ? 'input-error' : ''}
-              placeholder="Nhập địa chỉ email của bạn"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value)
-                clearFieldError('email')
-              }}
-              required
-              disabled={loading}
-            />
           </div>
 
-          <div className="form-group">
-            <div className="form-label-row">
-              <label htmlFor="password">Mật khẩu *</label>
-              {fieldErrors.password && <span className="field-error">{fieldErrors.password}</span>}
+          <div className="form-row">
+            <label htmlFor="confirmPassword">Xác nhận mật khẩu *</label>
+            <div style={{width: '100%'}}>
+              <input
+                type="password"
+                id="confirmPassword"
+                className={fieldErrors.confirmPassword ? 'input-error' : ''}
+                placeholder="Nhập lại mật khẩu của bạn"
+                value={confirmPassword}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value)
+                  clearFieldError('confirmPassword')
+                }}
+                required
+                disabled={loading}
+              />
+              {fieldErrors.confirmPassword && <span className="field-error"><span className="error-icon">&#9888;</span> Vui lòng nhập lại mật khẩu trùng khớp.</span>}
             </div>
-            <input
-              type="password"
-              id="password"
-              className={fieldErrors.password ? 'input-error' : ''}
-              placeholder="Nhập mật khẩu (5-20 ký tự)"
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value)
-                clearFieldError('password')
-              }}
-              required
-              disabled={loading}
-            />
-          </div>
-
-          <div className="form-group">
-            <div className="form-label-row">
-              <label htmlFor="confirmPassword">Xác nhận mật khẩu *</label>
-              {fieldErrors.confirmPassword && <span className="field-error">{fieldErrors.confirmPassword}</span>}
-            </div>
-            <input
-              type="password"
-              id="confirmPassword"
-              className={fieldErrors.confirmPassword ? 'input-error' : ''}
-              placeholder="Nhập lại mật khẩu của bạn"
-              value={confirmPassword}
-              onChange={(e) => {
-                setConfirmPassword(e.target.value)
-                clearFieldError('confirmPassword')
-              }}
-              required
-              disabled={loading}
-            />
           </div>
 
           <button type="submit" className="register-button" disabled={loading}>

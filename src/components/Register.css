@@ -1,3 +1,40 @@
+.error-icon {
+  display: inline-block;
+  color: #dc2626;
+  font-size: 16px;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+.name-fields {
+  display: flex;
+  gap: 18px;
+  flex: 1;
+}
+
+.name-fields input {
+  width: 100%;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 16px;
+  background: #fff;
+  color: #000;
+  transition: border-color 0.3s;
+  box-sizing: border-box;
+}
+
+.name-fields input.input-error {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.08);
+}
+
+.name-fields input:focus {
+  outline: none;
+  border-color: #dc2626;
+  background-color: #fff;
+  color: #000;
+}
 .register-container {
   height: 100vh;
   width: 100vw;
@@ -160,47 +197,74 @@
   background-color: #b91c1c;
 }
 
-.form-group {
-  margin-bottom: 30px;
+
+.form-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 18px;
 }
 
-.form-group label {
-  display: block;
+.form-row label {
+  min-width: 140px;
   color: #333;
   font-size: 16px;
   font-weight: 600;
-  margin-bottom: 10px;
-}
-
-.form-label-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
-  margin-bottom: 10px;
-}
-
-.form-label-row label {
   margin-bottom: 0;
+}
+
+.form-row input {
+  width: 100%;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 16px;
+  background: #fff;
+  color: #000;
+  transition: border-color 0.3s;
+  box-sizing: border-box;
+}
+
+.form-row input.input-error {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.08);
+}
+
+.form-row input:focus {
+  outline: none;
+  border-color: #dc2626;
+  background-color: #fff;
+  color: #000;
+}
+
+.form-row input:-webkit-autofill,
+.form-row input:-webkit-autofill:hover,
+.form-row input:-webkit-autofill:focus,
+.form-row input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px white inset !important;
+  -webkit-text-fill-color: #000 !important;
+  box-shadow: 0 0 0 30px white inset !important;
+}
+
+.form-row input::placeholder {
+  color: #999;
 }
 
 .field-error {
   color: #dc2626;
   font-size: 13px;
   font-weight: 600;
-  text-align: right;
-  line-height: 1.35;
+  margin: 4px 0 0 0;
+  display: block;
+  text-align: left;
+  white-space: normal;
 }
 
-.form-group input {
-  width: 100%;
-  padding: 16px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 16px;
-  transition: border-color 0.3s;
-  background-color: #fff;
-  color: #000;
+.form-row input:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+  opacity: 0.7;
 }
 
 .form-group input.input-error {

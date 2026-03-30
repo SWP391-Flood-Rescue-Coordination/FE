@@ -230,23 +230,30 @@ const buildLoginValidationErrors = (phone, password) => {
   return errors
 }
 
-const buildRegisterValidationErrors = (username, phone, email, password, confirmPassword, fullName) => {
+
+// Validate firstName, lastName riêng biệt
+const buildRegisterValidationErrors = (username, phone, email, password, confirmPassword, firstName, lastName) => {
   const errors = {}
-  const trimmedUsername = String(username ?? '').trim()
+  // const trimmedUsername = String(username ?? '').trim()
   const trimmedPhone = String(phone ?? '').trim()
   const trimmedEmail = String(email ?? '').trim()
   const passwordValue = String(password ?? '')
   const confirmPasswordValue = String(confirmPassword ?? '')
-  const trimmedFullName = String(fullName ?? '').trim()
+  const trimmedFirstName = String(firstName ?? '').trim()
+  const trimmedLastName = String(lastName ?? '').trim()
 
-  if (!trimmedUsername) {
-    errors.username = 'Vui lòng nhập tên đăng nhập.'
-  } else if (trimmedUsername.length < 3) {
-    errors.username = 'Tên đăng nhập phải có ít nhất 3 ký tự.'
+  // Nếu vẫn còn username thì giữ lại, nếu không thì bỏ qua
+  // if (!trimmedUsername) {
+  //   errors.username = 'Vui lòng nhập tên đăng nhập.'
+  // } else if (trimmedUsername.length < 3) {
+  //   errors.username = 'Tên đăng nhập phải có ít nhất 3 ký tự.'
+  // }
+
+  if (!trimmedLastName) {
+    errors.lastName = 'Vui lòng nhập họ.'
   }
-
-  if (!trimmedFullName) {
-    errors.fullName = 'Vui lòng nhập họ và tên.'
+  if (!trimmedFirstName) {
+    errors.firstName = 'Vui lòng nhập tên.'
   }
 
   if (!trimmedPhone) {
