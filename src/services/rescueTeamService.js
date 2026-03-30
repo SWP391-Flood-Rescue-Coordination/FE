@@ -105,6 +105,21 @@ const getUpdateStatusErrorMessage = (error) => {
 const transformOperationToMission = (operation) => {
   const requestStatus = operation.requestStatus || operation.RequestStatus || ''
 
+  // Map estimatedTime: nếu là số, chuyển sang phút/hh:mm, nếu không có thì 'Đang cập nhật'
+  let estimatedTimeRaw = operation.estimatedTime ?? operation.EstimatedTime;
+  let estimatedTime = 'Đang cập nhật';
+  if (typeof estimatedTimeRaw === 'number' && !isNaN(estimatedTimeRaw)) {
+    // Giả sử đơn vị là phút, nếu cần đổi sang hh:mm thì chỉnh lại ở đây
+    if (estimatedTimeRaw >= 60) {
+      const h = Math.floor(estimatedTimeRaw / 60);
+      const m = estimatedTimeRaw % 60;
+      estimatedTime = `${h}h${m > 0 ? ' ' + m + 'p' : ''}`;
+    } else {
+      estimatedTime = estimatedTimeRaw + ' phút';
+    }
+  } else if (typeof estimatedTimeRaw === 'string' && estimatedTimeRaw.trim() !== '') {
+    estimatedTime = estimatedTimeRaw;
+  }
   return {
     id: operation.operationId || operation.OperationId,
     operationId: operation.operationId || operation.OperationId,
@@ -116,7 +131,7 @@ const transformOperationToMission = (operation) => {
       lng: operation.requestLongitude || operation.RequestLongitude || 0,
     },
     description: operation.requestDescription || operation.RequestDescription || 'Không có mô tả',
-    estimatedTime: operation.estimatedTime || operation.EstimatedTime || 'Đang cập nhật',
+    estimatedTime,
     priority: mapPriorityDisplay(operation.priorityName || operation.PriorityName),
     status: mapStatusDisplay(operation.status || operation.Status),
     rawStatus: operation.status || operation.Status,

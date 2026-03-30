@@ -460,16 +460,6 @@ function RescueTeamDashboard() {
                 </div>
 
                 <div className="action-buttons">
-                  <button 
-                    className="btn-back" 
-                    onClick={handleBackToList}
-                    disabled={updating}
-                    aria-label="Quay lại"
-                    title="Quay lại"
-                  >
-                    <ArrowLeftIcon className="btn-back-icon" />
-                  </button>
-                  
                   <button
                     className="btn-cancel-mission"
                     onClick={handleCancelMission}
@@ -484,6 +474,17 @@ function RescueTeamDashboard() {
                     disabled={updating}
                   >
                     {updating && updatingAction === 'complete' ? 'Đang xử lý...' : 'Hoàn tất'}
+                  </button>
+                </div>
+                <div className="action-buttons" style={{marginTop: 10, justifyContent: 'center'}}>
+                  <button 
+                    className="btn-back btn-back-full" 
+                    onClick={handleBackToList}
+                    disabled={updating}
+                    aria-label="Quay lại"
+                    title="Quay lại"
+                  >
+                    <ArrowLeftIcon className="btn-back-icon" />
                   </button>
                 </div>
               </div>

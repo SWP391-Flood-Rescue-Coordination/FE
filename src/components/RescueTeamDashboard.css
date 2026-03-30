@@ -178,6 +178,8 @@
   gap: 30px;
   width: 100%;
   animation: slideUp 0.5s ease;
+  align-items: stretch;
+  min-height: 520px;
 }
 
 /* Cột trái và phải */
@@ -186,6 +188,13 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
+  height: 100%;
+}
+.mission-left {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  height: 100%;
 }
 
 /* Mission Card */
@@ -195,6 +204,9 @@
   padding: 20px;
   border: 2px solid #e9ecef;
   transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
 }
 
 .mission-card:hover {
@@ -204,6 +216,7 @@
 
 .mission-card.large {
   min-height: 150px;
+  flex: 1 1 0;
 }
 
 .mission-card label {
@@ -264,6 +277,7 @@
 /* Coordinates Display */
 .coordinates-container {
   margin-top: 15px;
+  margin-bottom: 0;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -419,7 +433,8 @@
 .action-buttons {
   display: flex;
   gap: 15px;
-  margin-top: auto;
+  margin-top: 40px;
+  justify-content: center;
 }
 
 /* Animations */
@@ -597,18 +612,32 @@
 }
 
 /* Back Button */
+
 .btn-back {
-  width: 64px;
-  min-width: 64px;
-  padding: 18px 12px;
+  flex: 1;
+  padding: 18px;
   background: #6c757d;
   color: white;
   border: none;
   border-radius: 12px;
+  font-size: 18px;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 0 4px 15px rgba(108, 117, 125, 0.3);
-  display: inline-flex;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-back-full {
+  width: 100%;
+  max-width: none;
+  margin-top: 20px;
+  font-size: 20px;
+  padding: 24px 0;
+  border-radius: 12px;
+  display: flex;
   align-items: center;
   justify-content: center;
 }
