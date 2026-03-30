@@ -336,9 +336,9 @@ const authService = {
 
   validateLoginInput: (phone, password) => createValidationResult(buildLoginValidationErrors(phone, password)),
 
-  validateRegisterInput: (username, phone, email, password, confirmPassword, fullName) =>
+  validateRegisterInput: (username, phone, email, password, confirmPassword, firstName, lastName) =>
     createValidationResult(
-      buildRegisterValidationErrors(username, phone, email, password, confirmPassword, fullName),
+      buildRegisterValidationErrors(username, phone, email, password, confirmPassword, firstName, lastName),
     ),
 
   validateForgotPasswordPhone: (phone) => {

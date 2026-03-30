@@ -30,36 +30,47 @@ const Register = ({ onClose, onShowLogin }) => {
     e.preventDefault()
     setError('')
 
+    // Sinh username từ email (trước @)
+    const username = email.split('@')[0] || phone;
+    // FE validate từng trường firstName, lastName
     const validation = authService.validateRegisterInput(
+      username,
       phone,
       email,
       password,
       confirmPassword,
       firstName,
-      lastName,
-    )
+      lastName
+    );
 
-    setFieldErrors(validation.errors || {})
+    setFieldErrors(validation.errors || {});
 
-    // Nếu có lỗi xác nhận mật khẩu không khớp thì xóa trắng cả hai ô
-    if (validation.errors && validation.errors.confirmPassword === 'Mật khẩu xác nhận không khớp.') {
-      setPassword('')
-      setConfirmPassword('')
+    // Nếu có lỗi xác nhận mật khẩu không khớp hoặc còn lỗi ở bất kỳ field bắt buộc nào thì xóa trắng cả hai ô mật khẩu
+    const requiredFields = ['lastName', 'firstName', 'phone', 'email', 'password', 'confirmPassword'];
+    const hasRequiredFieldError = requiredFields.some(field => validation.errors && validation.errors[field]);
+    if (
+      (validation.errors && validation.errors.confirmPassword === 'Mật khẩu xác nhận không khớp.') ||
+      hasRequiredFieldError
+    ) {
+      setPassword('');
+      setConfirmPassword('');
     }
 
     if (!validation.valid) {
-      return
+      return;
     }
 
+    // Khi gửi lên backend thì ghép lại thành fullName
+    const fullName = `${lastName} ${firstName}`.trim();
     try {
-      setLoading(true)
-      await authService.register(phone, email, password, firstName, lastName)
-      setShowSuccessPopup(true)
+      setLoading(true);
+      await authService.register(username, phone, email, password, fullName);
+      setShowSuccessPopup(true);
     } catch (err) {
-      const errorMessage = authService.getRegisterErrorMessage(err)
-      setError(errorMessage)
+      const errorMessage = authService.getRegisterErrorMessage(err);
+      setError(errorMessage);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
@@ -83,7 +94,6 @@ const Register = ({ onClose, onShowLogin }) => {
         {onClose && (
           <button className="close-button" onClick={onClose}>
             <span className="arrow-icon">←</span>
-            Về trang chủ
           </button>
         )}
       </div>
