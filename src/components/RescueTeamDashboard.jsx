@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react';
+import LogoutConfirmModal from './LogoutConfirmModal';
 import './RescueTeamDashboard.css';
 import rescueTeamService from '../services/rescueTeamService';
 import { useNavigate } from 'react-router-dom';
@@ -56,6 +57,7 @@ function RescueTeamDashboard() {
   const [updatingAction, setUpdatingAction] = useState('');
   const [currentUser, setCurrentUser] = useState(() => authService.getUserInfo());
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const userMenuRef = React.useRef(null);
   const roleLabel = ROLE_LABEL_MAP[String(currentUser?.role ?? '').toUpperCase()] || currentUser?.role || '-';
 
@@ -174,10 +176,19 @@ function RescueTeamDashboard() {
   };
 
   const handleLogout = () => {
+    setShowLogoutConfirm(true);
+  };
+
+  const handleLogoutConfirm = () => {
     authService.logout();
     setCurrentUser(null);
     setShowUserMenu(false);
+    setShowLogoutConfirm(false);
     navigate('/login', { replace: true });
+  };
+
+  const handleLogoutCancel = () => {
+    setShowLogoutConfirm(false);
   };
 
   const handleViewMap = (mission) => {
@@ -258,6 +269,7 @@ function RescueTeamDashboard() {
 
   return (
     <div className="rescue-dashboard">
+      <LogoutConfirmModal open={showLogoutConfirm} onConfirm={handleLogoutConfirm} onCancel={handleLogoutCancel} />
       {/* Header */}
       <header className="rescue-header">
         <h1>Hệ Thống Quản Lí Cứu Hộ Cứu Trợ Lũ Lụt</h1>

@@ -13,6 +13,7 @@ import {
 } from '@heroicons/react/24/outline'
 import adminService from '../services/adminService'
 import './AdminLayout.css'
+import LogoutConfirmModal from './LogoutConfirmModal'
 
 const NAV_ITEMS = [
   {
@@ -54,6 +55,7 @@ function AdminLayout({
   const userMenuRef = useRef(null)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showSidebarDrawer, setShowSidebarDrawer] = useState(false)
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
 
   useEffect(() => {
     const handleOutsideClick = (event) => {
@@ -93,6 +95,17 @@ function AdminLayout({
     }
   }, [showSidebarDrawer])
 
+  const handleLogout = () => {
+    setShowLogoutConfirm(true)
+  }
+  const handleLogoutConfirm = () => {
+    onLogout && onLogout()
+    setShowLogoutConfirm(false)
+  }
+  const handleLogoutCancel = () => {
+    setShowLogoutConfirm(false)
+  }
+
   if (!isAuthenticated) {
     return null
   }
@@ -102,7 +115,7 @@ function AdminLayout({
       <div className="admin-page">
         <header className="admin-header">
           <h1>Hệ Thống Quản Lí Cứu Hộ Cứu Trợ Lũ Lụt</h1>
-          <button type="button" className="admin-header-icon-button danger" onClick={onLogout} aria-label="Đăng xuất">
+          <button type="button" className="admin-header-icon-button danger" onClick={handleLogout} aria-label="Đăng xuất">
             <ArrowLeftOnRectangleIcon className="admin-header-icon" />
           </button>
         </header>
@@ -118,7 +131,7 @@ function AdminLayout({
               <button type="button" className="admin-primary-button" onClick={() => navigate(fallbackHomeRoute, { replace: true })}>
                 Quay về trang phù hợp
               </button>
-              <button type="button" className="admin-secondary-button" onClick={onLogout}>
+              <button type="button" className="admin-secondary-button" onClick={handleLogout}>
                 Đăng xuất
               </button>
             </div>
@@ -179,7 +192,7 @@ function AdminLayout({
             <Bars3Icon className="admin-header-icon" />
           </button>
 
-          <button type="button" className="admin-header-icon-button danger" onClick={onLogout} aria-label="Đăng xuất">
+          <button type="button" className="admin-header-icon-button danger" onClick={handleLogout} aria-label="Đăng xuất">
             <ArrowLeftOnRectangleIcon className="admin-header-icon" />
           </button>
         </div>
@@ -253,6 +266,8 @@ function AdminLayout({
                 })}
               </nav>
             </aside>
+
+            <LogoutConfirmModal open={showLogoutConfirm} onConfirm={handleLogoutConfirm} onCancel={handleLogoutCancel} />
           </>
         )}
       </main>

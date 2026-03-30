@@ -9,6 +9,7 @@ import { BsIncognito } from 'react-icons/bs'
 import authService from '../services/authService'
 import coordinatorService from '../services/coordinatorService'
 import './CoordinatorRequestsPage.css'
+import LogoutConfirmModal from '../components/LogoutConfirmModal'
 
 // Page thao tác chính của coordinator:
 // xác thực request và phân công đội/xe cho yêu cầu đã verified.
@@ -642,11 +643,22 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
   }
 
   const handleLogout = () => {
-    authService.logout()
-    setCurrentUser(null)
-    setShowUserMenu(false)
-    navigate('/login', { replace: true })
-  }
+    setShowLogoutConfirm(true);
+  };
+
+  const handleLogoutConfirm = () => {
+    authService.logout();
+    setCurrentUser && setCurrentUser(null);
+    setShowUserMenu && setShowUserMenu(false);
+    setShowLogoutConfirm(false);
+    navigate('/login', { replace: true });
+  };
+
+  const handleLogoutCancel = () => {
+    setShowLogoutConfirm(false);
+  };
+
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const handleToggleUserMenu = () => {
     setShowUserMenu((prev) => !prev)
@@ -1007,6 +1019,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
         {requestTableSection}
       </div>
       {assignModal}
+      <LogoutConfirmModal open={showLogoutConfirm} onConfirm={handleLogoutConfirm} onCancel={handleLogoutCancel} />
     </div>
   )
 }

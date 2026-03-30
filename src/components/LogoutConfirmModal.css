@@ -1,0 +1,53 @@
+.success-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  padding: 20px;
+}
+.success-box {
+  background: white;
+  border-radius: 16px;
+  padding: 60px 80px;
+  width: 100%;
+  max-width: 500px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  text-align: center;
+  animation: slideIn 0.3s ease-out;
+}
+.success-title {
+  color: #dc2626;
+  font-size: 32px;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 40px;
+  line-height: 1.4;
+}
+.success-button {
+  width: 100%;
+  padding: 16px;
+  background-color: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+.success-button.cancel {
+  background: #ccc;
+  color: #222;
+}
+.success-button:hover {
+  background-color: #b91c1c;
+}
+.success-button.cancel:hover {
+  background: #aaa;
+}

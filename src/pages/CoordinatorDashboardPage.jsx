@@ -18,6 +18,7 @@ import authService from '../services/authService'
 import coordinatorService from '../services/coordinatorService'
 import CoordinatorRequestsPage from './CoordinatorRequestsPage'
 import './CoordinatorDashboardPage.css'
+import LogoutConfirmModal from '../components/LogoutConfirmModal'
 
 // Dashboard tổng quan của điều phối viên:
 // tải song song số liệu request, đội cứu hộ và phương tiện rồi đẩy filter xuống bảng nghiệp vụ.
@@ -230,6 +231,8 @@ function CoordinatorDashboardPage() {
   const userMenuRef = useRef(null)
   const roleLabel = ROLE_LABEL_MAP[String(currentUser?.role ?? '').toUpperCase()] || currentUser?.role || '-'
 
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+
   const fetchDashboardStats = useCallback(async () => {
     setIsLoading(true)
     setErrorMessage('')
@@ -383,10 +386,19 @@ function CoordinatorDashboardPage() {
   }
 
   const handleLogout = () => {
+    setShowLogoutConfirm(true)
+  }
+
+  const handleLogoutConfirm = () => {
     authService.logout()
-    setCurrentUser(null)
-    setShowUserMenu(false)
+    setCurrentUser && setCurrentUser(null)
+    setShowUserMenu && setShowUserMenu(false)
+    setShowLogoutConfirm(false)
     navigate('/login', { replace: true })
+  }
+
+  const handleLogoutCancel = () => {
+    setShowLogoutConfirm(false)
   }
 
   const handleToggleUserMenu = () => {
@@ -562,6 +574,7 @@ function CoordinatorDashboardPage() {
           <CoordinatorRequestsPage embedded externalStatusFilter={requestsStatusFilter} />
         </section>
       </main>
+      <LogoutConfirmModal open={showLogoutConfirm} onConfirm={handleLogoutConfirm} onCancel={handleLogoutCancel} />
     </div>
   )
 }

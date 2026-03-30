@@ -16,6 +16,7 @@ import {
 import authService from '../services/authService'
 import managerService from '../services/managerService'
 import './ManagerDashboardPage.css'
+import LogoutConfirmModal from '../components/LogoutConfirmModal'
 
 const formatNumberVN = (value) => {
   const numeric = Number(value)
@@ -131,6 +132,7 @@ function ManagerDashboardPage() {
   const [errorMessage, setErrorMessage] = useState('')
   const [currentUser] = useState(() => authService.getUserInfo())
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   
   // Vehicle stats
   const [vehicleStats, setVehicleStats] = useState({
@@ -280,11 +282,7 @@ function ManagerDashboardPage() {
     setShowUserMenu((prev) => !prev)
   }
 
-  const handleLogout = () => {
-    authService.logout()
-    setShowUserMenu(false)
-    navigate('/login')
-  }
+
 
   const handleNavigateToVehicles = () => {
     navigate('/manager/vehicles')
@@ -638,6 +636,20 @@ function ManagerDashboardPage() {
         </div>
       </div>
     )
+  }
+
+  const handleLogout = () => {
+    setShowLogoutConfirm(true)
+  }
+
+  const handleLogoutConfirm = () => {
+    authService.logout()
+    setShowUserMenu(false)
+    navigate('/login')
+  }
+
+  const handleLogoutCancel = () => {
+    setShowLogoutConfirm(false)
   }
 
   if (isLoading) {

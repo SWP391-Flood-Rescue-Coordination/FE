@@ -8,6 +8,7 @@ import { formatDateTimeVN, HOME_ROUTE_BY_ROLE, normalizeRole } from '../pages/ad
 import RequestForm from './RequestForm'
 import ViewRequest from './ViewRequest'
 import './Dashboard.css'
+import LogoutConfirmModal from './LogoutConfirmModal'
 
 // Dashboard là màn hình chung cho citizen và guest:
 // quản lý lịch sử yêu cầu, popup tạo/xem request và tín hiệu "Báo an toàn".
@@ -64,6 +65,7 @@ function Dashboard() {
   const [remoteDashboardStats, setRemoteDashboardStats] = useState(null)
   const [isReportingSafeFromDashboard, setIsReportingSafeFromDashboard] = useState(false)
   const userMenuRef = useRef(null)
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
 
   const isAuthenticated = authService.isAuthenticated() && Boolean(currentUser)
   const roleKey = normalizeRole(currentUser?.role)
@@ -276,10 +278,20 @@ function Dashboard() {
   }
 
   const handleLogout = () => {
+    setShowLogoutConfirm(true)
+  }
+
+  const handleLogoutConfirm = () => {
     authService.logout()
-    setCurrentUser(null)
-    setShowUserMenu(false)
-    navigate('/login')
+    setCurrentUser && setCurrentUser(null)
+    setShowUserMenu && setShowUserMenu(false)
+    setShowLogoutConfirm(false)
+    navigate && navigate('/login', { replace: true })
+    if (typeof onLogout === 'function') onLogout()
+  }
+
+  const handleLogoutCancel = () => {
+    setShowLogoutConfirm(false)
   }
 
   const handleOpenRequestForm = () => {
@@ -570,6 +582,8 @@ function Dashboard() {
           <strong className="hotline-floating-number">0936 587 072</strong>
         </span>
       </a>
+
+      <LogoutConfirmModal open={showLogoutConfirm} onConfirm={handleLogoutConfirm} onCancel={handleLogoutCancel} />
     </div>
   )
 }
