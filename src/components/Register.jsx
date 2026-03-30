@@ -41,6 +41,12 @@ const Register = ({ onClose, onShowLogin }) => {
 
     setFieldErrors(validation.errors || {})
 
+    // Nếu có lỗi xác nhận mật khẩu không khớp thì xóa trắng cả hai ô
+    if (validation.errors && validation.errors.confirmPassword === 'Mật khẩu xác nhận không khớp.') {
+      setPassword('')
+      setConfirmPassword('')
+    }
+
     if (!validation.valid) {
       return
     }
