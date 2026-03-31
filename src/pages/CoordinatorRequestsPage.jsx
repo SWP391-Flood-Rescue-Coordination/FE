@@ -590,7 +590,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
     }
 
     const parsedEstimatedTime = Number(assignEstimatedTime)
-    if (!Number.isFinite(parsedEstimatedTime) || parsedEstimatedTime <= 0) {
+    if (!Number.isFinite(parsedEstimatedTime) || parsedEstimatedTime <= 0 || !Number.isInteger(parsedEstimatedTime)) {
       setAssignModalError('Vui lòng nhập thời gian dự kiến hợp lệ.')
       return
     }

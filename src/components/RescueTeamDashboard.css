@@ -1,4 +1,36 @@
-﻿.rescue-dashboard {
+﻿/* Nút X kiểu Chrome */
+.close-chrome-btn {
+  position: absolute;
+  top: 32px;
+  right: 32px;
+  z-index: 2;
+  width: 44px;
+  height: 44px;
+  border-radius: 6px;
+  border: none;
+  background: #dc2626;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.18s, border-color 0.18s;
+  padding: 0;
+}
+.close-chrome-icon {
+  font-size: 28px;
+  color: #fff;
+  font-weight: 900;
+  line-height: 1;
+  pointer-events: none;
+  transition: color 0.18s;
+}
+.close-chrome-btn:hover, .close-chrome-btn:focus {
+  background: #b91c1c;
+}
+.close-chrome-btn:hover .close-chrome-icon, .close-chrome-btn:focus .close-chrome-icon {
+  color: #fff;
+}
+.rescue-dashboard {
   display: flex;
   flex-direction: column;
   height: 100vh;
@@ -175,7 +207,7 @@
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 30px;
+  gap: 16px;
   width: 100%;
   animation: slideUp 0.5s ease;
   align-items: stretch;
@@ -189,6 +221,7 @@
   flex-direction: column;
   gap: 20px;
   height: 100%;
+  padding-right: 0;
 }
 .mission-left {
   display: flex;
@@ -199,24 +232,29 @@
 
 /* Mission Card */
 .mission-card {
-  background: #f8f9fa;
+  background: #fff;
   border-radius: 12px;
   padding: 20px;
-  border: 2px solid #e9ecef;
-  transition: all 0.3s ease;
+  border: none;
+  transition: none;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
 }
 
 .mission-card:hover {
-  border-color: #414144;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+  border-color: #e4e6eb;
+  box-shadow: none;
+  transform: none !important;
 }
 
 .mission-card.large {
   /* Bỏ min-height để card tự co theo nội dung */
   flex: 1 1 0;
+  /* Xóa mọi hiệu ứng hover/phóng to */
+  transform: none !important;
+  box-shadow: none !important;
+  border-color: #e4e6eb !important;
 }
 
 .mission-card label {
@@ -231,21 +269,21 @@
 
 .info-value {
   font-size: 16px;
-  color: #2c3e50;
+  color: #050505;
   line-height: 1.5;
   font-weight: 500;
-  padding: 10px 12px;
-  background: white;
-  border-radius: 8px;
-  border: 1px solid #dee2e6;
+  padding: 8px 12px;
+  background: #fff;
+  border-radius: 6px;
+  border: 1.5px solid #e4e6eb;
 }
 
 .info-value.description {
   min-height: 40px;
-  padding: 10px 12px;
-  background: white;
-  border-radius: 8px;
-  border: 1px solid #dee2e6;
+  padding: 8px 12px;
+  background: #fff;
+  border-radius: 6px;
+  border: 1.5px solid #e4e6eb;
   font-size: 16px;
   line-height: 1.5;
   white-space: pre-line;
@@ -256,10 +294,10 @@
   font-weight: 600;
   color: #667eea;
   text-align: center;
-  padding: 10px 12px;
-  background: white;
-  border-radius: 8px;
-  border: 1px solid #dee2e6;
+  padding: 8px 12px;
+  background: #fff;
+  border-radius: 6px;
+  border: 1.5px solid #e4e6eb;
 }
 
 /* Map Button */
@@ -550,7 +588,7 @@
 }
 
 .mission-table tbody tr:hover {
-  background: #f8f9fa;
+  background: transparent;
 }
 
 .mission-table td {
@@ -680,22 +718,21 @@
   }
 
   .mission-content {
-    grid-template-columns: 1fr;
+    gap: 14px;
     padding: 30px;
   }
   
-  .no-mission-box {
+    gap: 14px;
     padding: 40px 50px;
   }
 
-  .mission-table-wrapper {
+    padding: 16px 14px;
     overflow-x: auto;
   }
 
-  .mission-table {
-    min-width: 800px;
-  }
-}
+    border-color: #e4e6eb;
+    box-shadow: none;
+    transform: none !important;
 
 @media (max-width: 768px) {
   .rescue-header {
