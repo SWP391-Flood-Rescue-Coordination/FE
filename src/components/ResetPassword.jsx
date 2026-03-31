@@ -3,13 +3,15 @@ import authService from '../services/authService'
 import './ForgotPassword.css'
 
 // Flow quên mật khẩu bước cuối:
-// dùng phone + otp đã lưu tạm để gọi API reset-password.
+// - Màn trước đã lưu phone + otp vào sessionStorage.
+// - Màn này chỉ cần nhập mật khẩu mới và gọi API reset-password.
+// - Đây cũng là thời điểm backend kiểm tra OTP thật theo contract hiện tại.
 const EMPTY_FIELD_ERRORS = {
   newPassword: '',
   confirmPassword: '',
 }
 
-const ResetPassword = ({ onClose, onShowLogin, phone, otp }) => {
+const ResetPassword = ({ onClose, onShowLogin, onInvalidOtp, phone, otp, maskedEmail }) => {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -102,6 +104,21 @@ const ResetPassword = ({ onClose, onShowLogin, phone, otp }) => {
     }
   }
 
+  const handleInvalidOtp = () => {
+    authService.clearForgotPasswordResetContext()
+
+    if (onInvalidOtp) {
+      onInvalidOtp({
+        phone,
+        maskedEmail,
+        message: 'Mã không hợp lệ.',
+      })
+      return
+    }
+
+    setErrorMessage('Mã không hợp lệ.')
+  }
+
   const handleSubmit = async (event) => {
     event.preventDefault()
     setErrorMessage('')
@@ -129,19 +146,38 @@ const ResetPassword = ({ onClose, onShowLogin, phone, otp }) => {
     setIsSubmitting(true)
 
     try {
-      // Thành công xong sẽ xóa context reset để tab hiện tại không dùng lại OTP cũ.
+      // Đây là API cuối của flow quên mật khẩu.
+      // Backend sẽ:
+      // 1. kiểm tra phone + otp có khớp không,
+      // 2. nếu đúng thì mới cập nhật mật khẩu mới.
       const response = await authService.resetForgotPassword(phone, otp, newPassword)
+
       if (!response?.success) {
-        setErrorMessage(response?.message || 'Không thể đặt lại mật khẩu lúc này.')
+        const nextMessage = response?.message || 'Không thể đặt lại mật khẩu lúc này.'
+
+        if (authService.isForgotPasswordOtpErrorMessage(nextMessage)) {
+          handleInvalidOtp()
+          return
+        }
+
+        setErrorMessage(nextMessage)
         return
       }
 
+      // Thành công xong sẽ xóa context reset để tab hiện tại không dùng lại OTP cũ.
       authService.clearForgotPasswordResetContext()
       setIsDone(true)
       setRedirectCountdown(5)
       setFieldErrors(EMPTY_FIELD_ERRORS)
     } catch (error) {
-      setErrorMessage(authService.getForgotPasswordErrorMessage(error))
+      const nextMessage = authService.getForgotPasswordErrorMessage(error)
+
+      if (authService.isForgotPasswordOtpErrorMessage(nextMessage)) {
+        handleInvalidOtp()
+        return
+      }
+
+      setErrorMessage(nextMessage)
     } finally {
       setIsSubmitting(false)
     }

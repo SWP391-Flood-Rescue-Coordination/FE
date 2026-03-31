@@ -29,6 +29,68 @@ const normalizeValidPhone = (value) => {
   return RESCUE_REQUEST_PHONE_REGEX.test(candidate) ? candidate : ''
 }
 
+const maskForgotPasswordEmail = (value) => {
+  const candidate = String(value ?? '').trim()
+  if (!candidate || !candidate.includes('@')) {
+    return ''
+  }
+
+  const [localPart, domain] = candidate.split('@')
+  if (!localPart || !domain) {
+    return ''
+  }
+
+  // Nếu BE đã che sẵn email rồi thì FE dùng nguyên giá trị đó.
+  // Làm vậy để không "che đè" và vô tình làm sai format mà backend trả về.
+  if (localPart.includes('*')) {
+    return `${localPart}@${domain}`
+  }
+
+  if (localPart.length === 1) {
+    return `${localPart}***@${domain}`
+  }
+
+  if (localPart.length === 2) {
+    return `${localPart[0]}***${localPart[1]}@${domain}`
+  }
+
+  return `${localPart[0]}${'*'.repeat(Math.max(localPart.length - 2, 4))}${localPart[localPart.length - 1]}@${domain}`
+}
+
+const extractForgotPasswordMaskedEmail = (payload) => {
+  const directCandidate = [
+    payload?.maskedEmail,
+    payload?.masked_email,
+    payload?.maskedEmailAddress,
+    payload?.emailMasked,
+    payload?.email,
+  ]
+    .map((value) => maskForgotPasswordEmail(value))
+    .find(Boolean)
+
+  if (directCandidate) {
+    return directCandidate
+  }
+
+  const message = String(payload?.message ?? payload?.Message ?? '').trim()
+  if (!message) {
+    return ''
+  }
+
+  const matchedEmail = message.match(/([A-Za-z0-9._%*+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})/)
+  if (!matchedEmail) {
+    return ''
+  }
+
+  return maskForgotPasswordEmail(matchedEmail[1]) || matchedEmail[1]
+}
+
+const normalizeForgotPasswordText = (value) =>
+  String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+
 const resolveDefaultPhone = () => {
   const storedUser = parseStoredUser()
   const userPhone = normalizeValidPhone(storedUser?.phone)
@@ -105,7 +167,7 @@ const getRegisterErrorMessage = (error) => {
   return data?.message || data?.title || 'Không thể đăng ký. Vui lòng thử lại.'
 }
 
-const getForgotPasswordErrorMessage = (error) => {
+const getForgotPasswordErrorMessageLegacy = (error) => {
   const status = error?.response?.status
   const data = error?.response?.data
 
@@ -128,10 +190,39 @@ const getForgotPasswordErrorMessage = (error) => {
   return data?.message || data?.Message || data?.title || 'Không thể xử lý yêu cầu lúc này.'
 }
 
-const storeForgotPasswordResetContext = (phone, otp) => {
+const getForgotPasswordErrorMessage = (error) => {
+  const status = error?.response?.status
+  const data = error?.response?.data
+
+  if (status === 400) {
+    const validationMessages = flattenValidationErrors(data?.errors)
+    if (validationMessages.length > 0) {
+      return validationMessages.join(' ')
+    }
+
+    return data?.message || data?.Message || data?.title || 'Dữ liệu gửi lên không hợp lệ.'
+  }
+
+  if (status === 403) {
+    return data?.message || data?.Message || 'Không thể gửi email OTP. Vui lòng kiểm tra cấu hình gửi mail của hệ thống.'
+  }
+
+  if (status === 404) {
+    return data?.message || data?.Message || 'Không tìm thấy tài khoản phù hợp.'
+  }
+
+  if (status >= 500) {
+    return 'Hệ thống đang gặp lỗi. Vui lòng thử lại sau.'
+  }
+
+  return data?.message || data?.Message || data?.title || 'Không thể xử lý yêu cầu lúc này.'
+}
+
+const storeForgotPasswordResetContext = (phone, otp, maskedEmail = '') => {
   const payload = {
     phone: String(phone ?? '').trim(),
     otp: String(otp ?? '').trim(),
+    maskedEmail: String(maskedEmail ?? '').trim(),
   }
 
   sessionStorage.setItem(FORGOT_PASSWORD_CONTEXT_KEY, JSON.stringify(payload))
@@ -148,6 +239,7 @@ const getForgotPasswordResetContext = () => {
     return {
       phone: String(parsed?.phone ?? '').trim(),
       otp: String(parsed?.otp ?? '').trim(),
+      maskedEmail: String(parsed?.maskedEmail ?? '').trim(),
     }
   } catch {
     return null
@@ -156,6 +248,22 @@ const getForgotPasswordResetContext = () => {
 
 const clearForgotPasswordResetContext = () => {
   sessionStorage.removeItem(FORGOT_PASSWORD_CONTEXT_KEY)
+}
+
+const isForgotPasswordOtpErrorMessage = (message) => {
+  const normalizedMessage = normalizeForgotPasswordText(message)
+  if (!normalizedMessage) {
+    return false
+  }
+
+  const mentionsOtp = normalizedMessage.includes('otp') || normalizedMessage.includes('ma otp')
+  const indicatesInvalidOtp =
+    normalizedMessage.includes('khong chinh xac') ||
+    normalizedMessage.includes('khong hop le') ||
+    normalizedMessage.includes('het han') ||
+    normalizedMessage.includes('invalid')
+
+  return mentionsOtp && indicatesInvalidOtp
 }
 
 const preserveGuestRequestContextForLogout = () => {
@@ -385,7 +493,7 @@ const authService = {
     }
 
     // API login trả accessToken + thông tin user, FE lưu lại để route protected dùng chung.
-    const response = await api.post('/Auth/login', payload)
+    const response = await api.post('/Auth/login', payload, { skipAuth: true })
     const data = response?.data ?? {}
 
     if (!data?.success || !data?.accessToken || !data?.user) {
@@ -422,7 +530,7 @@ const authService = {
       fullName: String(fullName ?? '').trim(),
     }
 
-    const response = await api.post('/Auth/register', payload)
+    const response = await api.post('/Auth/register', payload, { skipAuth: true })
     const data = response?.data ?? {}
 
     if (!data?.success) {
@@ -443,7 +551,7 @@ const authService = {
     }
 
     // API public nên bỏ qua interceptor auth ở tầng api.js bằng config route backend.
-    const response = await api.post('/Auth/forgot-password/send-otp', payload)
+    const response = await api.post('/Auth/forgot-password/send-otp', payload, { skipAuth: true })
     return response?.data ?? {}
   },
 
@@ -454,7 +562,7 @@ const authService = {
       newPassword: String(newPassword ?? ''),
     }
 
-    const response = await api.post('/Auth/forgot-password/reset-password', payload)
+    const response = await api.post('/Auth/forgot-password/reset-password', payload, { skipAuth: true })
     return response?.data ?? {}
   },
 
@@ -473,6 +581,8 @@ const authService = {
   storeForgotPasswordResetContext,
   getForgotPasswordResetContext,
   clearForgotPasswordResetContext,
+  extractForgotPasswordMaskedEmail,
+  isForgotPasswordOtpErrorMessage,
 
   getLoginErrorMessage,
   getRegisterErrorMessage,

@@ -1,49 +1,119 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import authService from '../services/authService'
 import './ForgotPassword.css'
 
-// Flow quên mật khẩu bước 1-2:
-// nhập số điện thoại, nhận OTP và xác nhận OTP trước khi sang trang reset.
-const MOCK_OTP = '123456'
-const RESEND_SECONDS = 30
-const OTP_EXPIRY_SECONDS = 10 * 60
-const VERIFY_DELAY_MS = 3000
+// =========================================================
+// LUONG QUEN MAT KHAU MOI
+// =========================================================
+// Muc tieu cua component nay:
+// 1. Man dau tien chi nhap so dien thoai.
+// 2. FE goi API send-otp cua BE.
+// 3. Neu BE gui thanh cong, giao dien chuyen sang man nhap OTP 6 o.
+// 4. OTP nguoi dung nhap se duoc luu tam trong sessionStorage.
+// 5. Man ResetPassword se doc lai phone + otp do de goi API reset-password.
+//
+// Luu y quan trong ve contract backend hien tai:
+// - Theo commit BE f142835 / c66c1cd, backend CHUA co endpoint verify-otp rieng.
+// - Nghia la FE chi co the "xac nhan tiep tuc sang man reset" o day,
+//   con viec kiem tra OTP dung/sai that su xay ra khi submit API reset-password.
+// - Vi vay, component nay lam 2 viec:
+//   + Buoc 1: send OTP that bang API moi.
+//   + Buoc 2: luu phone + otp de man reset gui tiep len BE.
+// - Neu BE tra loi OTP sai o man reset, FE se dua nguoi dung quay lai man OTP
+//   va hien popup "Ma khong hop le." theo yeu cau UX.
+
+const OTP_LENGTH = 6
+const RESEND_SECONDS = 60
 
 const EMPTY_FIELD_ERRORS = {
   phone: '',
-  otp: '',
 }
 
 const sanitizeNumberText = (value) => String(value ?? '').replace(/[^0-9]/g, '')
 
-const formatCountdown = (totalSeconds) => {
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
-  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
-}
+const createEmptyOtpDigits = () => Array.from({ length: OTP_LENGTH }, () => '')
 
-const ForgotPassword = ({ onClose, onShowLogin, onOtpVerified }) => {
-  const [step, setStep] = useState('request')
-  const [phone, setPhone] = useState('')
-  const [submittedPhone, setSubmittedPhone] = useState('')
-  const [otp, setOtp] = useState('')
+const ForgotPassword = ({
+  onClose,
+  onShowLogin,
+  onOtpVerified,
+  initialStep = 'request',
+  initialPhone = '',
+  initialMaskedEmail = '',
+  initialOtpErrorMessage = '',
+}) => {
+  // -----------------------------
+  // NHOM STATE CHINH CUA FLOW
+  // -----------------------------
+  // step:
+  // - request: man nhap so dien thoai
+  // - verify : man nhap OTP
+  const [step, setStep] = useState(initialStep === 'verify' ? 'verify' : 'request')
+
+  // phone:
+  // - duoc bind voi input o man dau
+  // - sau khi gui OTP thanh cong, gia tri nay duoc copy sang submittedPhone
+  //   de FE luon biet "OTP hien tai dang thuoc so nao"
+  const [phone, setPhone] = useState(String(initialPhone ?? '').trim())
+  const [submittedPhone, setSubmittedPhone] = useState(String(initialPhone ?? '').trim())
+
+  // maskedEmail:
+  // - la email da che dau * de hien thi lai cho nguoi dung
+  // - FE co gang lay tu field rieng neu BE tra ve
+  // - neu BE chi tra message, FE se parse email tu message
+  const [maskedEmail, setMaskedEmail] = useState(String(initialMaskedEmail ?? '').trim())
+
+  // otpDigits:
+  // - mang 6 phan tu, moi phan tu ung voi 1 o OTP
+  // - su dung mang thay vi 1 string de de focus va dieu huong tung o
+  const [otpDigits, setOtpDigits] = useState(createEmptyOtpDigits)
+
+  // sendingOtp:
+  // - loading cho API send-otp
+  // continuingToReset:
+  // - loading nhe khi user bam "Tiep theo" de chuyen sang man reset
   const [sendingOtp, setSendingOtp] = useState(false)
-  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false)
+  const [continuingToReset, setContinuingToReset] = useState(false)
+
+  // resendCountdown:
+  // - dem nguoc 60 giay truoc khi cho phep gui lai OTP
   const [resendCountdown, setResendCountdown] = useState(0)
-  const [otpExpiresAt, setOtpExpiresAt] = useState(null)
-  const [currentTime, setCurrentTime] = useState(Date.now())
+
+  // errorMessage:
+  // - loi tong quan hien ngay tren form
+  // fieldErrors:
+  // - loi rieng cua tung field
   const [errorMessage, setErrorMessage] = useState('')
   const [fieldErrors, setFieldErrors] = useState(EMPTY_FIELD_ERRORS)
 
+  // otpModalMessage:
+  // - popup dung cho case OTP khong hop le
+  // - duoc su dung lai khi ResetPassword dua user quay lai man OTP
+  const [otpModalMessage, setOtpModalMessage] = useState(String(initialOtpErrorMessage ?? '').trim())
+
+  // ref de FE co the chu dong focus qua lai giua 6 o OTP
+  const otpInputRefs = useRef([])
+
   const isVerifyStep = step === 'verify'
-  const isBusy = sendingOtp || isVerifyingOtp
-  const remainingOtpSeconds = otpExpiresAt
-    ? Math.max(Math.ceil((otpExpiresAt - currentTime) / 1000), 0)
-    : 0
-  const isOtpExpired = isVerifyStep && otpExpiresAt !== null && remainingOtpSeconds === 0
-  const canResendOtp = isVerifyStep && resendCountdown === 0 && !isBusy
+  const isBusy = sendingOtp || continuingToReset
+  const otpValue = useMemo(() => otpDigits.join(''), [otpDigits])
+  const isOtpComplete = otpDigits.every((digit) => digit.length === 1)
+  const canResendOtp = isVerifyStep && resendCountdown === 0 && !sendingOtp
+
+  const subtitle = useMemo(() => {
+    if (isVerifyStep) {
+      return ''
+    }
+
+    return 'Nhập số điện thoại đã đăng ký để hệ thống gửi mã xác thực về email tương ứng.'
+  }, [isVerifyStep])
+
+  const displayedMaskedEmail = maskedEmail || 'email đã đăng ký của số điện thoại này'
 
   useEffect(() => {
+    // Moi khi vao flow quen mat khau, FE xoa context reset cu.
+    // Viec nay tranh truong hop user da tung nhap OTP cu, sau do quay lai va
+    // man reset van doc nham du lieu cu trong sessionStorage.
     authService.clearForgotPasswordResetContext()
   }, [])
 
@@ -60,24 +130,18 @@ const ForgotPassword = ({ onClose, onShowLogin, onOtpVerified }) => {
   }, [resendCountdown])
 
   useEffect(() => {
-    if (!isVerifyStep || !otpExpiresAt || remainingOtpSeconds <= 0) {
+    if (!isVerifyStep) {
       return undefined
     }
 
+    // Khi vua vao man OTP, FE focus ngay o dau tien de user co the go lien.
     const timer = window.setTimeout(() => {
-      setCurrentTime(Date.now())
-    }, 1000)
+      otpInputRefs.current[0]?.focus()
+      otpInputRefs.current[0]?.select?.()
+    }, 0)
 
     return () => window.clearTimeout(timer)
-  }, [isVerifyStep, otpExpiresAt, remainingOtpSeconds])
-
-  const subtitle = useMemo(() => {
-    if (isVerifyStep) {
-      return 'Nhập đúng mã OTP để chuyển sang bước đặt mật khẩu mới.'
-    }
-
-    return 'Nhập số điện thoại đã đăng ký để nhận mã OTP đặt lại mật khẩu.'
-  }, [isVerifyStep])
+  }, [isVerifyStep, maskedEmail])
 
   const updateFieldError = (fieldName, message) => {
     setFieldErrors((current) => ({
@@ -86,50 +150,115 @@ const ForgotPassword = ({ onClose, onShowLogin, onOtpVerified }) => {
     }))
   }
 
-  const validateField = (fieldName, nextValue = null) => {
-    let message = ''
-
-    if (fieldName === 'phone') {
-      const validation = authService.validateForgotPasswordPhone(nextValue ?? phone)
-      message = validation.valid ? '' : 'Số điện thoại không hợp lệ!'
-    }
-
-    if (fieldName === 'otp') {
-      const otpValue = String(nextValue ?? otp).trim()
-      if (!otpValue) {
-        message = 'Vui lòng nhập mã OTP.'
-      } else if (otpValue.length < 4 || otpValue.length > 6) {
-        message = 'Mã OTP phải từ 4 đến 6 ký tự.'
-      }
-    }
-
-    updateFieldError(fieldName, message)
+  const validatePhone = (nextValue = phone) => {
+    const validation = authService.validateForgotPasswordPhone(nextValue)
+    const message = validation.valid ? '' : validation.message || 'Số điện thoại không hợp lệ.'
+    updateFieldError('phone', message)
     return message
+  }
+
+  const focusOtpInput = (index) => {
+    const target = otpInputRefs.current[index]
+    if (!target) {
+      return
+    }
+
+    target.focus()
+    target.select?.()
+  }
+
+  const clearOtpDigits = () => {
+    setOtpDigits(createEmptyOtpDigits())
+  }
+
+  const applyOtpDigits = (startIndex, rawValue) => {
+    const numericValue = sanitizeNumberText(rawValue).slice(0, OTP_LENGTH - startIndex)
+    if (!numericValue) {
+      setOtpDigits((current) => {
+        const next = [...current]
+        next[startIndex] = ''
+        return next
+      })
+      return
+    }
+
+    setOtpDigits((current) => {
+      const next = [...current]
+      numericValue.split('').forEach((digit, offset) => {
+        next[startIndex + offset] = digit
+      })
+      return next
+    })
+
+    const nextFocusIndex = Math.min(startIndex + numericValue.length, OTP_LENGTH - 1)
+    window.requestAnimationFrame(() => {
+      focusOtpInput(nextFocusIndex)
+    })
   }
 
   const handlePhoneChange = (event) => {
     const numericValue = sanitizeNumberText(event.target.value)
     setPhone(numericValue)
-
-    if (fieldErrors.phone) {
-      validateField('phone', numericValue)
-    }
-  }
-
-  const handleOtpChange = (event) => {
-    const value = String(event.target.value ?? '').trim()
-    setOtp(value)
-
-    if (fieldErrors.otp) {
-      validateField('otp', value)
-    }
-  }
-
-  const handleSendOtp = async () => {
     setErrorMessage('')
 
-    const targetPhone = isVerifyStep ? submittedPhone : phone
-    const phoneError = validateField('phone', targetPhone)
+    if (fieldErrors.phone) {
+      validatePhone(numericValue)
+    }
+  }
+
+  const handleOtpChange = (index, event) => {
+    setErrorMessage('')
+    applyOtpDigits(index, event.target.value)
+  }
+
+  const handleOtpKeyDown = (index, event) => {
+    if (event.key === 'Backspace') {
+      event.preventDefault()
+
+      setOtpDigits((current) => {
+        const next = [...current]
+
+        if (next[index]) {
+          next[index] = ''
+          return next
+        }
+
+        if (index > 0) {
+          next[index - 1] = ''
+          window.requestAnimationFrame(() => {
+            focusOtpInput(index - 1)
+          })
+        }
+
+        return next
+      })
+
+      return
+    }
+
+    if (event.key === 'ArrowLeft' && index > 0) {
+      event.preventDefault()
+      focusOtpInput(index - 1)
+      return
+    }
+
+    if (event.key === 'ArrowRight' && index < OTP_LENGTH - 1) {
+      event.preventDefault()
+      focusOtpInput(index + 1)
+    }
+  }
+
+  const handleOtpPaste = (index, event) => {
+    event.preventDefault()
+    setErrorMessage('')
+    applyOtpDigits(index, event.clipboardData.getData('text'))
+  }
+
+  const handleSendOtp = async (targetPhone, { preserveVerifyStep = false } = {}) => {
+    setErrorMessage('')
+
+    const normalizedPhone = String(targetPhone ?? '').trim()
+    const phoneError = validatePhone(normalizedPhone)
     if (phoneError) {
       setErrorMessage(phoneError)
       return
@@ -138,23 +267,36 @@ const ForgotPassword = ({ onClose, onShowLogin, onOtpVerified }) => {
     setSendingOtp(true)
 
     try {
-      // FE gọi API gửi OTP thật, còn bước verify hiện mock ở client theo yêu cầu demo.
-      const response = await authService.sendForgotPasswordOtp(targetPhone)
+      // Day la diem FE "noi" vao API moi:
+      // - request body gui len chi gom so dien thoai
+      // - backend tu tim email da dang ky voi so do
+      // - backend gui OTP ve email va tra message cho FE
+      const response = await authService.sendForgotPasswordOtp(normalizedPhone)
+
       if (!response?.success) {
-        setErrorMessage(response?.message || 'Không thể gửi mã OTP lúc này.')
+        setErrorMessage(response?.message || 'Không thể gửi mã xác thực lúc này.')
         return
       }
 
+      // FE uu tien lay masked email tu field rieng neu backend co tra ve.
+      // Neu backend chi tra trong message, helper se parse chuoi message ra.
+      const nextMaskedEmail =
+        authService.extractForgotPasswordMaskedEmail(response) || maskedEmail || ''
+
       setStep('verify')
-      setSubmittedPhone(targetPhone)
-      setOtp('')
+      setPhone(normalizedPhone)
+      setSubmittedPhone(normalizedPhone)
+      setMaskedEmail(nextMaskedEmail)
+      clearOtpDigits()
       setResendCountdown(RESEND_SECONDS)
-      setOtpExpiresAt(Date.now() + OTP_EXPIRY_SECONDS * 1000)
-      setCurrentTime(Date.now())
-      setFieldErrors((current) => ({
-        ...current,
-        otp: '',
-      }))
+      setOtpModalMessage('')
+      setFieldErrors(EMPTY_FIELD_ERRORS)
+
+      // Neu dang o man verify va user bam gui lai OTP,
+      // preserveVerifyStep giup FE giu dung man hien tai, chi reset du lieu can thiet.
+      if (preserveVerifyStep) {
+        setErrorMessage('')
+      }
     } catch (error) {
       setErrorMessage(authService.getForgotPasswordErrorMessage(error))
     } finally {
@@ -162,47 +304,45 @@ const ForgotPassword = ({ onClose, onShowLogin, onOtpVerified }) => {
     }
   }
 
-  const handleVerifyOtp = (event) => {
-    event.preventDefault()
-    setErrorMessage('')
-
-    if (isOtpExpired) {
-      const message = 'Mã OTP đã hết hiệu lực. Vui lòng thao tác lại.'
-      updateFieldError('otp', message)
-      setErrorMessage(message)
-      return
-    }
-
-    const otpError = validateField('otp')
-    if (otpError) {
-      setErrorMessage(otpError)
-      return
-    }
-
-    const otpValue = String(otp).trim()
-    if (otpValue !== MOCK_OTP) {
-      const message = 'Mã OTP không chính xác. Vui lòng kiểm tra lại.'
-      updateFieldError('otp', message)
-      setErrorMessage(message)
-      return
-    }
-
-    setIsVerifyingOtp(true)
-
-    // Giữ một nhịp loading ngắn để trải nghiệm gần với bước xác thực thật.
-    window.setTimeout(() => {
-      authService.storeForgotPasswordResetContext(submittedPhone, otpValue)
-      setIsVerifyingOtp(false)
-
-      if (onOtpVerified) {
-        onOtpVerified(submittedPhone, otpValue)
-      }
-    }, VERIFY_DELAY_MS)
-  }
-
   const handleRequestSubmit = async (event) => {
     event.preventDefault()
-    await handleSendOtp()
+    await handleSendOtp(phone)
+  }
+
+  const handleResendOtp = async () => {
+    if (!canResendOtp) {
+      return
+    }
+
+    await handleSendOtp(submittedPhone, { preserveVerifyStep: true })
+  }
+
+  const handleVerifyOtpSubmit = async (event) => {
+    event.preventDefault()
+    if (!isOtpComplete || isBusy) {
+      return
+    }
+
+    setErrorMessage('')
+    setContinuingToReset(true)
+
+    try {
+      // Tai day FE KHONG goi API verify-otp rieng vi BE chua co endpoint do.
+      // Thay vao do, FE luu tam:
+      // - phone vua xin OTP
+      // - otp user vua nhap
+      // - maskedEmail de man sau co the dung lai neu can
+      //
+      // ResetPasswordPage se doc context nay va gui cung newPassword len
+      // endpoint /Auth/forgot-password/reset-password.
+      authService.storeForgotPasswordResetContext(submittedPhone, otpValue, maskedEmail)
+
+      if (onOtpVerified) {
+        await onOtpVerified(submittedPhone, otpValue, maskedEmail)
+      }
+    } finally {
+      setContinuingToReset(false)
+    }
   }
 
   const handleLoginClick = (event) => {
@@ -227,14 +367,14 @@ const ForgotPassword = ({ onClose, onShowLogin, onOtpVerified }) => {
             title="Về trang chủ"
             disabled={isBusy}
           >
-            <span className="arrow-icon">←</span>
+            <span className="arrow-icon">&lt;</span>
           </button>
         )}
       </div>
 
       <div className="forgot-password-box">
         <h2>Quên Mật Khẩu</h2>
-        <p className="forgot-password-subtitle">{subtitle}</p>
+        {subtitle && <p className="forgot-password-subtitle">{subtitle}</p>}
 
         {errorMessage && (
           <div className="forgot-password-message forgot-password-message-error">
@@ -254,7 +394,7 @@ const ForgotPassword = ({ onClose, onShowLogin, onOtpVerified }) => {
                 placeholder="Nhập số điện thoại đã đăng ký"
                 value={phone}
                 onChange={handlePhoneChange}
-                onBlur={() => validateField('phone')}
+                onBlur={() => validatePhone()}
                 disabled={isBusy}
                 required
               />
@@ -264,66 +404,101 @@ const ForgotPassword = ({ onClose, onShowLogin, onOtpVerified }) => {
             </div>
 
             <button type="submit" className="forgot-password-button" disabled={isBusy}>
-              {sendingOtp ? 'Đang gửi mã...' : 'Nhận mã OTP'}
+              {sendingOtp ? 'Đang gửi mã...' : 'Tiếp theo'}
             </button>
           </form>
         ) : (
-          <form onSubmit={handleVerifyOtp}>
-            <div className="forgot-password-message forgot-password-message-info">
-              Mã OTP dùng để test/demo local hiện tại là <strong>{MOCK_OTP}</strong>.
-            </div>
-
-            <div className="forgot-password-message forgot-password-message-info">
-              {isOtpExpired ? (
-                <>OTP đã hết hiệu lực. Vui lòng gửi lại mã mới.</>
-              ) : (
-                <>
-                  OTP đã được gửi tới số điện thoại <strong>{submittedPhone}</strong>. Mã có hiệu lực trong{' '}
-                  <strong>{formatCountdown(remainingOtpSeconds)}</strong>.
-                </>
-              )}
-            </div>
+          <form onSubmit={handleVerifyOtpSubmit}>
+            <p className="forgot-password-otp-intro">
+              Đã gửi mã đến Email <strong>{displayedMaskedEmail}</strong>.
+            </p>
 
             <div className="form-group">
-              <label htmlFor="otp">Mã OTP</label>
-              <div className="otp-input-group">
-                <input
-                  type="text"
-                  id="otp"
-                  placeholder="Nhập mã OTP"
-                  value={otp}
-                  onChange={handleOtpChange}
-                  onBlur={() => validateField('otp')}
-                  disabled={isBusy}
-                  required
-                />
-                <button
-                  type="button"
-                  className="send-otp-button"
-                  onClick={handleSendOtp}
-                  disabled={!canResendOtp}
-                >
-                  {resendCountdown > 0 ? `Gửi lại OTP (${resendCountdown}s)` : 'Gửi lại OTP'}
-                </button>
+              <div className="forgot-password-otp-row">
+                {otpDigits.map((digit, index) => (
+                  <input
+                    key={`otp-digit-${index}`}
+                    ref={(element) => {
+                      otpInputRefs.current[index] = element
+                    }}
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={1}
+                    value={digit}
+                    className="forgot-password-otp-box"
+                    onChange={(event) => handleOtpChange(index, event)}
+                    onKeyDown={(event) => handleOtpKeyDown(index, event)}
+                    onPaste={(event) => handleOtpPaste(index, event)}
+                    aria-label={`Ký tự OTP thứ ${index + 1}`}
+                    disabled={isBusy}
+                  />
+                ))}
               </div>
-              {fieldErrors.otp && <div className="forgot-password-field-error">{fieldErrors.otp}</div>}
             </div>
 
-            <button type="submit" className="forgot-password-button" disabled={isBusy || isOtpExpired}>
-              {isVerifyingOtp ? 'Đang xác nhận...' : 'Xác nhận OTP'}
-            </button>
+            <div className="forgot-password-verify-actions">
+              <button
+                type="submit"
+                className="forgot-password-button"
+                disabled={!isOtpComplete || isBusy}
+              >
+                {continuingToReset ? 'Đang xử lý...' : 'Tiếp theo'}
+              </button>
+            </div>
+
+            <div className="forgot-password-resend-section">
+              {resendCountdown > 0 ? (
+                <p className="forgot-password-resend-waiting">
+                  Vui lòng chờ <span className="forgot-password-countdown">{resendCountdown}</span>{' '}
+                  giây để nhận lại mã xác thực.
+                </p>
+              ) : (
+                <p className="forgot-password-inline-link-row">
+                  Chưa nhận được mã?{' '}
+                  <button
+                    type="button"
+                    className="forgot-password-inline-link"
+                    onClick={handleResendOtp}
+                    disabled={!canResendOtp}
+                  >
+                    Gửi lại OTP
+                  </button>
+                </p>
+              )}
+            </div>
           </form>
         )}
 
         <div className="forgot-password-footer">
           <p>
-            Cần quay lại màn hình đăng nhập?{' '}
             <a href="#" className="login-link" onClick={handleLoginClick}>
-              Đăng nhập tại đây
+              Không phải bạn?
             </a>
           </p>
         </div>
       </div>
+
+      {otpModalMessage && (
+        <div className="forgot-password-modal-backdrop" role="presentation">
+          <div
+            className="forgot-password-modal"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="forgot-password-modal-title"
+          >
+            <h3 id="forgot-password-modal-title">Thông báo</h3>
+            <p>{otpModalMessage}</p>
+            <button
+              type="button"
+              className="forgot-password-modal-button"
+              onClick={() => setOtpModalMessage('')}
+            >
+              Xác nhận
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

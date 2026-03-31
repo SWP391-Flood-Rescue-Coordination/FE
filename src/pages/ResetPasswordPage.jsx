@@ -21,8 +21,20 @@ const ResetPasswordPage = () => {
     <ResetPassword
       phone={resetContext.phone}
       otp={resetContext.otp}
+      maskedEmail={resetContext.maskedEmail}
       onClose={() => navigate('/')}
       onShowLogin={() => navigate('/login')}
+      onInvalidOtp={({ phone, maskedEmail, message }) =>
+        navigate('/forgot-password', {
+          replace: true,
+          state: {
+            resumeForgotPassword: true,
+            phone,
+            maskedEmail,
+            message,
+          },
+        })
+      }
     />
   )
 }

@@ -78,8 +78,18 @@ const Login = ({ onClose, onShowForgotPassword, onShowRegister, onLoginSuccess }
     <div className="login-container">
       <div className="login-header">
         {onClose && (
-          <button className="close-button" onClick={onClose} disabled={loading} aria-label="Về trang chủ" title="Về trang chủ">
-            <span className="arrow-icon">←</span>
+          <button
+            className="close-button"
+            onClick={onClose}
+            disabled={loading}
+            aria-label="Về trang chủ"
+            title="Về trang chủ"
+          >
+            <span className="home-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false">
+                <path d="M12 3.2 3.6 10v10.2h6.1v-6.2h4.6v6.2h6.1V10L12 3.2Z" />
+              </svg>
+            </span>
           </button>
         )}
       </div>
@@ -137,7 +147,7 @@ const Login = ({ onClose, onShowForgotPassword, onShowRegister, onLoginSuccess }
 
           <button
             type="button"
-            className="login-secondary-button"
+            className="login-forgot-button"
             onClick={handleForgotPasswordClick}
             disabled={loading}
           >
