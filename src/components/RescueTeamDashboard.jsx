@@ -416,20 +416,25 @@ function RescueTeamDashboard() {
           </div>
         ) : (
           /* Trạng thái: Xem chi tiết nhiệm vụ */
-          <div className="mission-container">
+          <div className="mission-container" style={{position: 'relative'}}>
+            {/* Nút X đóng form */}
+            <button
+              className="close-chrome-btn"
+              aria-label="Đóng chi tiết nhiệm vụ"
+              onClick={() => setSelectedMission(null)}
+            >
+              <span className="close-chrome-icon">×</span>
+            </button>
             <div className="mission-content">
-              {/* Cột trái */}
               <div className="mission-left">
                 <div className="mission-card">
                   <label>Địa chỉ</label>
                   <div className="info-value">{selectedMission.address}</div>
                 </div>
-
                 <div className="mission-card">
                   <label>Số điện thoại</label>
                   <div className="info-value">{selectedMission.phone}</div>
                 </div>
-
                 <div className="mission-card large">
                   <label>Bản đồ vị trí</label>
                   <button className="btn-map" onClick={() => handleViewMap(selectedMission)}>
@@ -454,8 +459,6 @@ function RescueTeamDashboard() {
                   </div>
                 </div>
               </div>
-
-              {/* Cột phải */}
               <div className="mission-right">
                 <div className="mission-card large">
                   <label>Mô tả sự cố</label>
@@ -463,14 +466,12 @@ function RescueTeamDashboard() {
                     {selectedMission.description}
                   </div>
                 </div>
-
                 <div className="mission-card">
                   <label>Thời gian xử lý dự kiến</label>
                   <div className="info-value time-estimate">
                     ⏱️ {selectedMission.estimatedTime}
                   </div>
                 </div>
-
                 <div className="action-buttons">
                   <button
                     className="btn-cancel-mission"
@@ -479,7 +480,6 @@ function RescueTeamDashboard() {
                   >
                     {updating && updatingAction === 'cancel' ? 'Đang xử lý...' : 'Thất bại'}
                   </button>
-
                   <button 
                     className="btn-complete" 
                     onClick={handleComplete}
@@ -489,15 +489,7 @@ function RescueTeamDashboard() {
                   </button>
                 </div>
                 <div className="action-buttons" style={{marginTop: 10, justifyContent: 'center'}}>
-                  <button 
-                    className="btn-back btn-back-full" 
-                    onClick={handleBackToList}
-                    disabled={updating}
-                    aria-label="Quay lại"
-                    title="Quay lại"
-                  >
-                    <ArrowLeftIcon className="btn-back-icon" />
-                  </button>
+                  {/* Back button removed as requested */}
                 </div>
               </div>
             </div>
