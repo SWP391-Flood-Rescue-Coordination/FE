@@ -13,52 +13,8 @@ import {
 } from '@heroicons/react/24/outline'
 import authService from '../services/authService'
 import managerService from '../services/managerService'
+import api from '../services/api'
 import './ManagerImportReceiptPage.css'
-
-const DEFAULT_IMPORT_SOURCES = [
-  {
-    id: 'source-1',
-    name: 'Công ty TNHH Vật tư Cứu hộ Á Châu',
-    type: 'Công ty',
-    region: 'Quận 1, TPHCM',
-    address: '123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP.HCM',
-  },
-  {
-    id: 'source-2',
-    name: 'Công ty CP Thiết bị An toàn Việt Nam',
-    type: 'Công ty',
-    region: 'Quận 3, TPHCM',
-    address: '456 Võ Văn Tần, Phường 6, Quận 3, TP.HCM',
-  },
-  {
-    id: 'source-3',
-    name: 'Công ty TNHH Trang thiết bị Y tế Medico',
-    type: 'Công ty',
-    region: 'Bình Thạnh, TPHCM',
-    address: '789 Điện Biên Phủ, Phường 25, Bình Thạnh, TP.HCM',
-  },
-  {
-    id: 'source-4',
-    name: 'Công ty CP Thực phẩm Dinh dưỡng Sài Gòn',
-    type: 'Công ty',
-    region: 'Tân Bình, TPHCM',
-    address: '234 Công Hòa, Phường 13, Tân Bình, TP.HCM',
-  },
-  {
-    id: 'source-5',
-    name: 'Công ty TNHH Được phẩm Hồng Hà',
-    type: 'Công ty',
-    region: 'Phú Nhuận, TPHCM',
-    address: '567 Phan Đăng Lưu, Phường 1, Phú Nhuận, TP.HCM',
-  },
-  {
-    id: 'source-6',
-    name: 'Công ty CP Vật tư Cứu trợ Thiên Phúc',
-    type: 'Công ty',
-    region: 'Quận 7, TPHCM',
-    address: '890 Nguyễn Văn Linh, Phường Tân Phú, Quận 7, TP.HCM',
-  },
-]
 
 const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value, key)
 
@@ -121,8 +77,24 @@ function ManagerImportReceiptPage() {
         setCategories([])
       }
 
-      // Use hardcoded import sources
-      setSourceOptions(DEFAULT_IMPORT_SOURCES)
+      // Lấy đơn vị nhập từ API mới
+      try {
+        const res = await api.get('/StockUnit/import-options')
+        const importOptions = Array.isArray(res.data)
+          ? res.data
+          : (res.data?.data || res.data?.Data || [])
+        setSourceOptions(importOptions.map((item) => ({
+          id: item.stockUnitId || item.id,
+          name: item.name,
+          type: item.type,
+          region: item.region,
+          address: item.address,
+          supportsImport: item.supportsImport,
+          supportsExport: item.supportsExport,
+        })))
+      } catch (err) {
+        setSourceOptions([])
+      }
 
       const hasRejected = [suppliesResult, categoriesResult].some(
         (result) => result.status === 'rejected',

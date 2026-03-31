@@ -13,52 +13,8 @@ import {
 } from '@heroicons/react/24/outline'
 import authService from '../services/authService'
 import managerService from '../services/managerService'
+import api from '../services/api'
 import './ManagerReliefExportPage.css'
-
-const DEFAULT_RECIPIENTS = [
-  {
-    id: 1,
-    name: 'UBND Phường 22',
-    type: 'Phường',
-    region: 'Bình Thạnh, TP.HCM',
-    address: '105 Nguyễn Hữu Cảnh, Phường 22, Bình Thạnh, TP.HCM',
-  },
-  {
-    id: 2,
-    name: 'Điểm tiếp nhận Phường 2',
-    type: 'Phường',
-    region: 'Tân Bình, TP.HCM',
-    address: '15 Hồng Hà, Phường 2, Tân Bình, TP.HCM',
-  },
-  {
-    id: 3,
-    name: 'Ban điều phối Phường 9',
-    type: 'Phường',
-    region: 'Phú Nhuận, TP.HCM',
-    address: '82 Hoàng Văn Thụ, Phường 9, Phú Nhuận, TP.HCM',
-  },
-  {
-    id: 4,
-    name: 'UBND Phường Bến Nghé',
-    type: 'Phường',
-    region: 'Quận 1, TP.HCM',
-    address: '45 Lê Duẩn, Phường Bến Nghé, Quận 1, TP.HCM',
-  },
-  {
-    id: 5,
-    name: 'Điểm tập kết Phường 12',
-    type: 'Phường',
-    region: 'Quận 3, TP.HCM',
-    address: '214 Nam Kỳ Khởi Nghĩa, Phường 12, Quận 3, TP.HCM',
-  },
-  {
-    id: 6,
-    name: 'Ban cứu trợ Bình Hưng',
-    type: 'Khu vực',
-    region: 'Bình Chánh, TP.HCM',
-    address: '28 Phạm Hùng, xã Bình Hưng, Bình Chánh, TP.HCM',
-  },
-]
 
 
 const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value, key)
@@ -130,13 +86,26 @@ function ManagerReliefExportPage() {
 
   const fetchPageData = useCallback(async () => {
     setIsLoading(true)
-
     try {
-      // Use hardcoded DEFAULT_RECIPIENTS instead of API call
-      const normalizedRecipients = DEFAULT_RECIPIENTS
-        .map(normalizeRecipient)
-        .filter((item) => item.id && item.name)
-      setRecipientOptions(normalizedRecipients)
+      // Lấy đơn vị xuất từ API mới
+      try {
+        const res = await api.get('/StockUnit/export-options')
+        const exportOptions = Array.isArray(res.data)
+          ? res.data
+          : (res.data?.data || res.data?.Data || [])
+        setRecipientOptions(exportOptions.map((item) => ({
+          id: item.stockUnitId || item.id,
+          stockUnitId: item.stockUnitId, // giữ lại stockUnitId để truyền payload
+          name: item.name,
+          type: item.type,
+          region: item.region,
+          address: item.address,
+          supportsImport: item.supportsImport,
+          supportsExport: item.supportsExport,
+        })))
+      } catch (err) {
+        setRecipientOptions([])
+      }
 
       // Fetch supplies from API
       try {
@@ -326,6 +295,7 @@ function ManagerReliefExportPage() {
 
     try {
       await managerService.createReliefExportOrder({
+        stockUnitId: selectedRecipient.stockUnitId, // truyền đúng stockUnitId cho backend
         teamId: toNumericIfPossible(selectedRecipient.id),
         destination: selectedRecipient.address || selectedRecipient.name,
         note: note || `Xuất cứu trợ cho ${selectedRecipient.name}`,

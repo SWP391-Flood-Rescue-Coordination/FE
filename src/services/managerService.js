@@ -637,6 +637,34 @@ const managerService = {
     }
   },
 
+  getImportOptions: async () => {
+    // Lấy đơn vị nhập kho
+    try {
+      const response = await api.get('/StockUnit/import-options')
+      const data = Array.isArray(response.data)
+        ? response.data
+        : (response.data?.data || response.data?.Data || [])
+      return data
+    } catch (error) {
+      console.error('[managerService] getImportOptions error:', error)
+      return []
+    }
+  },
+
+  getExportOptions: async () => {
+    // Lấy đơn vị xuất kho
+    try {
+      const response = await api.get('/StockUnit/export-options')
+      const data = Array.isArray(response.data)
+        ? response.data
+        : (response.data?.data || response.data?.Data || [])
+      return data
+    } catch (error) {
+      console.error('[managerService] getExportOptions error:', error)
+      return []
+    }
+  },
+
   getLowStockSupplies: async () => {
     try {
       const response = await api.get('/ReliefItem/low-stock', {
@@ -782,6 +810,7 @@ const managerService = {
   createReliefExportOrder: async (payload) => {
     try {
       const body = {
+        stockUnitId: toNumber(payload?.stockUnitId), // truyền đúng stockUnitId cho backend
         teamId: toNumber(payload?.teamId ?? payload?.recipientUnitId ?? 1),
         destination: String(payload?.destination ?? payload?.recipientAddress ?? payload?.address ?? '').trim(),
         note: String(payload?.notes ?? payload?.note ?? '').trim(),
