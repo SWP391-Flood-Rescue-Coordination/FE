@@ -304,8 +304,39 @@ const normalizeStockEntry = (entry) => ({
   address: entry?.address ?? entry?.Address ?? '',
   receiveAddress: entry?.receiveAddress ?? entry?.receive_address ?? entry?.ReceiveAddress ?? '',
   recipientAddress: entry?.recipientAddress ?? entry?.recipient_address ?? entry?.RecipientAddress ?? '',
+  stockUnitId:
+    entry?.stockUnitId ??
+    entry?.stock_unit_id ??
+    entry?.StockUnitId ??
+    entry?.stockUnit?.stockUnitId ??
+    entry?.stockUnit?.StockUnitId ??
+    entry?.stockUnit?.id ??
+    entry?.StockUnit?.stockUnitId ??
+    entry?.StockUnit?.StockUnitId ??
+    entry?.StockUnit?.id ??
+    null,
   stockUnit: entry?.stockUnit ?? entry?.StockUnit ?? null,
 })
+
+const toStockUnitAddressMap = (stockUnits) => {
+  const map = new Map()
+
+  normalizeArray(stockUnits).forEach((unit) => {
+    const address = firstNonEmptyText(unit?.address, unit?.Address)
+    if (!address) {
+      return
+    }
+
+    ;[unit?.stockUnitId, unit?.StockUnitId, unit?.id, unit?.Id].forEach((key) => {
+      const normalizedKey = String(key ?? '').trim()
+      if (normalizedKey) {
+        map.set(normalizedKey, address)
+      }
+    })
+  })
+
+  return map
+}
 
 const toReceiptItems = (entry, supplyNameMap) =>
   parseStockBody(entry?.body).map((part) => {
@@ -319,11 +350,19 @@ const toReceiptItems = (entry, supplyNameMap) =>
     }
   })
 
-const resolveReceiptAddress = (entry, ...values) =>
+const resolveStockUnitAddress = (entry, stockUnitAddressMap = new Map()) =>
   firstNonEmptyText(
-    ...values,
     entry?.stockUnit?.address,
     entry?.stockUnit?.Address,
+    stockUnitAddressMap.get(String(entry?.stockUnitId ?? '').trim()),
+    stockUnitAddressMap.get(String(entry?.stockUnit?.stockUnitId ?? '').trim()),
+    stockUnitAddressMap.get(String(entry?.stockUnit?.id ?? '').trim()),
+  )
+
+const resolveReceiptAddress = (entry, stockUnitAddressMap = new Map(), ...values) =>
+  firstNonEmptyText(
+    resolveStockUnitAddress(entry, stockUnitAddressMap),
+    ...values,
     extractAddressOnly(entry?.note),
   )
 
@@ -417,7 +456,7 @@ const extractStructuredNote = (note) => {
   return extractNoteOnly(rawNote)
 }
 
-const normalizeImportReceiptEntry = (entry, supplyNameMap) => {
+const normalizeImportReceiptEntry = (entry, supplyNameMap, stockUnitAddressMap = new Map()) => {
   const items = toReceiptItems(entry, supplyNameMap)
 
   return {
@@ -426,7 +465,7 @@ const normalizeImportReceiptEntry = (entry, supplyNameMap) => {
     source: repairDisplayText(entry?.source || entry?.fromTo || 'KhÃ´ng rÃµ nguá»“n', 'KhÃ´ng rÃµ nguá»“n'),
     note: repairDisplayText(extractStructuredNote(entry?.note), ''),
     receiveAddress: repairDisplayText(
-      resolveReceiptAddress(entry, entry?.receiveAddress, entry?.address),
+      resolveReceiptAddress(entry, stockUnitAddressMap, entry?.receiveAddress, entry?.address),
       '',
     ),
     createdAt: entry?.date,
@@ -436,7 +475,7 @@ const normalizeImportReceiptEntry = (entry, supplyNameMap) => {
   }
 }
 
-const normalizeExportReceiptEntry = (entry, supplyNameMap) => {
+const normalizeExportReceiptEntry = (entry, supplyNameMap, stockUnitAddressMap = new Map()) => {
   const items = toReceiptItems(entry, supplyNameMap)
 
   return {
@@ -448,7 +487,7 @@ const normalizeExportReceiptEntry = (entry, supplyNameMap) => {
     ),
     note: repairDisplayText(extractStructuredNote(entry?.note), ''),
     recipientAddress: repairDisplayText(
-      resolveReceiptAddress(entry, entry?.recipientAddress, entry?.address),
+      resolveReceiptAddress(entry, stockUnitAddressMap, entry?.recipientAddress, entry?.address),
       '',
     ),
     createdAt: entry?.date,
@@ -1107,13 +1146,15 @@ const managerService = {
 
   getImportReceipts: async () => {
     try {
-      const [response, supplies] = await Promise.all([
+      const [response, supplies, stockUnits] = await Promise.all([
         api.get('/StockHistory', { params: { type: 'IN' } }),
         managerService.getSupplies().catch(() => []),
+        managerService.getImportOptions().catch(() => []),
       ])
       const supplyNameMap = toSupplyNameMap(supplies)
+      const stockUnitAddressMap = toStockUnitAddressMap(stockUnits)
       const rows = normalizeArray(unwrapApiData(response)).map(normalizeStockEntry)
-      return rows.map((entry) => normalizeImportReceiptEntry(entry, supplyNameMap))
+      return rows.map((entry) => normalizeImportReceiptEntry(entry, supplyNameMap, stockUnitAddressMap))
     } catch (error) {
       console.error('[managerService] getImportReceipts error:', error)
       return []
@@ -1122,13 +1163,15 @@ const managerService = {
 
   getExportReceipts: async () => {
     try {
-      const [response, supplies] = await Promise.all([
+      const [response, supplies, stockUnits] = await Promise.all([
         api.get('/StockHistory', { params: { type: 'OUT' } }),
         managerService.getSupplies().catch(() => []),
+        managerService.getExportOptions().catch(() => []),
       ])
       const supplyNameMap = toSupplyNameMap(supplies)
+      const stockUnitAddressMap = toStockUnitAddressMap(stockUnits)
       const rows = normalizeArray(unwrapApiData(response)).map(normalizeStockEntry)
-      return rows.map((entry) => normalizeExportReceiptEntry(entry, supplyNameMap))
+      return rows.map((entry) => normalizeExportReceiptEntry(entry, supplyNameMap, stockUnitAddressMap))
     } catch (error) {
       console.error('[managerService] getExportReceipts error:', error)
       return []

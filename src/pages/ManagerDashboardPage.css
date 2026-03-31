@@ -781,6 +781,40 @@
   align-self: stretch;
 }
 
+.chart-card-combined {
+  padding: 1.45rem 1.55rem;
+}
+
+.chart-card-combined-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr);
+  gap: 0;
+  align-items: stretch;
+  min-height: 100%;
+}
+
+.chart-card-combined-section {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-card-supply-section {
+  padding-right: 1.75rem;
+}
+
+.chart-card-meter-section {
+  justify-content: center;
+  padding-left: 1.75rem;
+}
+
+.chart-card-divider {
+  background: #e5e7eb;
+  align-self: stretch;
+  justify-self: center;
+  width: 1px;
+}
+
 .chart-total {
   font-size: 1.5rem;
   font-weight: 700;
@@ -1694,8 +1728,13 @@
   .charts-container,
   .dashboard-overview-grid,
   .supply-overview-body,
-  .dashboard-fleet-topline {
+  .dashboard-fleet-topline,
+  .chart-card-combined-grid {
     grid-template-columns: 1fr;
+  }
+
+  .chart-card-divider {
+    display: none;
   }
 
   .supply-overview-header,

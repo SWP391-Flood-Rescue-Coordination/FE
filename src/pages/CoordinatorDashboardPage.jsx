@@ -20,6 +20,13 @@ import CoordinatorRequestsPage from './CoordinatorRequestsPage'
 import './CoordinatorDashboardPage.css'
 import LogoutConfirmModal from '../components/LogoutConfirmModal'
 
+/*
+  CoordinatorDashboardPage là dashboard tổng quan của điều phối viên.
+  Flow trình bày:
+  App.jsx -> /rescue-coordinator -> CoordinatorDashboardPage.jsx -> coordinatorService -> CoordinatorRequestsPage.
+
+  Trang này vừa hiển thị KPI tổng quan, vừa đẩy status filter xuống bảng request embedded bên dưới.
+*/
 // Dashboard tổng quan của điều phối viên:
 // tải song song số liệu request, đội cứu hộ và phương tiện rồi đẩy filter xuống bảng nghiệp vụ.
 const REQUEST_STATUS_ITEMS = [
@@ -233,6 +240,7 @@ function CoordinatorDashboardPage() {
 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
 
+  // Hàm trung tâm của dashboard coordinator: tải request + team + vehicle song song rồi tự tổng hợp số liệu.
   const fetchDashboardStats = useCallback(async () => {
     setIsLoading(true)
     setErrorMessage('')

@@ -10,8 +10,17 @@ import ViewRequest from './ViewRequest'
 import './Dashboard.css'
 import LogoutConfirmModal from './LogoutConfirmModal'
 
-// Dashboard là màn hình chung cho citizen và guest:
-// quản lý lịch sử yêu cầu, popup tạo/xem request và tín hiệu "Báo an toàn".
+/*
+  Dashboard là màn hình trung tâm của actor citizen/guest.
+  Flow chính khi trình bày:
+  App.jsx -> Dashboard.jsx -> RequestForm/ViewRequest -> rescueRequestService -> API RescueRequest.
+
+  File này chịu trách nhiệm:
+  - phân biệt citizen đã đăng nhập và guest đang theo dõi request
+  - tải lịch sử yêu cầu và thống kê dashboard
+  - mở popup tạo yêu cầu và popup xem/sửa yêu cầu
+  - phát hiện và xử lý tín hiệu "Báo an toàn"
+*/
 
 const SAFE_NOTICE_TEXT = 'Đội cứu hộ đã xác nhận hoàn tất nhiệm vụ'
 const SAFE_NOTICE_TITLE = SAFE_NOTICE_TEXT
@@ -128,6 +137,8 @@ function Dashboard() {
     }
   }
 
+  // Citizen gọi API danh sách request của mình.
+  // Guest chỉ lấy request đang track qua localStorage thông qua rescueRequestService.
   const loadRequestHistory = useCallback(async () => {
     setIsLoadingHistory(true)
     try {
@@ -154,6 +165,8 @@ function Dashboard() {
     }
   }, [isCitizen])
 
+  // Tải cụm số liệu tổng quan cho dashboard công dân.
+  // Nếu API lỗi, UI vẫn còn fallback statistics được tính từ requestHistory.
   const loadDashboardStatistics = useCallback(async () => {
     try {
       const stats = await rescueRequestService.getCitizenDashboardStatistics()
@@ -294,6 +307,7 @@ function Dashboard() {
     setShowLogoutConfirm(false)
   }
 
+  // Chỉ mở form tạo yêu cầu khi người dùng chưa có yêu cầu active.
   const handleOpenRequestForm = () => {
     if (hasActiveRequest || isPreparingRequestForm) {
       return
@@ -301,6 +315,7 @@ function Dashboard() {
     setShowRequestForm(true)
   }
 
+  // Dashboard chỉ cho xem chi tiết yêu cầu đang được theo dõi gần nhất.
   const handleOpenStatusDetail = () => {
     if (requestHistory.length === 0) {
       return
@@ -311,6 +326,7 @@ function Dashboard() {
 
   const dismissSafeCompletionNotice = useCallback(() => {}, [])
 
+  // Nút "Báo an toàn" ở dashboard là lối tắt, nhưng cuối cùng vẫn gọi cùng service như trong ViewRequest.
   const handleReportSafeFromDashboard = useCallback(async () => {
     const requestId = latestRequest?.requestId
     if (!requestId || isReportingSafeFromDashboard) {
@@ -345,6 +361,7 @@ function Dashboard() {
     loadRequestHistory,
   ])
 
+  // RequestForm trả dữ liệu vừa tạo về đây để dashboard refresh lịch sử và trạng thái nút chính.
   const handleCloseRequestForm = async (requestData) => {
     setShowRequestForm(false)
 

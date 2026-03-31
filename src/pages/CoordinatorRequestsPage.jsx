@@ -11,6 +11,18 @@ import coordinatorService from '../services/coordinatorService'
 import './CoordinatorRequestsPage.css'
 import LogoutConfirmModal from '../components/LogoutConfirmModal'
 
+/*
+  CoordinatorRequestsPage là bàn thao tác chính của điều phối viên.
+  Flow trình bày:
+  CoordinatorDashboardPage.jsx hoặc App route -> CoordinatorRequestsPage.jsx
+  -> coordinatorService.verifyRequest / markRequestDuplicate / assignRequest.
+
+  Đây là nơi coordinator thực hiện toàn bộ bước nghiệp vụ:
+  - xem danh sách request
+  - xác thực request
+  - đánh dấu trùng
+  - mở modal phân công đội và xe
+*/
 // Page thao tác chính của coordinator:
 // xác thực request và phân công đội/xe cho yêu cầu đã verified.
 const STATUS_OPTIONS = [
@@ -67,6 +79,7 @@ const normalizeVehicleIdList = (value) => {
   return singleValue ? [singleValue] : []
 }
 
+// Cache local này giúp bảng còn nhớ đội/xe đã từng assign để hiển thị lại ổn định khi reload nhẹ.
 const loadAssignmentCache = () => {
   try {
     const raw = localStorage.getItem(ASSIGNMENT_CACHE_KEY)
@@ -214,6 +227,7 @@ const toNullableNumber = (value) => {
   return Number.isFinite(numeric) ? numeric : null
 }
 
+// Chuẩn hóa request về một shape duy nhất để UI bảng, modal assign và dashboard embedded dùng chung.
 const normalizeRequest = (item) => {
   const priorityLevelId = item.priority_level_id ?? item.priorityLevelId ?? null
   const priorityRaw =
@@ -366,6 +380,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
     [navigate],
   )
 
+  // Tải danh sách rescue request và chuẩn hóa toàn bộ record trước khi đổ vào bảng.
   const fetchRequestList = useCallback(async () => {
     setIsListLoading(true)
     setErrorMessage('')
@@ -392,6 +407,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
     }
   }, [handleApiError])
 
+  // Tải danh sách đội và xe để modal assign có sẵn option.
   const fetchOptionData = useCallback(async () => {
     setErrorMessage('')
     const [teamResult, vehicleResult] = await Promise.allSettled([
@@ -481,6 +497,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
     return sorted
   }, [requests, statusFilter])
 
+  // Bước 1 của coordinator: xác thực request vừa gửi lên để chuyển sang trạng thái verified.
   const handleVerify = async (request) => {
     const requestId = request.request_id
     const isPending = request.status === 'PENDING'
@@ -507,6 +524,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
     }
   }
 
+  // Đánh dấu request trùng để loại bỏ các yêu cầu lặp khỏi luồng phân công.
   const handleMarkDuplicate = async (request) => {
     const requestId = request.request_id
     const isPending = request.status === 'PENDING'
@@ -533,6 +551,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
     }
   }
 
+  // Chỉ request đã verified mới đi tiếp vào modal phân công đội và phương tiện.
   const openAssignModal = (request) => {
     if (!request?.request_id || request.status !== 'VERIFIED') {
       return
@@ -572,6 +591,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
     setAssignModalError('')
   }
 
+  // Bước cuối của coordinator: gửi requestId + teamId + vehicleIds lên API assign.
   const handleAssign = async () => {
     const requestId = assignTargetRequest?.request_id
 

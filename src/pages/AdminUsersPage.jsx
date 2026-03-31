@@ -6,6 +6,11 @@ import authService from '../services/authService'
 import adminService from '../services/adminService'
 import { HOME_ROUTE_BY_ROLE, ROLE_ORDER, formatDateTimeVN, normalizeRole, normalizeText } from './adminShared'
 
+/*
+  AdminUsersPage là màn quản lý người dùng của admin.
+  Flow trình bày:
+  App.jsx -> /admin/users -> AdminUsersPage.jsx -> adminService.getUsers/getRoles/updateUserRole/updateUserStatus.
+*/
 // Page admin user management: tải user + role, cho đổi role và khóa/mở khóa ngay trên bảng.
 function AdminUsersPage() {
   const navigate = useNavigate()
@@ -39,6 +44,7 @@ function AdminUsersPage() {
     [navigate],
   )
 
+  // Tải đồng thời danh sách user và danh sách role để dropdown role render đúng ngay lần đầu.
   const loadUsers = useCallback(
     async ({ silent = false } = {}) => {
       if (!silent) {
@@ -133,6 +139,7 @@ function AdminUsersPage() {
     navigate('/login', { replace: true })
   }
 
+  // Cập nhật role cho từng user sau khi đã qua lớp chặn restriction trong adminService.
   const handleUpdateRole = async (user) => {
     const nextRole = normalizeRole(draftRoles[user.userId] || user.role)
     if (!nextRole || nextRole === normalizeRole(user.role)) {
@@ -165,6 +172,7 @@ function AdminUsersPage() {
     }
   }
 
+  // Khóa/mở khóa tài khoản trực tiếp trên bảng và refresh lại list khi thành công.
   const handleToggleUserStatus = async (user) => {
     const nextIsActive = !user.isActive
     const confirmMessage = nextIsActive

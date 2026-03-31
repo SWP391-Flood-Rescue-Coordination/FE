@@ -1,5 +1,10 @@
 export const ROLE_ORDER = ['ADMIN', 'MANAGER', 'COORDINATOR', 'RESCUE_TEAM', 'CITIZEN']
 
+/*
+  adminShared.js là bộ helper chia sẻ cho admin và coordinator.
+  Khi trình bày code có thể giải thích file này như "tầng normalize/format dùng chung"
+  để các page không phải lặp lại logic status, role, time format.
+*/
 // Bộ helper chung cho admin/coordinator nhằm tránh lặp lại logic format/normalize ở nhiều page.
 export const REQUEST_STATUS_OPTIONS = [
   { value: '', label: 'Tất cả trạng thái' },

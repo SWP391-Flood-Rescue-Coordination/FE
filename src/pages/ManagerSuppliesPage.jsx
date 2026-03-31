@@ -221,7 +221,6 @@ function ManagerSuppliesPage() {
       <div className="manager-supplies-page">
         <button type="button" className="back-button" onClick={handleBack} aria-label="Quay lại">
           <ArrowLeftIcon className="icon" />
-          <span>Quay lại</span>
         </button>
         <div className="page-loading">
           <div className="loading-spinner"></div>
@@ -235,7 +234,6 @@ function ManagerSuppliesPage() {
     <div className="manager-supplies-page">
       <button type="button" className="back-button" onClick={handleBack} aria-label="Quay lại">
         <ArrowLeftIcon className="icon" />
-        <span>Quay lại</span>
       </button>
 
       <header className="page-header">

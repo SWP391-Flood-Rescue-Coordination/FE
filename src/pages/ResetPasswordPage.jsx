@@ -1,42 +1,26 @@
-import React, { useEffect, useMemo } from 'react'
+import React, { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import ResetPassword from '../components/ResetPassword'
 import authService from '../services/authService'
 
+// Route /reset-password hiện chỉ còn để tương thích điều hướng cũ.
+// Nó đọc context đang lưu trong authService rồi đẩy người dùng về lại /forgot-password.
 const ResetPasswordPage = () => {
   const navigate = useNavigate()
-  const resetContext = useMemo(() => authService.getForgotPasswordResetContext(), [])
+  const resetContext = authService.getForgotPasswordResetContext()
 
   useEffect(() => {
-    if (!resetContext?.phone || !resetContext?.otp) {
-      navigate('/forgot-password', { replace: true })
-    }
+    navigate('/forgot-password', {
+      replace: true,
+      state: {
+        resumeForgotPassword: Boolean(resetContext?.phone),
+        phone: resetContext?.phone || '',
+        maskedEmail: resetContext?.maskedEmail || '',
+        otp: resetContext?.otp || '',
+      },
+    })
   }, [navigate, resetContext])
 
-  if (!resetContext?.phone || !resetContext?.otp) {
-    return null
-  }
-
-  return (
-    <ResetPassword
-      phone={resetContext.phone}
-      otp={resetContext.otp}
-      maskedEmail={resetContext.maskedEmail}
-      onClose={() => navigate('/')}
-      onShowLogin={() => navigate('/login')}
-      onInvalidOtp={({ phone, maskedEmail, message }) =>
-        navigate('/forgot-password', {
-          replace: true,
-          state: {
-            resumeForgotPassword: true,
-            phone,
-            maskedEmail,
-            message,
-          },
-        })
-      }
-    />
-  )
+  return null
 }
 
 export default ResetPasswordPage

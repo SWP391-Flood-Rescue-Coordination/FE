@@ -9,30 +9,55 @@
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
-.manager-relief-export-page .back-button {
-  position: static;
+.manager-relief-export-page .back-button,
+.manager-relief-export-page .scroll-top-button {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  justify-content: flex-start;
-  width: fit-content;
-  max-width: none;
-  margin: 0 0 1rem;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
   padding: 0;
   border: none;
+  border-radius: 999px;
   background: transparent;
   color: #374151;
-  font-size: 1.15rem;
-  font-weight: 600;
   cursor: pointer;
-  transition: color 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+  box-shadow: none;
 }
 
-.manager-relief-export-page .back-button:hover {
+.manager-relief-export-page .back-button {
+  position: static;
+  margin: 0 0 1rem;
+}
+
+.manager-relief-export-page .scroll-top-button {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 30;
+}
+
+.manager-relief-export-page .back-button:hover,
+.manager-relief-export-page .scroll-top-button:hover {
+  background: #e5e7eb;
   color: #111827;
 }
 
-.manager-relief-export-page .back-button .icon {
+.manager-relief-export-page .back-button:active,
+.manager-relief-export-page .scroll-top-button:active {
+  background: #d1d5db;
+  transform: scale(0.97);
+}
+
+.manager-relief-export-page .back-button:focus-visible,
+.manager-relief-export-page .scroll-top-button:focus-visible {
+  outline: 2px solid #9ca3af;
+  outline-offset: 4px;
+}
+
+.manager-relief-export-page .back-button .icon,
+.manager-relief-export-page .scroll-top-button .icon {
   width: 1.35rem;
   height: 1.35rem;
 }
@@ -178,7 +203,7 @@
 
 .manager-relief-export-page .recipient-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--recipient-grid-columns, 3), minmax(0, 1fr));
   gap: 1rem;
 }
 
@@ -527,29 +552,6 @@
   color: #6b7280;
   font-size: 0.86rem;
   line-height: 1.5;
-}
-
-.manager-relief-export-page .scroll-top-button {
-  position: fixed;
-  right: 24px;
-  bottom: 24px;
-  width: 3rem;
-  height: 3rem;
-  border: none;
-  border-radius: 999px;
-  background: #dc2626;
-  color: #fff;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 14px 28px rgba(220, 38, 38, 0.28);
-  cursor: pointer;
-  z-index: 30;
-}
-
-.manager-relief-export-page .scroll-top-button .icon {
-  width: 1.35rem;
-  height: 1.35rem;
 }
 
 .manager-relief-export-page .page-loading {

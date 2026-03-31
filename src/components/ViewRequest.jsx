@@ -4,7 +4,16 @@ import authService from '../services/authService'
 import rescueRequestService from '../services/rescueRequestService'
 import './ViewRequest.css'
 
-// Popup xem/chỉnh sửa request cho cả citizen đã đăng nhập và guest đang track request.
+/*
+  ViewRequest là popup xem/sửa rescue request cho citizen hoặc guest.
+  Flow đầy đủ:
+  Dashboard.jsx -> ViewRequest.jsx -> rescueRequestService -> API RescueRequest.
+
+  Điểm quan trọng:
+  - Citizen và guest dùng API khác nhau nhưng UI được gom về một component.
+  - Chỉ request Pending mới cho phép chỉnh sửa.
+  - Khi đội cứu hộ đã hoàn tất, citizen/guest có thể bấm "Báo an toàn" để đóng yêu cầu.
+*/
 const sanitizeNumberText = (value) => String(value ?? '').replace(/[^0-9]/g, '')
 
 const EMPTY_FORM_DATA = {
@@ -67,6 +76,9 @@ function ViewRequest({ onClose, requestData, requestId }) {
 
   useEffect(() => {
     const loadRequestData = async () => {
+      // Đây là điểm rẽ nhánh citizen/guest:
+      // citizen đi vào API my request / request detail,
+      // guest đi vào API guest status kết hợp dữ liệu cache local.
       // Tùy actor mà lấy detail từ API citizen hoặc API guest status.
       setIsLoading(true)
       setErrorMessage('')
@@ -284,6 +296,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
     setErrorMessage((currentMessage) => (messages.includes(currentMessage) ? '' : currentMessage))
   }
 
+  // Dùng cùng rule validate với RequestForm để create và update không bị lệch hành vi.
   const handlePeopleFieldBlur = () => {
     if (!isEditing) {
       return
@@ -311,6 +324,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
     clearMessageIfMatches([PHONE_ERROR_MESSAGE])
   }
 
+  // Submit chỉnh sửa request, chọn API citizen hay guest dựa trên usesCitizenRequestFlow.
   const handleSubmit = async (event) => {
     event.preventDefault()
 
@@ -386,6 +400,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
     }
   }
 
+  // Chỉ cho bật chế độ edit nếu request còn Pending.
   const handleEditClick = (event) => {
     if (isEditing) {
       return
@@ -402,6 +417,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
     setIsEditing(true)
   }
 
+  // Nhánh xác nhận an toàn của actor citizen/guest sau khi rescue team hoàn tất nhiệm vụ.
   const handleReportSafe = async () => {
     if (!canAcknowledgeSafe) {
       return

@@ -29,6 +29,14 @@ import {
   normalizeStatus,
 } from './adminShared'
 
+/*
+  AdminDashboardPage là màn tổng quan của actor admin.
+  Flow trình bày:
+  App.jsx -> /admin -> AdminDashboardPage.jsx -> adminService -> nhiều API list -> render KPI/chart/bảng.
+
+  Page này không dựa vào một endpoint summary duy nhất.
+  Thay vào đó FE tự tổng hợp số liệu từ user, rescue team, vehicle và rescue request.
+*/
 // Dashboard admin ghép nhiều API độc lập để tạo góc nhìn giám sát toàn hệ thống.
 const ROLE_CARD_META = {
   ADMIN: {
@@ -194,6 +202,8 @@ function AdminDashboardPage() {
   const hasAdminAccess = isAuthenticated && roleKey === 'ADMIN'
   const fallbackHomeRoute = HOME_ROUTE_BY_ROLE[roleKey] || '/'
 
+  // Hàm trung tâm của dashboard admin:
+  // tải song song nhiều API rồi tự ghép thành state tổng quan cho toàn trang.
   const loadOverview = useCallback(
     async ({ silent = false } = {}) => {
       if (!silent) {

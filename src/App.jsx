@@ -18,6 +18,17 @@ import AdminUsersPage from './pages/AdminUsersPage'
 import AdminRequestsPage from './pages/AdminRequestsPage'
 import './App.css'
 
+/*
+  App.jsx là route map gốc của frontend.
+  Khi trình bày code, có thể lần lượt đi theo 4 nhánh chính:
+  - Auth: /login, /register, /forgot-password
+  - Citizen/guest rescue request: /
+  - Coordinator: /rescue-coordinator
+  - Admin: /admin, /admin/users, /admin/requests
+
+  Route manager và rescue team vẫn tồn tại để hệ thống chạy đầy đủ,
+  nhưng phần comment/readme chi tiết của đợt này không đi sâu vào hai actor đó.
+*/
 function App() {
   return (
     <Router>

@@ -4,8 +4,14 @@ import authService from '../services/authService'
 import rescueRequestService from '../services/rescueRequestService'
 import './RequestForm.css'
 
-// Popup tạo request cho citizen/guest.
-// Dữ liệu map và form sẽ được đổi sang payload BE tại rescueRequestService.
+/*
+  RequestForm là popup tạo rescue request cho citizen/guest.
+  Flow đầy đủ:
+  Dashboard.jsx -> RequestForm.jsx -> rescueRequestService.createRescueRequest() -> POST /RescueRequest.
+
+  File này chỉ giữ state UI, validate client-side và chọn vị trí trên map.
+  Việc đổi formData sang payload backend được gom về rescueRequestService.
+*/
 const INITIAL_FORM_DATA = {
   requestId: null,
   contactName: '',
@@ -88,6 +94,7 @@ function RequestForm({ onClose }) {
       mapRef.current = map
 
       map.on('click', async (event) => {
+        // Người dùng chọn điểm trên map, FE reverse geocode để có cả tọa độ lẫn địa chỉ text.
         // Chỉ cho pick điểm trong TP.HCM để đồng nhất với rule nghiệp vụ hiện tại.
         const { lat, lng } = event.latlng
 
@@ -172,6 +179,7 @@ function RequestForm({ onClose }) {
     setErrorMessage((currentMessage) => (messages.includes(currentMessage) ? '' : currentMessage))
   }
 
+  // Nhóm condition có cặp loại trừ nhau: ngập dưới 1m và ngập trên 1m.
   const handleConditionChange = (condition) => {
     setFormData((prev) => {
       const nextValue = !prev.conditions[condition]
@@ -223,6 +231,8 @@ function RequestForm({ onClose }) {
     clearMessageIfMatches([PHONE_ERROR_MESSAGE])
   }
 
+  // Submit chính của luồng citizen/guest tạo yêu cầu cứu hộ.
+  // Nếu thành công, component trả data ngược về Dashboard để dashboard refresh ngay.
   const handleSubmit = async (event) => {
     event.preventDefault()
     setErrorMessage('')

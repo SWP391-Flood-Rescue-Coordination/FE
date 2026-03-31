@@ -8,6 +8,14 @@ const PRIORITY_LEVELS = [
   { priorityLevelId: 3, priorityName: 'Thấp' },
 ]
 
+/*
+  coordinatorService là tầng API của actor điều phối viên.
+  Nó phục vụ 2 page chính:
+  - CoordinatorDashboardPage.jsx
+  - CoordinatorRequestsPage.jsx
+
+  File này gom API lấy request, đội cứu hộ, phương tiện và các action verify/duplicate/assign.
+*/
 // Service dành cho điều phối viên: lấy request, đội cứu hộ, xe và gọi các action verify/assign.
 const unwrapApiData = (response) => {
   if (response?.data?.data !== undefined) {
@@ -76,6 +84,7 @@ const toVehicleApiStatusValue = (status) => {
 }
 
 const coordinatorService = {
+  // Nhóm 1: tải dữ liệu nền cho dashboard và bảng request.
   getRescueRequests: async (status = '', priorityId = null) => {
     const params = {}
     const normalizedStatus = toApiStatusValue(status)
@@ -114,6 +123,7 @@ const coordinatorService = {
     return normalizeArray(unwrapApiData(response)).map(normalizeVehicle)
   },
 
+  // Nhóm 2: action nghiệp vụ trên từng request trong CoordinatorRequestsPage.
   verifyRequest: async (requestId) => {
     const response = await api.put(`${REQUEST_BASE}/${requestId}/verify`)
     return unwrapApiData(response)

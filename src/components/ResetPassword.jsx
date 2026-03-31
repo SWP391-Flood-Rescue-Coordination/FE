@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import { ChevronLeftIcon } from '@heroicons/react/24/outline'
 import authService from '../services/authService'
 import './ForgotPassword.css'
 
@@ -204,8 +205,9 @@ const ResetPassword = ({ onClose, onShowLogin, onInvalidOtp, phone, otp, maskedE
             aria-label="Về trang chủ"
             title="Về trang chủ"
             disabled={isSubmitting}
+            type="button"
           >
-            <span className="arrow-icon">←</span>
+            <ChevronLeftIcon className="forgot-password-back-icon" />
           </button>
         )}
       </div>

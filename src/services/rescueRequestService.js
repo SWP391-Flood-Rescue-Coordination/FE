@@ -12,6 +12,16 @@ const TERMINAL_STATUSES = new Set(['COMPLETED', 'CANCELLED', 'CANCELED', 'DUPLIC
 const GUEST_REQUEST_TRACKING_KEY = 'guestRescueRequestTracking'
 const GUEST_REQUEST_DETAILS_KEY = 'guestRescueRequestDetails'
 
+/*
+  rescueRequestService là service trung tâm của actor citizen/guest.
+  Tất cả flow tạo/xem/sửa/báo an toàn của Dashboard, RequestForm và ViewRequest đều đi qua đây.
+
+  Vai trò chính:
+  - chuẩn hóa dữ liệu rescue request giữa nhiều shape DTO của backend
+  - map form citizen sang payload create/update
+  - quản lý guest tracking trong localStorage
+  - tách riêng API citizen và API guest nhưng cho UI dùng cùng một interface
+*/
 // Service này là lớp chuẩn hóa dữ liệu rescue request giữa FE và nhiều API BE khác nhau.
 const normalizeText = (value) => String(value ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 
@@ -108,6 +118,7 @@ const toBooleanFlag = (value) => {
   return false
 }
 
+// Chuẩn hóa cụm số người để create/update citizen và guest cùng dùng một rule.
 const parsePeopleCounts = (formData) => {
   // FE luôn quy đổi lại số người thành tổng/adult/elderly/children
   // để thống nhất create, update citizen và update guest.
@@ -258,6 +269,7 @@ const normalizeConditions = (conditions) => ({
   floodOver1m: Boolean(conditions?.floodOver1m),
 })
 
+// Chuyển dữ liệu request từ backend về shape thống nhất cho RequestForm/ViewRequest/Dashboard.
 const toRequestFormData = (requestItem) => {
   const rawLocation = String(requestItem?.location ?? requestItem?.Location ?? '').trim()
   const latitude = toNullableCoordinate(pickFirstMeaningful(requestItem?.latitude, requestItem?.Latitude))
@@ -398,6 +410,7 @@ const getConfirmRescuedErrorMessage = (error) => {
   return data?.message || data?.Message || data?.title || 'Không thể báo an toàn lúc này.'
 }
 
+// RequestForm.jsx dùng hàm này để đổi state form citizen sang contract create của backend.
 const buildCreatePayload = (formData) => {
   const { latitude, longitude } = parseCoordinates(formData?.location)
   const { totalPeople, adultCount, elderlyCount, childrenCount } = parsePeopleCounts(formData)
@@ -531,6 +544,7 @@ const clearGuestDetails = () => {
   localStorage.removeItem(GUEST_REQUEST_DETAILS_KEY)
 }
 
+// Guest không có account, nên FE phải tự giữ một snapshot request trong localStorage để theo dõi lại sau refresh.
 const buildGuestDetailsFromForm = (formData, requestId = null, status = 'Pending') => {
   const { latitude, longitude } = parseCoordinates(formData?.location)
   const { totalPeople, adultCount, elderlyCount, childrenCount } = parsePeopleCounts(formData)
@@ -553,6 +567,7 @@ const buildGuestDetailsFromForm = (formData, requestId = null, status = 'Pending
   }
 }
 
+// Citizen update và guest update hiện dùng gần cùng payload nên service gom chung mapper ở đây.
 const buildGuestUpdatePayload = (formData) => {
   const { latitude, longitude } = parseCoordinates(formData?.location)
   const { totalPeople, adultCount, elderlyCount, childrenCount } = parsePeopleCounts(formData)
@@ -572,6 +587,7 @@ const buildGuestUpdatePayload = (formData) => {
 }
 
 const rescueRequestService = {
+  // Nhóm 1: API dành cho dashboard công dân và tạo request.
   getCitizenDashboardStatistics: async () => {
     const response = await api.get('/RescueRequest/citizen-dashboard-statistics', { skipAuth: true })
     return unwrapApiData(response)
@@ -603,6 +619,7 @@ const rescueRequestService = {
     return data
   },
 
+  // Nhóm 2: API citizen đã đăng nhập.
   getMyRequests: async () => {
     const response = await api.get('/RescueRequest/my-requests')
     return normalizeArray(unwrapApiData(response))
@@ -613,6 +630,7 @@ const rescueRequestService = {
     return unwrapApiData(response)
   },
 
+  // Nhóm 3: API guest và cache guest tracking.
   getGuestRequestStatus: async (requestId) => {
     const response = await api.get('/RescueRequest/guest/status', { params: { requestId } })
     return unwrapApiData(response)
@@ -654,6 +672,7 @@ const rescueRequestService = {
     return result
   },
 
+  // Nhóm 4: update/request detail và báo an toàn cho citizen hoặc guest.
   updateMyRequest: async (requestId, formData) => {
     const payload = buildGuestUpdatePayload(formData)
     const response = await api.put(`/RescueRequest/${requestId}/update`, payload)

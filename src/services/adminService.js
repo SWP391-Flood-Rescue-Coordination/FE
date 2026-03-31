@@ -38,6 +38,18 @@ const VEHICLE_TYPE_OPTIONS = [
   { id: 6, code: 'DRONE', label: 'Thiết bị bay' },
 ]
 
+/*
+  adminService là tầng giao tiếp API của actor admin.
+  Nó phục vụ 3 page chính:
+  - AdminDashboardPage.jsx
+  - AdminUsersPage.jsx
+  - AdminRequestsPage.jsx
+
+  File này gom:
+  - normalize dữ liệu user/role/request/vehicle/team
+  - các rule hạn chế đổi role
+  - lời gọi API quản trị
+*/
 // Admin dùng chung nhiều mapper với manager nhưng có thêm nhánh user/role/request moderation.
 const unwrapApiData = (response) => {
   if (response?.data?.data !== undefined) {
@@ -187,6 +199,7 @@ const buildVehiclePayload = (vehicleData, { isCreate = false, originalStatus = '
 }
 
 const adminService = {
+  // Nhóm 1: user/role management cho AdminUsersPage.
   getUsers: async (userId = null) => {
     const params = userId ? { userId: Number(userId) } : undefined
     const response = await api.get(`${ADMIN_BASE}`, { params })
@@ -217,6 +230,7 @@ const adminService = {
   getAssignableRoles: (roles = []) =>
     normalizeArray(roles).filter((role) => !isRestrictedRole(role?.value ?? role)),
 
+  // Nhóm 2: dữ liệu tổng quan dashboard admin.
   getRescueTeams: async (status = '') => {
     const params = status ? { status: String(status).trim().toUpperCase() } : undefined
     const response = await api.get(TEAM_BASE, { params })
@@ -277,6 +291,7 @@ const adminService = {
     return response?.data ?? {}
   },
 
+  // Nhóm 3: request moderation cho AdminDashboardPage và AdminRequestsPage.
   getRequests: async (status = '') => {
     const params = {}
     const normalizedStatus = toApiRequestStatusValue(status)

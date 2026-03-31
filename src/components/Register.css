@@ -74,31 +74,49 @@
   padding: 0;
 }
 
-.close-button {
+.register-container .close-button {
   position: fixed;
   top: 20px;
   left: 20px;
   background: transparent;
-  color: #666;
+  color: #4b5563;
   border: none;
-  border-radius: 6px;
-  padding: 12px 20px;
-  font-size: 28px;
+  border-radius: 999px;
+  width: 48px;
+  height: 48px;
+  padding: 0;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 10px;
-  transition: all 0.3s ease;
+  justify-content: center;
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
   z-index: 1000;
-  font-weight: 600;
 }
 
-.close-button:hover {
-  color: #333;
+.register-container .close-button:hover {
+  background: #e5e7eb;
+  color: #111827;
 }
 
-.arrow-icon {
-  font-size: 28px;
+.register-container .close-button:active {
+  background: #d1d5db;
+  transform: scale(0.97);
+}
+
+.register-container .close-button:focus-visible {
+  outline: 2px solid #9ca3af;
+  outline-offset: 4px;
+}
+
+.register-container .close-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.register-container .register-back-icon {
+  width: 22px;
+  height: 22px;
+  stroke-width: 2.2;
 }
 
 .register-box {

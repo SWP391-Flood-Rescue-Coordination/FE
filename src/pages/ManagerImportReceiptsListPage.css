@@ -34,31 +34,59 @@
   }
 }
 
+.manager-import-receipts-list-page .back-button,
+.manager-import-receipts-list-page .scroll-top-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: #4b5563;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+  box-shadow: none;
+}
+
 .manager-import-receipts-list-page .back-button {
   position: fixed;
   top: 20px;
   left: 20px;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  border: none;
-  background: transparent;
-  color: #4b5563;
-  font-size: 1.15rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.2s ease, color 0.2s ease;
   z-index: 20;
 }
 
-.manager-import-receipts-list-page .back-button .icon {
+.manager-import-receipts-list-page .scroll-top-button {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 30;
+}
+
+.manager-import-receipts-list-page .back-button .icon,
+.manager-import-receipts-list-page .scroll-top-button .icon {
   width: 1.35rem;
   height: 1.35rem;
 }
 
-.manager-import-receipts-list-page .back-button:hover {
+.manager-import-receipts-list-page .back-button:hover,
+.manager-import-receipts-list-page .scroll-top-button:hover {
+  background: #e5e7eb;
   color: #111827;
-  transform: translateX(-3px);
+}
+
+.manager-import-receipts-list-page .back-button:active,
+.manager-import-receipts-list-page .scroll-top-button:active {
+  background: #d1d5db;
+  transform: scale(0.97);
+}
+
+.manager-import-receipts-list-page .back-button:focus-visible,
+.manager-import-receipts-list-page .scroll-top-button:focus-visible {
+  outline: 2px solid #9ca3af;
+  outline-offset: 4px;
 }
 
 .manager-import-receipts-list-page .page-header {

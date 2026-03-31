@@ -15,6 +15,14 @@ import adminService from '../services/adminService'
 import './AdminLayout.css'
 import LogoutConfirmModal from './LogoutConfirmModal'
 
+/*
+  AdminLayout là khung dùng chung cho toàn bộ route admin:
+  /admin -> AdminDashboardPage
+  /admin/users -> AdminUsersPage
+  /admin/requests -> AdminRequestsPage
+
+  Các page admin chỉ cần tập trung vào dữ liệu riêng, còn header/menu/logout/guard UI dùng chung ở đây.
+*/
 const NAV_ITEMS = [
   {
     to: '/admin',
@@ -95,6 +103,7 @@ function AdminLayout({
     }
   }, [showSidebarDrawer])
 
+  // Tất cả page admin dùng chung luồng xác nhận đăng xuất này.
   const handleLogout = () => {
     setShowLogoutConfirm(true)
   }

@@ -1,7 +1,15 @@
 import React, { useState } from 'react'
+import { ChevronLeftIcon } from '@heroicons/react/24/outline'
 import authService from '../services/authService'
 import './Register.css'
 
+/*
+  Flow đăng ký:
+  App.jsx -> RegisterPage.jsx -> Register.jsx -> authService.register() -> api.js -> /Auth/register.
+
+  File này chịu trách nhiệm gom firstName + lastName, validate từng field
+  và hiển thị popup xác nhận sau khi tạo tài khoản thành công.
+*/
 const Register = ({ onClose, onShowLogin }) => {
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
@@ -26,6 +34,8 @@ const Register = ({ onClose, onShowLogin }) => {
     })
   }
 
+  // Submit chính của form đăng ký.
+  // Component chuẩn hóa dữ liệu trước khi chuyển cho authService gọi API thật.
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
@@ -74,6 +84,7 @@ const Register = ({ onClose, onShowLogin }) => {
     }
   }
 
+  // Sau khi BE tạo tài khoản thành công, UI quay người dùng về login thay vì tự đăng nhập.
   const handleSuccessConfirm = () => {
     setShowSuccessPopup(false)
     if (onShowLogin) {
@@ -81,6 +92,7 @@ const Register = ({ onClose, onShowLogin }) => {
     }
   }
 
+  // Link phụ để quay lại luồng đăng nhập.
   const handleLoginClick = (e) => {
     e.preventDefault()
     if (onShowLogin) {
@@ -92,8 +104,15 @@ const Register = ({ onClose, onShowLogin }) => {
     <div className="register-container">
       <div className="register-header">
         {onClose && (
-          <button className="close-button" onClick={onClose}>
-            <span className="arrow-icon">←</span>
+          <button
+            type="button"
+            className="close-button"
+            onClick={onClose}
+            aria-label="Quay lại"
+            title="Quay lại"
+            disabled={loading}
+          >
+            <ChevronLeftIcon className="register-back-icon" />
           </button>
         )}
       </div>

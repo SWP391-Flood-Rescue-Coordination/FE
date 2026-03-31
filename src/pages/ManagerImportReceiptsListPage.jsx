@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeftIcon,
+  ChevronUpIcon,
   ClipboardDocumentListIcon,
   MagnifyingGlassIcon,
   CalendarIcon,
@@ -30,6 +31,7 @@ function ManagerImportReceiptsListPage() {
   const [errorMessage, setErrorMessage] = useState('')
   const [selectedReceipt, setSelectedReceipt] = useState(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
+  const [showScrollTop, setShowScrollTop] = useState(false)
   
   // Filter states
   const [startDate, setStartDate] = useState('')
@@ -99,6 +101,16 @@ function ManagerImportReceiptsListPage() {
     fetchReceipts()
   }, [navigate, fetchReceipts])
 
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 420)
+    }
+
+    handleScroll()
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
   // Handle search and filters
   useEffect(() => {
     let filtered = [...receipts]
@@ -160,6 +172,10 @@ function ManagerImportReceiptsListPage() {
   const handleCloseModal = () => {
     setShowDetailModal(false)
     setSelectedReceipt(null)
+  }
+
+  const handleScrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const formatDateTime = (dateString) => formatDateTimeVN(dateString)
@@ -476,6 +492,17 @@ function ManagerImportReceiptsListPage() {
             })()}
           </div>
         </div>
+      )}
+
+      {showScrollTop && (
+        <button
+          type="button"
+          className="scroll-top-button"
+          onClick={handleScrollToTop}
+          aria-label="Lên đầu trang"
+        >
+          <ChevronUpIcon className="icon" />
+        </button>
       )}
     </div>
   )

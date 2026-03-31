@@ -23,6 +23,31 @@ const toFiniteNumber = (value) => {
   return Number.isFinite(numeric) ? numeric : null
 }
 
+const resolveRecipientGridColumns = (count) => {
+  const total = Math.max(1, Number(count) || 0)
+  const maxColumns = Math.min(4, total)
+  let bestColumns = 1
+  let bestScore = Number.POSITIVE_INFINITY
+
+  for (let columns = 1; columns <= maxColumns; columns += 1) {
+    const rows = Math.ceil(total / columns)
+    const emptySlots = rows * columns - total
+    const score =
+      emptySlots * 10 +
+      (emptySlots === 1 ? 2 : 0) +
+      Math.abs(rows - columns) +
+      (columns === 1 ? 6 : 0) -
+      columns * 0.1
+
+    if (score < bestScore) {
+      bestScore = score
+      bestColumns = columns
+    }
+  }
+
+  return bestColumns
+}
+
 function ManagerImportReceiptPage() {
   const navigate = useNavigate()
   
@@ -361,7 +386,10 @@ function ManagerImportReceiptPage() {
               </div>
             </div>
 
-            <div className="recipient-grid">
+            <div
+              className="recipient-grid"
+              style={{ '--recipient-grid-columns': resolveRecipientGridColumns(sourceOptions.length) }}
+            >
               {sourceOptions.length === 0 && (
                 <div className="empty-row">Chưa có nguồn nhập từ dữ liệu hệ thống.</div>
               )}

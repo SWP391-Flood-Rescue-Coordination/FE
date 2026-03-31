@@ -9,6 +9,17 @@ const GUEST_REQUEST_DETAILS_KEY = 'guestRescueRequestDetails'
 const GUEST_REQUEST_TRACKING_BACKUP_KEY = 'guestRescueRequestTrackingBackup'
 const GUEST_REQUEST_DETAILS_BACKUP_KEY = 'guestRescueRequestDetailsBackup'
 
+/*
+  authService là trung tâm nghiệp vụ cho các luồng:
+  - đăng nhập
+  - đăng ký
+  - quên mật khẩu / reset mật khẩu
+  - quản lý session localStorage/sessionStorage
+  - hỗ trợ bảo toàn ngữ cảnh guest rescue request khi login/logout
+
+  Các component Login/Register/ForgotPassword chỉ giữ state UI.
+  Mọi rule validate dùng chung, gọi API và xử lý token/context sẽ đi qua file này.
+*/
 // Nhóm helper phía dưới chịu trách nhiệm quản lý session đăng nhập
 // và giữ lại ngữ cảnh guest request khi người dùng đăng nhập / đăng xuất.
 const parseStoredUser = () => {
@@ -29,6 +40,8 @@ const normalizeValidPhone = (value) => {
   return RESCUE_REQUEST_PHONE_REGEX.test(candidate) ? candidate : ''
 }
 
+// Rule hiển thị email ẩn cho luồng quên mật khẩu.
+// FE đang bám theo backend hiện tại: giữ 3 ký tự đầu của local-part rồi thêm "****".
 const maskForgotPasswordEmail = (value) => {
   const candidate = String(value ?? '').trim()
   if (!candidate || !candidate.includes('@')) {
@@ -40,23 +53,18 @@ const maskForgotPasswordEmail = (value) => {
     return ''
   }
 
-  // Nếu BE đã che sẵn email rồi thì FE dùng nguyên giá trị đó.
-  // Làm vậy để không "che đè" và vô tình làm sai format mà backend trả về.
   if (localPart.includes('*')) {
     return `${localPart}@${domain}`
   }
 
-  if (localPart.length === 1) {
-    return `${localPart}***@${domain}`
+  if (localPart.length <= 3) {
+    return candidate
   }
 
-  if (localPart.length === 2) {
-    return `${localPart[0]}***${localPart[1]}@${domain}`
-  }
-
-  return `${localPart[0]}${'*'.repeat(Math.max(localPart.length - 2, 4))}${localPart[localPart.length - 1]}@${domain}`
+  return `${localPart.slice(0, 3)}****@${domain}`
 }
 
+// Helper này cho phép ForgotPassword.jsx lấy email đã che từ nhiều shape response khác nhau của backend.
 const extractForgotPasswordMaskedEmail = (payload) => {
   const directCandidate = [
     payload?.maskedEmail,
@@ -266,6 +274,8 @@ const isForgotPasswordOtpErrorMessage = (message) => {
   return mentionsOtp && indicatesInvalidOtp
 }
 
+// Khi guest tạo request rồi đăng nhập ngay trong cùng tab, FE tạm cất request guest sang sessionStorage.
+// Mục tiêu là logout xong vẫn khôi phục lại được request guest ban đầu.
 const preserveGuestRequestContextForLogout = () => {
   // Khi guest vừa tạo request rồi đăng nhập, FE tạm cất ngữ cảnh guest
   // để khi logout cùng tab vẫn khôi phục được request đó.
@@ -288,6 +298,7 @@ const preserveGuestRequestContextForLogout = () => {
   localStorage.removeItem(GUEST_REQUEST_DETAILS_KEY)
 }
 
+// Cặp hàm restore này khôi phục ngữ cảnh guest rescue request sau khi logout.
 const restoreGuestRequestContextAfterLogout = () => {
   const guestTracking = sessionStorage.getItem(GUEST_REQUEST_TRACKING_BACKUP_KEY)
   const guestDetails = sessionStorage.getItem(GUEST_REQUEST_DETAILS_BACKUP_KEY)
@@ -392,6 +403,7 @@ const buildRegisterValidationErrors = (username, phone, email, password, confirm
 }
 
 const authService = {
+  // Nhóm 1: validate dữ liệu form trước khi component gọi API.
   validateLoginInput: (phone, password) => {
     const trimmedPhone = String(phone ?? '').trim()
     const passwordValue = String(password ?? '')
@@ -475,8 +487,8 @@ const authService = {
     }
 
     const passwordValue = String(newPassword ?? '')
-    if (passwordValue.length < 5 || passwordValue.length > 100) {
-      return { valid: false, message: 'Mật khẩu mới phải từ 5 đến 100 ký tự.' }
+    if (passwordValue.length < 5 || passwordValue.length > 20) {
+      return { valid: false, message: 'Mật khẩu mới phải từ 5 đến 20 ký tự.' }
     }
 
     if (passwordValue !== String(confirmPassword ?? '')) {
@@ -486,6 +498,7 @@ const authService = {
     return { valid: true, message: '' }
   },
 
+  // Nhóm 2: gọi API auth thật và cập nhật session local của frontend.
   login: async (phone, password) => {
     const payload = {
       phone: String(phone ?? '').trim(),
@@ -545,6 +558,7 @@ const authService = {
     return data
   },
 
+  // ForgotPassword.jsx gọi hàm này ở step request để backend gửi OTP về email.
   sendForgotPasswordOtp: async (phone) => {
     const payload = {
       phone: String(phone ?? '').trim(),
@@ -555,6 +569,7 @@ const authService = {
     return response?.data ?? {}
   },
 
+  // Step verify của ForgotPassword.jsx gọi hàm này để đổi mật khẩu thật.
   resetForgotPassword: async (phone, otp, newPassword) => {
     const payload = {
       phone: String(phone ?? '').trim(),
@@ -566,6 +581,7 @@ const authService = {
     return response?.data ?? {}
   },
 
+  // Mọi màn dùng logout đều đi qua đây để xóa session thống nhất và restore lại ngữ cảnh guest nếu có.
   logout: () => {
     localStorage.removeItem('accessToken')
     localStorage.removeItem('refreshToken')
@@ -576,6 +592,7 @@ const authService = {
 
   isAuthenticated: () => Boolean(localStorage.getItem('accessToken')),
 
+  // Nhóm 3: expose helper để page/component khác đọc session hiện tại hoặc context quên mật khẩu.
   getUserInfo: () => parseStoredUser(),
   getDefaultPhone: () => resolveDefaultPhone(),
   storeForgotPasswordResetContext,

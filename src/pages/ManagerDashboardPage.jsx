@@ -417,6 +417,11 @@ function ManagerDashboardPage() {
             <p>Đang tải dữ liệu...</p>
           </div>
         </div>
+        <LogoutConfirmModal
+          open={showLogoutConfirm}
+          onConfirm={handleLogoutConfirm}
+          onCancel={handleLogoutCancel}
+        />
       </div>
     )
   }
@@ -490,42 +495,39 @@ function ManagerDashboardPage() {
         )}
 
         <section className="dashboard-section manager-section-overview monthly-section">
-          <div className="charts-container charts-container-balance">
-            <div className="chart-card chart-card-compact chart-card-large">
-              <div className="chart-header">
-                <div>
-                  <h3>Vật tư</h3>
+          <div className="chart-card chart-card-combined chart-card-large">
+            <div className="chart-card-combined-grid">
+              <div className="chart-card-combined-section chart-card-supply-section">
+                <div className="chart-header">
+                  <div>
+                    <h3>Vật tư</h3>
+                  </div>
+                  {renderSupplyLegend(supplyChartItems)}
                 </div>
-                {renderSupplyLegend(supplyChartItems)}
+                {renderSolidPieChart(
+                  supplyChartItems,
+                  'Chưa có dữ liệu vật tư để hiển thị biểu đồ.',
+                )}
               </div>
-              {renderSolidPieChart(
-                supplyChartItems,
-                'Chưa có dữ liệu vật tư để hiển thị biểu đồ.',
-              )}
-            </div>
 
-            <div className="chart-card chart-card-compact chart-card-large">
-              <div className="chart-header">
-                <div>
-                  <h3>Tỷ lệ tiêu thụ hôm nay</h3>
+              <div className="chart-card-divider" aria-hidden="true" />
+
+              <div className="chart-card-combined-section chart-card-meter-section">
+                <div className="chart-header">
+                  <div>
+                    <h3>Tỷ lệ tiêu thụ hôm nay</h3>
+                  </div>
                 </div>
+                {renderUsageMeter(
+                  todayStats.consumptionRate,
+                  'Chưa có dữ liệu tiêu thụ để hiển thị biểu đồ.',
+                )}
               </div>
-              {renderUsageMeter(
-                todayStats.consumptionRate,
-                'Chưa có dữ liệu tiêu thụ để hiển thị biểu đồ.',
-              )}
             </div>
           </div>
         </section>
 
         <section className="dashboard-section manager-section-vehicles">
-          <div className="dashboard-section-heading">
-            <div>
-              <p className="dashboard-card-kicker">Điều hướng nhanh</p>
-              <h2>Phương tiện cứu hộ</h2>
-            </div>
-          </div>
-
           <div className="metrics-grid">
             <div className="metric-card primary" onClick={handleNavigateToVehicles}>
               <div className="metric-icon">
@@ -583,6 +585,11 @@ function ManagerDashboardPage() {
           </div>
         </section>
       </div>
+      <LogoutConfirmModal
+        open={showLogoutConfirm}
+        onConfirm={handleLogoutConfirm}
+        onCancel={handleLogoutCancel}
+      />
     </div>
   )
 }

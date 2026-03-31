@@ -15,6 +15,11 @@ import {
   normalizeText,
 } from './adminShared'
 
+/*
+  AdminRequestsPage là màn quản trị rescue request của admin.
+  Flow trình bày:
+  App.jsx -> /admin/requests -> AdminRequestsPage.jsx -> adminService.getRequests/cancelRequest.
+*/
 function AdminRequestsPage() {
   const navigate = useNavigate()
   const hasLoadedOnceRef = useRef(false)
@@ -46,6 +51,7 @@ function AdminRequestsPage() {
     [navigate],
   )
 
+  // Tải danh sách request theo status filter để bảng và ô tìm kiếm dùng chung một nguồn dữ liệu.
   const loadRequests = useCallback(
     async ({ fullPage = false } = {}) => {
       if (fullPage) {
@@ -133,6 +139,7 @@ function AdminRequestsPage() {
     navigate('/login', { replace: true })
   }
 
+  // Admin chỉ có một action nghiệp vụ chính ở màn này: chuyển request sang trạng thái Hủy.
   const handleCancelRequest = async (request) => {
     const requestId = request.requestId
     if (!requestId) {

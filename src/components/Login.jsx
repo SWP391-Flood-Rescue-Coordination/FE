@@ -1,7 +1,14 @@
 import React, { useState } from 'react'
+import { HomeIcon } from '@heroicons/react/24/outline'
 import authService from '../services/authService'
 import './Login.css'
 
+/*
+  Flow đăng nhập:
+  App.jsx -> LoginPage.jsx -> Login.jsx -> authService.login() -> api.js -> /Auth/login.
+
+  Component này giữ state form và trả kết quả về page wrapper qua onLoginSuccess.
+*/
 const Login = ({ onClose, onShowForgotPassword, onShowRegister, onLoginSuccess }) => {
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
@@ -21,6 +28,7 @@ const Login = ({ onClose, onShowForgotPassword, onShowRegister, onLoginSuccess }
     })
   }
 
+  // Submit chính của form login: validate client-side trước, sau đó mới gọi authService.login.
   const handleSubmit = async (event) => {
     event.preventDefault()
     setErrorMessage('')
@@ -52,26 +60,24 @@ const Login = ({ onClose, onShowForgotPassword, onShowRegister, onLoginSuccess }
     }
   }
 
+  // Không tự navigate trực tiếp trong component để Login.jsx có thể tái dùng ở nhiều context.
   const handleForgotPasswordClick = (event) => {
     event.preventDefault()
     if (loading) {
       return
     }
 
-    if (onShowForgotPassword) {
-      onShowForgotPassword()
-    }
+    onShowForgotPassword?.()
   }
 
+  // Tương tự, việc đổi route sang /register được ủy quyền cho page wrapper.
   const handleRegisterClick = (event) => {
     event.preventDefault()
     if (loading) {
       return
     }
 
-    if (onShowRegister) {
-      onShowRegister()
-    }
+    onShowRegister?.()
   }
 
   return (
@@ -84,11 +90,10 @@ const Login = ({ onClose, onShowForgotPassword, onShowRegister, onLoginSuccess }
             disabled={loading}
             aria-label="Về trang chủ"
             title="Về trang chủ"
+            type="button"
           >
             <span className="home-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" focusable="false">
-                <path d="M12 3.2 3.6 10v10.2h6.1v-6.2h4.6v6.2h6.1V10L12 3.2Z" />
-              </svg>
+              <HomeIcon />
             </span>
           </button>
         )}
@@ -156,12 +161,14 @@ const Login = ({ onClose, onShowForgotPassword, onShowRegister, onLoginSuccess }
         </form>
 
         <div className="login-footer">
-          <p>
-            Bạn hiện chưa có tài khoản?{' '}
-            <a href="#" className="register-link" onClick={handleRegisterClick}>
-              Đăng ký tại đây
-            </a>
-          </p>
+          <button
+            type="button"
+            className="register-action-button"
+            onClick={handleRegisterClick}
+            disabled={loading}
+          >
+            Tạo tài khoản mới
+          </button>
         </div>
       </div>
     </div>
