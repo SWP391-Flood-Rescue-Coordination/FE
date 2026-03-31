@@ -28,22 +28,22 @@
 }
 
 /* Style cho nút chỉnh sửa khi bị disable */
-.submit-btn.disabled,
-.submit-btn:disabled {
+.request-modal .submit-btn.disabled,
+.request-modal .submit-btn:disabled {
   background-color: #e5e5e5;
   color: #999;
   cursor: not-allowed;
   opacity: 0.6;
 }
 
-.submit-btn.disabled:hover,
-.submit-btn:disabled:hover {
+.request-modal .submit-btn.disabled:hover,
+.request-modal .submit-btn:disabled:hover {
   background-color: #e5e5e5;
   transform: none;
   box-shadow: none;
 }
 
-.confirm-btn {
+.request-modal .confirm-btn {
   flex: 1;
   padding: 14px;
   background-color: #16a34a;
@@ -56,33 +56,33 @@
   transition: all 0.3s;
 }
 
-.confirm-btn:hover:not(:disabled) {
+.request-modal .confirm-btn:hover:not(:disabled) {
   background-color: #15803d;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(21, 128, 61, 0.35);
 }
 
-.confirm-btn:disabled {
+.request-modal .confirm-btn:disabled {
   background-color: #e5e5e5;
   color: #999;
   cursor: not-allowed;
   opacity: 0.6;
 }
 
-.confirm-btn:disabled:hover {
+.request-modal .confirm-btn:disabled:hover {
   background-color: #e5e5e5;
   transform: none;
   box-shadow: none;
 }
 
-.request-feedback-safe-prompt {
+.request-modal .request-feedback-safe-prompt {
   background-color: #f0fdf4;
   border: 1px solid #86efac;
   color: #166534;
   font-size: 0;
 }
 
-.request-feedback-safe-prompt-text {
+.request-modal .request-feedback-safe-prompt-text {
   display: block;
   font-size: 14px;
   line-height: 1.55;
@@ -90,7 +90,7 @@
 }
 
 /* Status Banner */
-.status-banner {
+.request-modal .status-banner {
   padding: 12px 20px;
   margin-bottom: 20px;
   border-radius: 8px;
@@ -98,54 +98,54 @@
   text-align: center;
 }
 
-.status-banner strong {
+.request-modal .status-banner strong {
   margin-right: 8px;
 }
 
-.status-pending {
+.request-modal .status-pending {
   background-color: #fff3cd;
   color: #856404;
   border: 1px solid #ffeaa7;
 }
 
-.status-verified {
+.request-modal .status-verified {
   background-color: #cce5ff;
   color: #004085;
   border: 1px solid #b8daff;
 }
 
-.status-assigned {
+.request-modal .status-assigned {
   background-color: #d1ecf1;
   color: #0c5460;
   border: 1px solid #bee5eb;
 }
 
-.status-in_progress {
+.request-modal .status-in_progress {
   background-color: #fff3cd;
   color: #856404;
   border: 1px solid #ffeaa7;
 }
 
-.status-completed {
+.request-modal .status-completed {
   background-color: #d4edda;
   color: #155724;
   border: 1px solid #c3e6cb;
 }
 
-.status-confirmed {
+.request-modal .status-confirmed {
   background-color: #ffedd5;
   color: #9a3412;
   border: 1px solid #fdba74;
 }
 
-.status-rescue_arrived {
+.request-modal .status-rescue_arrived {
   background-color: #ffedd5;
   color: #9a3412;
   border: 1px solid #fdba74;
 }
 
-.status-cancelled,
-.status-duplicate {
+.request-modal .status-cancelled,
+.request-modal .status-duplicate {
   background-color: #f8d7da;
   color: #721c24;
   border: 1px solid #f5c6cb;

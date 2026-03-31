@@ -52,26 +52,26 @@
 }
 
 /* Hai cột chính: trái là map + địa chỉ, phải là điều kiện và ghi chú. */
-.form-row {
+.request-modal .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 32px;
   align-items: stretch;
 }
 
-.form-left,
-.form-right {
+.request-modal .form-left,
+.request-modal .form-right {
   display: flex;
   flex-direction: column;
   gap: 20px;
   min-height: 100%;
 }
 
-.form-field {
+.request-modal .form-field {
   margin-bottom: 0;
 }
 
-.form-field label {
+.request-modal .form-field label {
   display: block;
   color: #333;
   font-size: 14px;
@@ -79,10 +79,10 @@
   margin-bottom: 8px;
 }
 
-.form-field input[type="tel"],
-.form-field input[type="text"],
-.form-field input[type="number"],
-.form-field textarea {
+.request-modal .form-field input[type="tel"],
+.request-modal .form-field input[type="text"],
+.request-modal .form-field input[type="number"],
+.request-modal .form-field textarea {
   width: 100%;
   padding: 12px;
   border: 1px solid #ddd;
@@ -92,8 +92,8 @@
   color: #000;
 }
 
-.request-readonly-input,
-.form-field input.request-readonly-input:disabled {
+.request-modal .request-readonly-input,
+.request-modal .form-field input.request-readonly-input:disabled {
   background: #eef2f5;
   border: none;
   color: #111827;
@@ -103,7 +103,7 @@
   box-shadow: none;
 }
 
-.request-readonly-display {
+.request-modal .request-readonly-display {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -115,14 +115,14 @@
   color: #111827;
 }
 
-.request-readonly-display span {
+.request-modal .request-readonly-display span {
   color: #111827;
   font-size: 14px;
   font-weight: 400;
   word-break: break-word;
 }
 
-.request-readonly-icon {
+.request-modal .request-readonly-icon {
   width: 18px;
   height: 18px;
   color: #475569;
@@ -130,24 +130,24 @@
 }
 
 /* Ẩn nút spinner của input number */
-.form-field input[type="number"]::-webkit-inner-spin-button,
-.form-field input[type="number"]::-webkit-outer-spin-button {
+.request-modal .form-field input[type="number"]::-webkit-inner-spin-button,
+.request-modal .form-field input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
 
-.form-field input[type="number"] {
+.request-modal .form-field input[type="number"] {
   appearance: textfield;
   -moz-appearance: textfield;
 }
 
-.form-field input:focus,
-.form-field textarea:focus {
+.request-modal .form-field input:focus,
+.request-modal .form-field textarea:focus {
   outline: none;
   border-color: #dc2626;
 }
 
-.request-input-hint {
+.request-modal .request-input-hint {
   display: inline-block;
   margin-top: 6px;
   color: #475569;
@@ -155,7 +155,7 @@
   font-weight: 500;
 }
 
-.form-label-row {
+.request-modal .form-label-row {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -164,18 +164,18 @@
   flex-wrap: wrap;
 }
 
-.form-label-row label {
+.request-modal .form-label-row label {
   margin-bottom: 0;
 }
 
-.form-label-meta {
+.request-modal .form-label-meta {
   color: #475569;
   font-size: 12px;
   font-weight: 500;
   line-height: 1.4;
 }
 
-.form-label-meta-group {
+.request-modal .form-label-meta-group {
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -183,17 +183,17 @@
   gap: 6px 14px;
 }
 
-.location-group {
+.request-modal .location-group {
   display: flex;
   gap: 10px;
   align-items: center;
 }
 
-.location-group input {
+.request-modal .location-group input {
   flex: 1;
 }
 
-.location-btn {
+.request-modal .location-btn {
   padding: 12px 16px;
   background-color: #f5f5f5;
   border: 1px solid #ddd;
@@ -205,38 +205,39 @@
   color: #000;
 }
 
-.location-btn:hover {
+.request-modal .location-btn:hover {
   background-color: #e5e5e5;
 }
 
-.people-group {
+.request-modal .people-group {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 15px;
   margin-bottom: 0;
 }
 
-.form-left > .people-group {
+.request-modal .form-left > .people-group {
   display: none;
 }
 
-.people-group-right {
+.request-modal .people-group-right {
   display: grid;
 }
 
-.form-field-inline {
+.request-modal .form-field-inline {
   display: flex;
   flex-direction: column;
 }
 
-.form-field-inline label {
+.request-modal .form-field-inline label {
   color: #333;
   font-size: 14px;
   font-weight: 600;
   margin-bottom: 8px;
 }
 
-.form-field-inline input[type="number"] {
+.request-modal .form-field-inline input[type="text"],
+.request-modal .form-field-inline input[type="number"] {
   width: 100%;
   padding: 12px;
   border: 1px solid #ddd;
@@ -244,25 +245,25 @@
   font-size: 14px;
 }
 
-.notes-field {
+.request-modal .notes-field {
   flex: 1;
   display: flex;
   flex-direction: column;
 }
 
-.notes-field textarea {
+.request-modal .notes-field textarea {
   flex: 1;
   min-height: 220px;
   resize: vertical;
 }
 
-.checkbox-group {
+.request-modal .checkbox-group {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.checkbox-label {
+.request-modal .checkbox-label {
   display: flex;
   align-items: center;
   font-size: 14px;
@@ -271,7 +272,7 @@
   font-weight: normal;
 }
 
-.checkbox-label input[type="checkbox"] {
+.request-modal .checkbox-label input[type="checkbox"] {
   margin-right: 10px;
   cursor: pointer;
   width: 16px;
@@ -284,13 +285,13 @@
   -moz-appearance: none;
 }
 
-.checkbox-label input[type="checkbox"]:checked {
+.request-modal .checkbox-label input[type="checkbox"]:checked {
   background-color: #666;
   border: 2px solid #000;
   position: relative;
 }
 
-.checkbox-label input[type="checkbox"]:checked::after {
+.request-modal .checkbox-label input[type="checkbox"]:checked::after {
   content: '✓';
   position: absolute;
   top: 50%;
@@ -301,13 +302,13 @@
   font-weight: bold;
 }
 
-.form-actions {
+.request-modal .form-actions {
   display: flex;
   gap: 15px;
   margin-top: 25px;
 }
 
-.submit-btn {
+.request-modal .submit-btn {
   flex: 1;
   padding: 14px;
   background-color: #dc2626;
@@ -320,16 +321,16 @@
   transition: all 0.3s;
 }
 
-.submit-btn:hover {
+.request-modal .submit-btn:hover {
   background-color: #b91c1c;
 }
 
-.submit-btn:disabled {
+.request-modal .submit-btn:disabled {
   opacity: 0.7;
   cursor: not-allowed;
 }
 
-.cancel-btn {
+.request-modal .cancel-btn {
   flex: 1;
   padding: 14px;
   background-color: white;
@@ -342,11 +343,11 @@
   transition: all 0.3s;
 }
 
-.cancel-btn:hover {
+.request-modal .cancel-btn:hover {
   background-color: #f5f5f5;
 }
 
-.cancel-btn:disabled {
+.request-modal .cancel-btn:disabled {
   opacity: 0.7;
   cursor: not-allowed;
 }
@@ -357,28 +358,28 @@
     width: 95%;
   }
 
-  .form-row {
+  .request-modal .form-row {
     grid-template-columns: 1fr;
     gap: 20px;
   }
 
-  .people-group {
+  .request-modal .people-group {
     grid-template-columns: 1fr;
   }
 
-  .form-left > .people-group {
+  .request-modal .form-left > .people-group {
     display: grid;
   }
 
-  .people-group-right {
+  .request-modal .people-group-right {
     display: none;
   }
 
-  .location-group {
+  .request-modal .location-group {
     flex-direction: column;
   }
 
-  .location-btn {
+  .request-modal .location-btn {
     width: 100%;
   }
 }
