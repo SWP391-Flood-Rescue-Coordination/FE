@@ -6,7 +6,6 @@ import {
   ArrowPathIcon,
   ArrowUpOnSquareIcon,
   TruckIcon,
-  CubeIcon,
   ExclamationTriangleIcon,
   CheckCircleIcon,
   WrenchScrewdriverIcon,
@@ -27,15 +26,6 @@ const formatNumberVN = (value) => {
   return new Intl.NumberFormat('vi-VN', {
     maximumFractionDigits: 0,
   }).format(numeric)
-}
-
-const DONUT_TONE_COLOR_MAP = {
-  primary: '#7c8cff',
-  success: '#55c99a',
-  info: '#74c7f5',
-  warning: '#f3c57a',
-  danger: '#f48f8f',
-  neutral: '#94a3b8',
 }
 
 const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
@@ -96,33 +86,6 @@ const toPercent = (value, total) => {
   return Math.min((safeValue / safeTotal) * 100, 100)
 }
 
-const getChartAxisStep = (maxValue) => {
-  const safeMax = Math.max(0, Number(maxValue) || 0)
-
-  if (safeMax <= 0) {
-    return 1
-  }
-
-  if (safeMax < 100) {
-    return 1
-  }
-
-  const magnitude = 10 ** Math.max(String(Math.floor(safeMax)).length - 2, 1)
-  return magnitude
-}
-
-const buildChartAxisMarks = (maxValue) => {
-  const step = getChartAxisStep(maxValue)
-  const roundedMax = Math.max(step, Math.ceil(maxValue / step) * step)
-  const marks = []
-
-  for (let value = 0; value <= roundedMax; value += step) {
-    marks.push(value)
-  }
-
-  return { marks, roundedMax }
-}
-
 // Dashboard manager là điểm vào để xem số liệu xe, vật tư và điều hướng sang các trang nghiệp vụ.
 function ManagerDashboardPage() {
   const navigate = useNavigate()
@@ -147,8 +110,7 @@ function ManagerDashboardPage() {
     totalTypes: 0,
     lowStock: 0,
   })
-  
-  // Today stats
+
   const [todayStats, setTodayStats] = useState({
     requestsServed: 0,
     rescueTeams: 0,
@@ -168,25 +130,11 @@ function ManagerDashboardPage() {
     ])
   }, [supplyStats])
 
-  const todayActivityChartItems = useMemo(() => {
-    return toChartItems([
-      { key: 'requests', label: 'Yêu cầu', value: todayStats?.requestsServed, tone: 'primary' },
-      { key: 'teams', label: 'Đội cứu hộ', value: todayStats?.rescueTeams, tone: 'info' },
-      { key: 'supplies', label: 'Vật tư', value: todayStats?.suppliesDistributed, tone: 'warning' },
-      { key: 'vehicles', label: 'Xe dùng', value: todayStats?.vehiclesUsed, tone: 'danger' },
-    ])
-  }, [todayStats])
-
   const vehicleMixPercents = useMemo(() => ({
     available: toPercent(vehicleStats?.available, vehicleStats?.total),
     inUse: toPercent(vehicleStats?.inUse, vehicleStats?.total),
     maintenance: toPercent(vehicleStats?.maintenance, vehicleStats?.total),
   }), [vehicleStats])
-
-  const consumptionGaugeRotation = useMemo(() => {
-    const normalizedValue = Math.min(Math.max(Number(todayStats?.consumptionRate) || 0, 0), 100)
-    return (normalizedValue / 100) * 180 - 90
-  }, [todayStats])
 
   const fetchDashboardData = useCallback(async () => {
     setIsLoading(true)
@@ -232,7 +180,6 @@ function ManagerDashboardPage() {
         setSupplyStats(supplies.value)
       }
 
-      // Process today stats
       if (today.status === 'fulfilled') {
         setTodayStats(today.value)
       }
@@ -292,10 +239,6 @@ function ManagerDashboardPage() {
     navigate(status ? `/manager/vehicles?status=${status}` : '/manager/vehicles')
   }
 
-  const handleNavigateToSupplies = () => {
-    navigate('/manager/supplies')
-  }
-
   const handleNavigateToStableSupplies = () => {
     navigate('/manager/supplies?filter=stable')
   }
@@ -316,113 +259,6 @@ function ManagerDashboardPage() {
     navigate('/manager/relief-export')
   }
 
-  const renderComparisonChart = (items, emptyMessage) => {
-    const maxValue = Math.max(...items.map((item) => item.value), 0)
-
-    if (!items.length) {
-      return <div className="manager-chart-empty">{emptyMessage}</div>
-    }
-
-    const { marks: axisMarks, roundedMax } = buildChartAxisMarks(maxValue)
-    const chartHeight = Math.max(148, axisMarks.length * 16)
-    const plotTop = 24
-    const plotBottom = chartHeight - 14
-    const plotHeight = plotBottom - plotTop
-    const yForValue = (value) => plotBottom - ((value / roundedMax) * plotHeight)
-    const points = items.map((item, index) => {
-      const x = 52 + (index * 104)
-      const y = yForValue(item.value)
-      return { ...item, x, y }
-    })
-
-    const linePath = points
-      .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`)
-      .join(' ')
-    const areaPath = `${linePath} L ${points[points.length - 1].x} ${plotBottom} L ${points[0].x} ${plotBottom} Z`
-
-    return (
-      <div className="manager-area-shell">
-        <div className="manager-area-layout">
-          <div className="manager-area-axis" aria-hidden="true" style={{ minHeight: `${chartHeight}px` }}>
-            {axisMarks.map((mark) => (
-              <span
-                key={`axis-${mark}`}
-                style={{ bottom: `${((mark / roundedMax) * 100).toFixed(4)}%` }}
-              >
-                {formatNumberVN(mark)}
-              </span>
-            ))}
-          </div>
-
-          <svg className="manager-area-chart" viewBox={`0 0 420 ${chartHeight}`} preserveAspectRatio="none" aria-hidden="true">
-            <defs>
-              <linearGradient id="managerAreaGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="rgba(124, 140, 255, 0.28)" />
-                <stop offset="100%" stopColor="rgba(124, 140, 255, 0.04)" />
-              </linearGradient>
-              <linearGradient id="managerAreaPoint-primary" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#86efac" />
-                <stop offset="100%" stopColor="#10b981" />
-              </linearGradient>
-              <linearGradient id="managerAreaPoint-info" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#bae6fd" />
-                <stop offset="100%" stopColor="#0ea5e9" />
-              </linearGradient>
-              <linearGradient id="managerAreaPoint-warning" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#fde68a" />
-                <stop offset="100%" stopColor="#f59e0b" />
-              </linearGradient>
-              <linearGradient id="managerAreaPoint-danger" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#e2e8f0" />
-                <stop offset="100%" stopColor="#94a3b8" />
-              </linearGradient>
-            </defs>
-            {axisMarks.map((mark) => {
-              const y = yForValue(mark)
-              return (
-                <line
-                  key={`grid-${mark}`}
-                  x1="24"
-                  y1={y}
-                  x2="400"
-                  y2={y}
-                  className={`manager-area-gridline${mark === 0 ? ' base' : ''}`}
-                />
-              )
-            })}
-            <path d={areaPath} className="manager-area-fill" />
-            <path d={linePath} className="manager-area-line" />
-            {points.map((point) => (
-              <g key={point.key}>
-                <circle
-                  cx={point.x}
-                  cy={point.y}
-                  r="6"
-                  className="manager-area-point"
-                  fill={`url(#managerAreaPoint-${point.tone})`}
-                />
-                <text x={point.x} y={point.y - 16} textAnchor="middle" className="manager-area-value">
-                  {formatNumberVN(point.value)}
-                </text>
-              </g>
-            ))}
-          </svg>
-        </div>
-      </div>
-    )
-  }
-
-  const renderInlineLegend = (items) => (
-    <div className="manager-inline-legend" aria-label="Chú thích biểu đồ">
-      {items.map((item) => (
-        <span key={item.key} className="manager-inline-legend-item">
-          <i className={`manager-inline-legend-dot ${item.tone}`} />
-          <span>{item.label}</span>
-        </span>
-      ))}
-    </div>
-  )
-
   const renderSupplyLegend = (items) => (
     <div className="manager-inline-legend" aria-label="Chú thích vật tư">
       {items.map((item) => (
@@ -433,48 +269,6 @@ function ManagerDashboardPage() {
       ))}
     </div>
   )
-
-  const renderSupplyStatusChart = (items, emptyMessage) => {
-    if (!items.length) {
-      return <div className="manager-chart-empty">{emptyMessage}</div>
-    }
-
-    const totalValue = items.reduce((sum, item) => sum + item.value, 0)
-
-    return (
-      <div className="manager-supply-status-shell">
-        {items.map((item) => {
-          const percent = totalValue > 0 ? (item.value / totalValue) * 100 : 0
-          const width = item.value > 0 ? Math.max(percent, 12) : 0
-
-          return (
-            <button
-              key={item.key}
-              type="button"
-              className="manager-supply-status-row"
-              onClick={() => {
-                if (item.key === 'lowStock') {
-                  handleNavigateToLowStockSupplies()
-                  return
-                }
-
-                handleNavigateToStableSupplies()
-              }}
-            >
-              <span className="manager-supply-status-copy">
-                <i className={`manager-supply-status-dot ${item.tone}`} />
-                <span>{item.label}</span>
-              </span>
-              <span className="manager-supply-status-track" aria-hidden="true">
-                <span className={`manager-supply-status-fill ${item.tone}`} style={{ width: `${width}%` }} />
-              </span>
-              <strong>{formatNumberVN(item.value)}</strong>
-            </button>
-          )
-        })}
-      </div>
-    )
-  }
 
   const renderSolidPieChart = (items, emptyMessage) => {
     const visibleItems = items.filter((item) => item.value > 0)
@@ -545,53 +339,6 @@ function ManagerDashboardPage() {
               </g>
             ))}
           </svg>
-        </div>
-      </div>
-    )
-  }
-
-  const renderDonutChart = (items, emptyMessage) => {
-    const totalValue = items.reduce((sum, item) => sum + item.value, 0)
-
-    if (!items.length || totalValue <= 0) {
-      return <div className="manager-chart-empty">{emptyMessage}</div>
-    }
-
-    let currentPercent = 0
-    const gradientSegments = items
-      .filter((item) => item.value > 0)
-      .map((item) => {
-        const toneColor = DONUT_TONE_COLOR_MAP[item.tone] || DONUT_TONE_COLOR_MAP.neutral
-        const segmentPercent = (item.value / totalValue) * 100
-        const start = currentPercent
-        currentPercent += segmentPercent
-        return `${toneColor} ${start}% ${currentPercent}%`
-      })
-
-    return (
-      <div className="manager-donut-shell">
-        <div
-          className="manager-donut-chart"
-          style={{ backgroundImage: `conic-gradient(${gradientSegments.join(', ')})` }}
-          aria-hidden="true"
-        >
-          <div className="manager-donut-center">
-            <strong>{formatNumberVN(totalValue)}</strong>
-            <span>Tổng</span>
-          </div>
-        </div>
-
-        <div className="manager-donut-legend">
-          {items.map((item) => (
-            <div key={item.key} className="manager-donut-legend-item">
-              <i
-                className="manager-donut-legend-dot"
-                style={{ backgroundColor: DONUT_TONE_COLOR_MAP[item.tone] || DONUT_TONE_COLOR_MAP.neutral }}
-              />
-              <span>{item.label}</span>
-              <strong>{formatNumberVN(item.value)}</strong>
-            </div>
-          ))}
         </div>
       </div>
     )
@@ -742,53 +489,43 @@ function ManagerDashboardPage() {
           </div>
         )}
 
-        {/* Section: Chỉ số vận hành hôm nay */}
-        <section className="dashboard-section manager-section-operations monthly-section">
-          <div className="charts-container charts-container-compact">
-            <div className="chart-stack">
-              <div className="chart-card chart-card-compact">
-                <div className="chart-header">
-                  <div>
-                    <h3>Vật tư</h3>
-                  </div>
-                  {renderSupplyLegend(supplyChartItems)}
-                </div>
-                {renderSolidPieChart(
-                  supplyChartItems,
-                  'Chưa có dữ liệu vật tư để hiển thị biểu đồ.',
-                )}
-              </div>
-
-              <div className="chart-card chart-card-compact">
-                <div className="chart-header">
-                  <div>
-                    <h3>Tỷ lệ tiêu thụ hôm nay</h3>
-                  </div>
-                </div>
-                {renderUsageMeter(
-                  todayStats.consumptionRate,
-                  'Chưa có dữ liệu tiêu thụ để hiển thị biểu đồ.',
-                )}
-              </div>
-            </div>
-
-            <div className="chart-card chart-card-wide">
+        <section className="dashboard-section manager-section-overview monthly-section">
+          <div className="charts-container charts-container-balance">
+            <div className="chart-card chart-card-compact chart-card-large">
               <div className="chart-header">
                 <div>
-                  <h3>Chỉ số vận hành hôm nay</h3>
+                  <h3>Vật tư</h3>
                 </div>
-                {renderInlineLegend(todayActivityChartItems)}
+                {renderSupplyLegend(supplyChartItems)}
               </div>
-              {renderComparisonChart(
-                todayActivityChartItems,
-                'Hôm nay chưa phát sinh đủ dữ liệu để hiển thị biểu đồ hoạt động.',
+              {renderSolidPieChart(
+                supplyChartItems,
+                'Chưa có dữ liệu vật tư để hiển thị biểu đồ.',
+              )}
+            </div>
+
+            <div className="chart-card chart-card-compact chart-card-large">
+              <div className="chart-header">
+                <div>
+                  <h3>Tỷ lệ tiêu thụ hôm nay</h3>
+                </div>
+              </div>
+              {renderUsageMeter(
+                todayStats.consumptionRate,
+                'Chưa có dữ liệu tiêu thụ để hiển thị biểu đồ.',
               )}
             </div>
           </div>
         </section>
 
-        {/* Section: Phương tiện */}
         <section className="dashboard-section manager-section-vehicles">
+          <div className="dashboard-section-heading">
+            <div>
+              <p className="dashboard-card-kicker">Điều hướng nhanh</p>
+              <h2>Phương tiện cứu hộ</h2>
+            </div>
+          </div>
+
           <div className="metrics-grid">
             <div className="metric-card primary" onClick={handleNavigateToVehicles}>
               <div className="metric-icon">

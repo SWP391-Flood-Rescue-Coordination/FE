@@ -180,6 +180,25 @@ const toNumber = (value, fallback = 0) => {
   return Number.isFinite(numeric) ? numeric : fallback
 }
 
+const firstNonEmptyText = (...values) => {
+  for (const value of values) {
+    const text = String(value ?? '').trim()
+    if (text) {
+      return text
+    }
+  }
+
+  return ''
+}
+
+const toOptionalBoolean = (value, fallback = false) => {
+  if (value === undefined || value === null) {
+    return fallback
+  }
+
+  return Boolean(value)
+}
+
 const isLowStockSupply = (item) => {
   const quantity = toNumber(item?.quantity)
   const minQuantity = toNumber(item?.minQuantity)
@@ -276,10 +295,16 @@ const toSupplyNameMap = (supplies) => {
 const normalizeStockEntry = (entry) => ({
   id: entry?.id,
   type: String(entry?.type ?? '').trim().toUpperCase(),
-  date: entry?.date,
+  date: entry?.date ?? entry?.createdAt ?? entry?.created_at ?? entry?.Date ?? null,
   body: entry?.body,
   fromTo: entry?.fromTo ?? entry?.from_to ?? '',
   note: entry?.note ?? '',
+  source: entry?.source ?? entry?.Source ?? '',
+  destination: entry?.destination ?? entry?.Destination ?? '',
+  address: entry?.address ?? entry?.Address ?? '',
+  receiveAddress: entry?.receiveAddress ?? entry?.receive_address ?? entry?.ReceiveAddress ?? '',
+  recipientAddress: entry?.recipientAddress ?? entry?.recipient_address ?? entry?.RecipientAddress ?? '',
+  stockUnit: entry?.stockUnit ?? entry?.StockUnit ?? null,
 })
 
 const toReceiptItems = (entry, supplyNameMap) =>
@@ -293,6 +318,29 @@ const toReceiptItems = (entry, supplyNameMap) =>
       unit: resolved.unit || 'đơn vị',
     }
   })
+
+const resolveReceiptAddress = (entry, ...values) =>
+  firstNonEmptyText(
+    ...values,
+    entry?.stockUnit?.address,
+    entry?.stockUnit?.Address,
+    extractAddressOnly(entry?.note),
+  )
+
+const buildStockHistoryNote = ({ address = '', note = '' } = {}) => {
+  const normalizedAddress = firstNonEmptyText(address)
+  const normalizedNote = firstNonEmptyText(note)
+
+  if (normalizedAddress && normalizedNote) {
+    return `Address: ${normalizedAddress} | Note: ${normalizedNote}`
+  }
+
+  if (normalizedAddress) {
+    return `Address: ${normalizedAddress}`
+  }
+
+  return normalizedNote
+}
 
 const normalizeImportReceipt = (entry, supplyNameMap) => {
   const items = toReceiptItems(entry, supplyNameMap)
@@ -336,6 +384,78 @@ function extractNoteOnly(note) {
   if (!note) return '';
   const noteMatch = note.match(/\|\s*Ghi chú:\s*(.*)$/);
   return noteMatch ? noteMatch[1].trim() : note;
+}
+
+const extractStructuredAddress = (note) => {
+  const rawNote = String(note ?? '').trim()
+  if (!rawNote) {
+    return ''
+  }
+
+  const match = rawNote.match(
+    /(?:^|\|\s*)(?:Äá»‹a Ä‘iá»ƒm nháº­n|Dia diem nhan|Address|Recipient address)\s*:\s*([^|]+?)(?:\s*(?:\||$))/i,
+  )
+
+  return match ? match[1].trim() : extractAddressOnly(rawNote)
+}
+
+const extractStructuredNote = (note) => {
+  const rawNote = String(note ?? '').trim()
+  if (!rawNote) {
+    return ''
+  }
+
+  const match = rawNote.match(/(?:^|\|\s*)(?:Ghi chÃº|Ghi chu|Note)\s*:\s*(.*)$/i)
+  if (match) {
+    return match[1].trim()
+  }
+
+  if (extractStructuredAddress(rawNote)) {
+    return ''
+  }
+
+  return extractNoteOnly(rawNote)
+}
+
+const normalizeImportReceiptEntry = (entry, supplyNameMap) => {
+  const items = toReceiptItems(entry, supplyNameMap)
+
+  return {
+    receiptId: entry?.id,
+    type: 'import',
+    source: repairDisplayText(entry?.source || entry?.fromTo || 'KhÃ´ng rÃµ nguá»“n', 'KhÃ´ng rÃµ nguá»“n'),
+    note: repairDisplayText(extractStructuredNote(entry?.note), ''),
+    receiveAddress: repairDisplayText(
+      resolveReceiptAddress(entry, entry?.receiveAddress, entry?.address),
+      '',
+    ),
+    createdAt: entry?.date,
+    createdBy: '-',
+    totalItems: items.length,
+    items,
+  }
+}
+
+const normalizeExportReceiptEntry = (entry, supplyNameMap) => {
+  const items = toReceiptItems(entry, supplyNameMap)
+
+  return {
+    receiptId: entry?.id,
+    type: 'export',
+    destination: repairDisplayText(
+      entry?.destination || entry?.fromTo || 'KhÃ´ng rÃµ Ä‘Æ¡n vá»‹ nháº­n',
+      'KhÃ´ng rÃµ Ä‘Æ¡n vá»‹ nháº­n',
+    ),
+    note: repairDisplayText(extractStructuredNote(entry?.note), ''),
+    recipientAddress: repairDisplayText(
+      resolveReceiptAddress(entry, entry?.recipientAddress, entry?.address),
+      '',
+    ),
+    createdAt: entry?.date,
+    createdBy: '-',
+    totalItems: items.length,
+    items,
+  }
 }
 
 const createNotImplementedError = (message) => {
@@ -385,7 +505,16 @@ const normalizeImportReceiptFromManager = (entry) => {
     receiptId: entry?.receiptId ?? entry?.id,
     type: 'import',
     source: repairDisplayText(entry?.source ?? entry?.fromTo ?? 'Không rõ nguồn', 'Không rõ nguồn'),
-    receiveAddress: repairDisplayText(entry?.receiveAddress ?? entry?.receive_address ?? entry?.note ?? '', ''),
+    receiveAddress: repairDisplayText(
+      firstNonEmptyText(
+        entry?.receiveAddress,
+        entry?.receive_address,
+        entry?.address,
+        entry?.stockUnit?.address,
+        extractStructuredAddress(entry?.note),
+      ),
+      '',
+    ),
     createdAt: entry?.createdAt ?? entry?.created_at ?? null,
     createdBy: entry?.createdBy ?? '-',
     totalItems: toNumber(entry?.totalItems, items.length),
@@ -409,7 +538,16 @@ const normalizeExportReceiptFromManager = (entry) => {
       entry?.destination ?? entry?.recipientUnitName ?? entry?.fromTo ?? 'Không rõ đơn vị nhận',
       'Không rõ đơn vị nhận',
     ),
-    recipientAddress: repairDisplayText(entry?.recipientAddress ?? entry?.recipient_address ?? entry?.note ?? '', ''),
+    recipientAddress: repairDisplayText(
+      firstNonEmptyText(
+        entry?.recipientAddress,
+        entry?.recipient_address,
+        entry?.address,
+        entry?.stockUnit?.address,
+        extractStructuredAddress(entry?.note),
+      ),
+      '',
+    ),
     createdAt: entry?.createdAt ?? entry?.created_at ?? null,
     createdBy: entry?.createdBy ?? '-',
     totalItems: toNumber(entry?.totalItems, items.length),
@@ -809,11 +947,35 @@ const managerService = {
 
   createReliefExportOrder: async (payload) => {
     try {
+      const stockUnitId = toNumber(payload?.stockUnitId ?? payload?.stockUnit?.stockUnitId)
+      const address = firstNonEmptyText(
+        payload?.address,
+        payload?.recipientAddress,
+        payload?.destination,
+        payload?.stockUnit?.address,
+      )
+      const note = buildStockHistoryNote({
+        address,
+        note: payload?.notes ?? payload?.note,
+      })
+
       const body = {
         stockUnitId: toNumber(payload?.stockUnitId), // truyền đúng stockUnitId cho backend
         teamId: toNumber(payload?.teamId ?? payload?.recipientUnitId ?? 1),
         destination: String(payload?.destination ?? payload?.recipientAddress ?? payload?.address ?? '').trim(),
         note: String(payload?.notes ?? payload?.note ?? '').trim(),
+        stockUnitId,
+        id: firstNonEmptyText(payload?.id, payload?.stockUnit?.id, stockUnitId ? `source-${stockUnitId}` : ''),
+        name: firstNonEmptyText(payload?.name, payload?.stockUnit?.name),
+        type: firstNonEmptyText(payload?.type, payload?.stockUnit?.type),
+        region: firstNonEmptyText(payload?.region, payload?.stockUnit?.region),
+        address,
+        recipientAddress: address,
+        supportsImport: toOptionalBoolean(payload?.supportsImport, false),
+        supportsExport: toOptionalBoolean(payload?.supportsExport, true),
+        teamId: toNumber(payload?.teamId ?? payload?.recipientUnitId ?? stockUnitId ?? 1),
+        destination: firstNonEmptyText(payload?.destination, payload?.name, address),
+        note,
         items: normalizeArray(payload?.supplyItems)
           .map((item) => ({
             itemId: toNumber(item?.supplyId ?? item?.itemId),
@@ -888,9 +1050,33 @@ const managerService = {
 
   createImportReceipt: async (payload) => {
     try {
+      const stockUnitId = toNullableNumber(payload?.stockUnitId ?? payload?.stockUnit?.stockUnitId)
+      const address = firstNonEmptyText(
+        payload?.receive_address,
+        payload?.receiveAddress,
+        payload?.address,
+        payload?.stockUnit?.address,
+      )
+      const note = buildStockHistoryNote({
+        address,
+        note: payload?.note,
+      })
+
       const body = {
         source: String(payload?.source ?? payload?.fromTo ?? '').trim(),
         note: String(payload?.note ?? '').trim(),
+        stockUnitId,
+        id: firstNonEmptyText(payload?.id, payload?.stockUnit?.id),
+        name: firstNonEmptyText(payload?.name, payload?.stockUnit?.name, payload?.source),
+        type: firstNonEmptyText(payload?.type, payload?.stockUnit?.type),
+        region: firstNonEmptyText(payload?.region, payload?.stockUnit?.region),
+        address,
+        receiveAddress: address,
+        receive_address: address,
+        supportsImport: toOptionalBoolean(payload?.supportsImport, true),
+        supportsExport: toOptionalBoolean(payload?.supportsExport, false),
+        source: firstNonEmptyText(payload?.source, payload?.fromTo, payload?.name),
+        note,
         items: normalizeReceiptItemsInput(payload?.items),
       }
 
@@ -927,7 +1113,7 @@ const managerService = {
       ])
       const supplyNameMap = toSupplyNameMap(supplies)
       const rows = normalizeArray(unwrapApiData(response)).map(normalizeStockEntry)
-      return rows.map((entry) => normalizeImportReceipt(entry, supplyNameMap))
+      return rows.map((entry) => normalizeImportReceiptEntry(entry, supplyNameMap))
     } catch (error) {
       console.error('[managerService] getImportReceipts error:', error)
       return []
@@ -942,7 +1128,7 @@ const managerService = {
       ])
       const supplyNameMap = toSupplyNameMap(supplies)
       const rows = normalizeArray(unwrapApiData(response)).map(normalizeStockEntry)
-      return rows.map((entry) => normalizeExportReceipt(entry, supplyNameMap))
+      return rows.map((entry) => normalizeExportReceiptEntry(entry, supplyNameMap))
     } catch (error) {
       console.error('[managerService] getExportReceipts error:', error)
       return []

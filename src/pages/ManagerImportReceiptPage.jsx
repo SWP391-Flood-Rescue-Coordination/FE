@@ -84,13 +84,14 @@ function ManagerImportReceiptPage() {
           ? res.data
           : (res.data?.data || res.data?.Data || [])
         setSourceOptions(importOptions.map((item) => ({
-          id: item.stockUnitId || item.id,
+          id: item.id || `source-${item.stockUnitId ?? item.id}`,
           name: item.name,
           type: item.type,
           region: item.region,
           address: item.address,
-          supportsImport: item.supportsImport,
-          supportsExport: item.supportsExport,
+          supportsImport: Boolean(item.supportsImport),
+          supportsExport: Boolean(item.supportsExport),
+          stockUnitId: item.stockUnitId ?? item.id,
         })))
       } catch (err) {
         setSourceOptions([])
@@ -266,8 +267,11 @@ function ManagerImportReceiptPage() {
     
     try {
       const payload = {
+        ...selectedSource,
         source: selectedSource?.name || '',
         receive_address: selectedSource?.address || '',
+        receiveAddress: selectedSource?.address || '',
+        address: selectedSource?.address || '',
         note: note || '',
         items: selectedSupplyItems.map((item) => ({
           item_id: item.id,

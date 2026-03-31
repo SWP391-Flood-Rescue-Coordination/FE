@@ -311,15 +311,23 @@
 }
 
 .manager-relief-export-page .data-table tbody tr.is-selected {
-  background: #fff3f3;
+  background: #fee2e2;
+  box-shadow: inset 4px 0 0 #dc2626;
 }
 
 .manager-relief-export-page .data-table tbody tr.supply-row {
   cursor: pointer;
+  transition: background-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .manager-relief-export-page .data-table tbody tr.supply-row:hover {
-  background: #fff3f3;
+  background: #fff8eb;
+  box-shadow: inset 4px 0 0 #f59e0b;
+}
+
+.manager-relief-export-page .data-table tbody tr.supply-row.is-selected:hover {
+  background: #fecaca;
+  box-shadow: inset 4px 0 0 #b91c1c;
 }
 
 .manager-relief-export-page .data-table tbody tr.supply-row td {

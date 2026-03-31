@@ -94,14 +94,14 @@ function ManagerReliefExportPage() {
           ? res.data
           : (res.data?.data || res.data?.Data || [])
         setRecipientOptions(exportOptions.map((item) => ({
-          id: item.stockUnitId || item.id,
-          stockUnitId: item.stockUnitId, // giữ lại stockUnitId để truyền payload
+          id: item.id || `source-${item.stockUnitId ?? item.id}`,
+          stockUnitId: item.stockUnitId ?? item.id,
           name: item.name,
           type: item.type,
           region: item.region,
           address: item.address,
-          supportsImport: item.supportsImport,
-          supportsExport: item.supportsExport,
+          supportsImport: Boolean(item.supportsImport),
+          supportsExport: Boolean(item.supportsExport),
         })))
       } catch (err) {
         setRecipientOptions([])
@@ -295,10 +295,13 @@ function ManagerReliefExportPage() {
 
     try {
       await managerService.createReliefExportOrder({
+        ...selectedRecipient,
         stockUnitId: selectedRecipient.stockUnitId, // truyền đúng stockUnitId cho backend
-        teamId: toNumericIfPossible(selectedRecipient.id),
-        destination: selectedRecipient.address || selectedRecipient.name,
         note: note || `Xuất cứu trợ cho ${selectedRecipient.name}`,
+        teamId: toNumericIfPossible(selectedRecipient.stockUnitId ?? selectedRecipient.id),
+        destination: selectedRecipient.name,
+        recipientAddress: selectedRecipient.address,
+        address: selectedRecipient.address,
         supplyItems: validSelectedSupplyItems.map((item) => ({
           supplyId: toNumericIfPossible(item.id),
           quantity: item.parsedQuantity,
@@ -573,3 +576,4 @@ function ManagerReliefExportPage() {
 }
 
 export default ManagerReliefExportPage
+
