@@ -3,6 +3,9 @@ import api from './api'
 const PHONE_REGEX = /^(?:\+84|84|0)\d{9}$/
 const RESCUE_REQUEST_PHONE_REGEX = /^(\+84|84|0)(3|5|7|8|9|1[2689])[0-9]{8}$/
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+// Regex cho firstName, lastName: chỉ cho chữ (a-z, A-Z), tiếng Việt kèm dấu, và khoảng trắng
+// Không cho phép: số, ký tự đặc biệt
+const NAME_REGEX = /^[a-zA-Zàáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỵỹđ\s]*$/i
 const FORGOT_PASSWORD_CONTEXT_KEY = 'forgotPasswordResetContext'
 const GUEST_REQUEST_TRACKING_KEY = 'guestRescueRequestTracking'
 const GUEST_REQUEST_DETAILS_KEY = 'guestRescueRequestDetails'
@@ -370,9 +373,14 @@ const buildRegisterValidationErrors = (username, phone, email, password, confirm
 
   if (!trimmedLastName) {
     errors.lastName = 'Vui lòng nhập họ.'
+  } else if (!NAME_REGEX.test(trimmedLastName)) {
+    errors.lastName = 'Họ không được chứa số hoặc ký tự đặc biệt.'
   }
+  
   if (!trimmedFirstName) {
     errors.firstName = 'Vui lòng nhập tên.'
+  } else if (!NAME_REGEX.test(trimmedFirstName)) {
+    errors.firstName = 'Tên không được chứa số hoặc ký tự đặc biệt.'
   }
 
   if (!trimmedPhone) {
