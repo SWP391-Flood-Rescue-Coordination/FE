@@ -721,18 +721,7 @@
     gap: 14px;
     padding: 30px;
   }
-  
-    gap: 14px;
-    padding: 40px 50px;
-  }
-
-    padding: 16px 14px;
-    overflow-x: auto;
-  }
-
-    border-color: #e4e6eb;
-    box-shadow: none;
-    transform: none !important;
+}
 
 @media (max-width: 768px) {
   .rescue-header {

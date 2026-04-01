@@ -308,6 +308,10 @@
   background: #2c3e50;
 }
 
+.complete-button {
+  background: #15803d;
+}
+
 .action-button:hover:not(:disabled) {
   filter: brightness(0.95);
 }

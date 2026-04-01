@@ -662,6 +662,37 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
     }
   }
 
+  const handleCompleteRequest = async (request) => {
+    const requestId = request?.request_id
+    const canComplete = request?.status === 'ASSIGNED' || request?.status === 'IN_PROGRESS'
+
+    if (!requestId || !canComplete) {
+      return
+    }
+
+    setErrorMessage('')
+    setSuccessMessage('')
+    setActionLoading(requestId, 'complete', true)
+
+    try {
+      await coordinatorService.markRequestCompleted(requestId)
+      setRequests((prev) =>
+        prev.map((requestItem) =>
+          requestItem.request_id === requestId ? { ...requestItem, status: 'COMPLETED' } : requestItem,
+        ),
+      )
+      setSuccessMessage(`Đã chuyển yêu cầu #${requestId} sang trạng thái hoàn thành.`)
+      await reloadAll()
+    } catch (error) {
+      const result = handleApiError(error, 'Yêu cầu đã được cập nhật trạng thái bởi người khác.')
+      if (result.shouldReload) {
+        await reloadAll()
+      }
+    } finally {
+      setActionLoading(requestId, 'complete', false)
+    }
+  }
+
   const handleLogout = () => {
     setShowLogoutConfirm(true);
   };
@@ -861,10 +892,12 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
                 const hasValidRequestId = requestId !== null && requestId !== undefined && requestId !== ''
                 const isPending = request.status === 'PENDING'
                 const isVerified = request.status === 'VERIFIED'
+                const isCompletable = request.status === 'ASSIGNED' || request.status === 'IN_PROGRESS'
 
                 const verifyLoading = hasValidRequestId ? isActionLoading(requestId, 'verify') : false
                 const duplicateLoading = hasValidRequestId ? isActionLoading(requestId, 'duplicate') : false
                 const assignLoading = hasValidRequestId ? isActionLoading(requestId, 'assign') : false
+                const completeLoading = hasValidRequestId ? isActionLoading(requestId, 'complete') : false
                 const assignmentFromCache = assignmentByRequestId[String(requestId)]
                 const assignment = assignmentFromCache || request.assignment || null
                 const assignedTeamText = assignment?.teamName || (assignment?.teamId ? `Đội #${assignment.teamId}` : null)
@@ -940,7 +973,8 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
                             !hasValidRequestId ||
                             !isPending ||
                             verifyLoading ||
-                            assignLoading
+                            assignLoading ||
+                            completeLoading
                           }
                         >
                           {verifyLoading ? 'Đang xác thực...' : 'Xác thực'}
@@ -953,10 +987,25 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
                             !hasValidRequestId ||
                             !isVerified ||
                             assignLoading ||
-                            verifyLoading
+                            verifyLoading ||
+                            completeLoading
                           }
                         >
                           {assignLoading ? 'Đang phân công...' : 'Phân công'}
+                        </button>
+                        <button
+                          type="button"
+                          className="action-button complete-button"
+                          onClick={() => handleCompleteRequest(request)}
+                          disabled={
+                            !hasValidRequestId ||
+                            !isCompletable ||
+                            completeLoading ||
+                            verifyLoading ||
+                            assignLoading
+                          }
+                        >
+                          {completeLoading ? 'Đang hoàn thành...' : 'Hoàn thành'}
                         </button>
                       </div>
                     </td>
