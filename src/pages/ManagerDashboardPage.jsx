@@ -117,7 +117,6 @@ function ManagerDashboardPage() {
     peopleHelped: 0,
     suppliesDistributed: 0,
     vehiclesUsed: 0,
-    consumptionRate: 0,
   })
 
   const supplyChartItems = useMemo(() => {
@@ -280,7 +279,7 @@ function ManagerDashboardPage() {
 
     let currentAngle = 0
     const segments = visibleItems.map((item) => {
-      const sweepAngle = (item.value / totalValue) * 360
+      const sweepAngle = (item.value / totalValue) * 360 
       const startAngle = currentAngle
       const endAngle = currentAngle + sweepAngle
       const percent = Math.round((item.value / totalValue) * 100)
@@ -344,46 +343,7 @@ function ManagerDashboardPage() {
     )
   }
 
-  const renderUsageMeter = (usedPercent, emptyMessage) => {
-    const normalizedValue = Math.min(Math.max(Number(usedPercent) || 0, 0), 100)
 
-    if (!Number.isFinite(normalizedValue)) {
-      return <div className="manager-chart-empty">{emptyMessage}</div>
-    }
-
-    const meterStatus =
-      normalizedValue >= 75 ? 'Cao'
-      : normalizedValue >= 40 ? 'Trung bình'
-      : 'Thấp'
-
-    return (
-      <div className="manager-meter-shell">
-        <div className="manager-meter-copy">
-          <strong>{formatNumberVN(normalizedValue)}%</strong>
-          <span>Mức tiêu thụ {meterStatus.toLowerCase()}</span>
-        </div>
-
-        <div className="manager-fuel-meter" aria-hidden="true">
-          <span className="manager-fuel-meter-cap" />
-          <div className="manager-fuel-meter-body">
-            <div className="manager-fuel-meter-grid">
-              <span />
-              <span />
-              <span />
-              <span />
-            </div>
-            <div className="manager-fuel-meter-fill" style={{ width: `${normalizedValue}%` }} />
-          </div>
-        </div>
-
-        <div className="manager-meter-scale">
-          <span>0%</span>
-          <span>50%</span>
-          <span>100%</span>
-        </div>
-      </div>
-    )
-  }
 
   const handleLogout = () => {
     setShowLogoutConfirm(true)
@@ -510,19 +470,6 @@ function ManagerDashboardPage() {
                 )}
               </div>
 
-              <div className="chart-card-divider" aria-hidden="true" />
-
-              <div className="chart-card-combined-section chart-card-meter-section">
-                <div className="chart-header">
-                  <div>
-                    <h3>Tỷ lệ tiêu thụ hôm nay</h3>
-                  </div>
-                </div>
-                {renderUsageMeter(
-                  todayStats.consumptionRate,
-                  'Chưa có dữ liệu tiêu thụ để hiển thị biểu đồ.',
-                )}
-              </div>
             </div>
           </div>
         </section>
