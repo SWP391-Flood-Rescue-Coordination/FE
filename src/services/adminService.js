@@ -201,12 +201,19 @@ const buildVehiclePayload = (vehicleData, { isCreate = false, originalStatus = '
 const adminService = {
   // Nhóm 1: user/role management cho AdminUsersPage.
   getUsers: async (userId = null) => {
+    // Lấy danh sách người dùng hoặc người dùng cụ thể theo ID
+    // Input: userId (optional) - ID người dùng cần tìm
+    // Output: Mảng user với thông tin id, name, email, role, status
+    // Lỗi: 401 (hết phiên), 403 (không quyền), 500 (lỗi server)
     const params = userId ? { userId: Number(userId) } : undefined
     const response = await api.get(`${ADMIN_BASE}`, { params })
     return normalizeArray(unwrapApiData(response))
   },
 
   getRoles: async () => {
+    // Lấy danh sách các vai trò hệ thống (Admin, Manager, Coordinator, Rescue Team, Citizen)
+    // Output: Mảng role với value (enum) và label (tiếng Việt)
+    // Lỗi: 401 (hết phiên), 500 (lỗi server)
     const response = await api.get(`${ADMIN_BASE}/roles`)
     const roles = normalizeArray(unwrapApiData(response))
 
@@ -232,12 +239,20 @@ const adminService = {
 
   // Nhóm 2: dữ liệu tổng quan dashboard admin.
   getRescueTeams: async (status = '') => {
+    // Lấy danh sách các đội cứu hộ với trạng thái thu gọn (Active/Inactive)
+    // Input: status (optional) - lọc theo trạng thái đội
+    // Output: Mảng team với thông tin id, name, location, status
+    // Lỗi: 401 (hết phiên), 500 (lỗi server)
     const params = status ? { status: String(status).trim().toUpperCase() } : undefined
     const response = await api.get(TEAM_BASE, { params })
     return normalizeArray(unwrapApiData(response))
   },
 
   getVehicles: async (status = '') => {
+    // Lấy danh sách phương tiện với lọc theo trạng thái (AVAILABLE, INUSE, MAINTENANCE)
+    // Input: status (optional) - AVAILABLE/INUSE/MAINTENANCE
+    // Output: Mảng vehicle chuẩn hóa với id, name, type, capacity, status, location
+    // Lỗi: 401 (hết phiên), 500 (lỗi server)
     const normalizedStatus = toVehicleApiStatusValue(status)
     const params = normalizedStatus ? { status: normalizedStatus } : undefined
     const response = await api.get('/Vehicle', { params })
@@ -245,11 +260,19 @@ const adminService = {
   },
 
   getVehicleById: async (vehicleId) => {
+    // Lấy chi tiết phương tiện cụ thể
+    // Input: vehicleId - ID phương tiện
+    // Output: Vehicle object chuẩn hóa
+    // Lỗi: 401 (hết phiên), 404 (không tìm thấy), 500 (lỗi server)
     const response = await api.get(`/Vehicle/${vehicleId}`)
     return normalizeVehicle(unwrapApiData(response))
   },
 
   createVehicle: async (vehicleData) => {
+    // Tạo phương tiện mới (VehicleCode do backend sinh)
+    // Input: vehicleData - { name, type, licensePlate, capacity, location, latitude, longitude, status }
+    // Output: Response với Data chứa vehicle đã tạo
+    // Lỗi: 400 (dữ liệu không hợp lệ), 401 (hết phiên), 500 (lỗi server)
     const response = await api.post('/Vehicle', buildVehiclePayload(vehicleData, { isCreate: true }))
     const payload = response?.data ?? {}
     return {
@@ -260,6 +283,10 @@ const adminService = {
   },
 
   updateVehicle: async (vehicleId, vehicleData, originalStatus = '') => {
+    // Cập nhật thông tin phương tiện (không cập nhật status nếu xe đang INUSE)
+    // Input: vehicleId, vehicleData, originalStatus - trạng thái cũ
+    // Output: Response với Data chứa vehicle đã cập nhật
+    // Lỗi: 400 (dữ liệu không hợp lệ), 401 (hết phiên), 404 (không tìm thấy), 500 (lỗi server)
     const response = await api.put(`/Vehicle/${vehicleId}`, buildVehiclePayload(vehicleData, { originalStatus }))
     const payload = response?.data ?? {}
     return {
@@ -270,6 +297,10 @@ const adminService = {
   },
 
   deleteVehicle: async (vehicleId) => {
+    // Xóa phương tiện
+    // Input: vehicleId - ID phương tiện cần xóa
+    // Output: Response success
+    // Lỗi: 401 (hết phiên), 404 (không tìm thấy), 500 (lỗi server)
     const response = await api.delete(`/Vehicle/${vehicleId}`)
     return response?.data ?? {}
   },
@@ -277,6 +308,10 @@ const adminService = {
   getVehicleTypeOptions: () => VEHICLE_TYPE_OPTIONS.map((item) => ({ ...item })),
 
   updateUserRole: async (userId, role) => {
+    // Cập nhật vai trò của người dùng (không được đổi role ADMIN/MANAGER)
+    // Input: userId - ID người dùng, role - vai trò mới (COORDINATOR, RESCUE_TEAM, CITIZEN)
+    // Output: Response success
+    // Lỗi: 400 (role không hợp lệ), 401 (hết phiên), 403 (role bị hạn chế), 404 (không tìm), 500 (lỗi)
     // Vai trò được chuẩn hóa trước khi gửi để tránh lệch giữa label hiển thị và enum BE.
     const response = await api.put(`${ADMIN_BASE}/${userId}/role`, {
       role: normalizeRole(role),
@@ -285,6 +320,10 @@ const adminService = {
   },
 
   updateUserStatus: async (userId, isActive) => {
+    // Kích hoạt hoặc vô hiệu hóa tài khoản người dùng
+    // Input: userId - ID người dùng, isActive - true (kích hoạt) hoặc false (vô hiệu)
+    // Output: Response success
+    // Lỗi: 401 (hết phiên), 404 (không tìm thấy), 500 (lỗi server)
     const response = await api.put(`${ADMIN_BASE}/${userId}/status`, {
       isActive: Boolean(isActive),
     })
@@ -293,6 +332,10 @@ const adminService = {
 
   // Nhóm 3: request moderation cho AdminDashboardPage và AdminRequestsPage.
   getRequests: async (status = '') => {
+    // Lấy danh sách rescue request với lọc theo trạng thái
+    // Input: status (optional) - Pending/Verified/Assigned/Confirmed/Completed/Cancelled/Duplicate
+    // Output: Mảng request với id, title, status, address, phone, priority
+    // Lỗi: 401 (hết phiên), 500 (lỗi server)
     const params = {}
     const normalizedStatus = toApiRequestStatusValue(status)
 
@@ -305,6 +348,10 @@ const adminService = {
   },
 
   cancelRequest: async (requestId) => {
+    // Hủy một rescue request (không được hủy request đã Completed, Duplicate)
+    // Input: requestId - ID request cần hủy
+    // Output: Response success
+    // Lỗi: 400 (request không hợp lệ để hủy), 401 (hết phiên), 404 (không tìm), 500 (lỗi)
     const response = await api.put(`/RescueRequest/${requestId}/status`, {
       status: 'Cancelled',
     })

@@ -506,6 +506,8 @@ const authService = {
     }
 
     // API login trả accessToken + thông tin user, FE lưu lại để route protected dùng chung.
+    // Gọi endpoint POST /Auth/login với phone và password để đăng nhập.
+    // Trả về accessToken và user info, nếu thất bại throw error với status 401.
     const response = await api.post('/Auth/login', payload, { skipAuth: true })
     const data = response?.data ?? {}
 
@@ -543,6 +545,9 @@ const authService = {
       fullName: String(fullName ?? '').trim(),
     }
 
+    // Gọi endpoint POST /Auth/register để đăng ký tài khoản mới.
+    // Validation: username >= 3 ký tự, email hợp lệ, password 5-20 ký tự, phone valid.
+    // Nếu email/phone đã tồn tại trả status 409, dữ liệu không hợp lệ trả status 400.
     const response = await api.post('/Auth/register', payload, { skipAuth: true })
     const data = response?.data ?? {}
 
@@ -564,6 +569,9 @@ const authService = {
       phone: String(phone ?? '').trim(),
     }
 
+    // Gọi endpoint POST /Auth/forgot-password/send-otp để gửi OTP đến email.
+    // Backend kiểm tra số điện thoại, nif tìm thấy user thì gửi OTP về email.
+    // Nếu không tìm thấy account trả status 404, lỗi gửi email trả 403.
     // API public nên bỏ qua interceptor auth ở tầng api.js bằng config route backend.
     const response = await api.post('/Auth/forgot-password/send-otp', payload, { skipAuth: true })
     return response?.data ?? {}
@@ -577,6 +585,9 @@ const authService = {
       newPassword: String(newPassword ?? ''),
     }
 
+    // Gọi endpoint POST /Auth/forgot-password/reset-password để xác nhận OTP và đổi mật khẩu.
+    // Backend kiểm tra phone, otp hợp lệ rồi update mật khẩu địa dùng.
+    // Nếu OTP sai/hết hạn trả status 400, nếu user không tìm thấy trả 404.
     const response = await api.post('/Auth/forgot-password/reset-password', payload, { skipAuth: true })
     return response?.data ?? {}
   },

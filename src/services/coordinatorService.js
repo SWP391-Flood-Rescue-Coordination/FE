@@ -86,6 +86,10 @@ const toVehicleApiStatusValue = (status) => {
 const coordinatorService = {
   // Nhóm 1: tải dữ liệu nền cho dashboard và bảng request.
   getRescueRequests: async (status = '', priorityId = null) => {
+    // Lấy danh sách rescue request có thể lọc theo status (Pending/Verified/Assigned/Completed) và priority (1=Cao/2=TB/3=Thấp)
+    // Input: status (optional) - Pending/Verified/Assigned/Confirmed/Completed/Cancelled/Duplicate, priorityId (optional) - 1/2/3
+    // Output: Mảng request để coordinator duyệt và phân công
+    // Lỗi: 401 (hết phiên), 403 (không phải coordinator), 500 (lỗi server)
     const params = {}
     const normalizedStatus = toApiStatusValue(status)
     if (normalizedStatus) {
@@ -101,35 +105,58 @@ const coordinatorService = {
   getPriorityLevels: async () => PRIORITY_LEVELS,
 
   getRescueTeams: async (status = '') => {
+    // Lấy danh sách đội cứu hộ với trạng thái (Active/Inactive)
+    // Input: status (optional) - trạng thái đội
+    // Output: Mảng rescue team
+    // Lỗi: 401 (hết phiên), 403 (không quyền), 500 (lỗi server)
     const params = status ? { status: String(status).trim().toUpperCase() } : undefined
     const response = await api.get(TEAM_BASE, { params })
     return normalizeArray(unwrapApiData(response))
   },
 
   getVehicles: async (status = '') => {
+    // Lấy danh sách phương tiện với lọc theo trạng thái (AVAILABLE/INUSE/MAINTENANCE)
+    // Input: status (optional) - AVAILABLE/INUSE/MAINTENANCE
+    // Output: Mảng vehicle chuẩn hóa
+    // Lỗi: 401 (hết phiên), 500 (lỗi server)
     const params = status ? { status: toVehicleApiStatusValue(status) } : undefined
     const response = await api.get('/Vehicle', { params })
     return normalizeArray(unwrapApiData(response)).map(normalizeVehicle)
   },
 
   getAvailableRescueTeams: async (status = '') => {
+    // Lấy danh sách đội cứu hộ sẵn sàng để phân công (status = Active)
+    // Input: status (optional)
+    // Output: Mảng rescue team
+    // Lỗi: 401 (hết phiên), 500 (lỗi server)
     const params = status ? { status: String(status).trim().toUpperCase() } : undefined
     const response = await api.get(TEAM_BASE, { params })
     return normalizeArray(unwrapApiData(response))
   },
 
   getAvailableVehicles: async () => {
+    // Lấy danh sách phương tiện sẵn sàng (status = AVAILABLE) để phân công
+    // Output: Mảng vehicle chuẩn hóa có trạng thái sẵn sàng
+    // Lỗi: 401 (hết phiên), 500 (lỗi server)
     const response = await api.get('/Vehicle', { params: { status: 'AVAILABLE' } })
     return normalizeArray(unwrapApiData(response)).map(normalizeVehicle)
   },
 
   // Nhóm 2: action nghiệp vụ trên từng request trong CoordinatorRequestsPage.
   verifyRequest: async (requestId) => {
+    // Xác thực/duyệt request từ trạng thái Pending -> Verified để sẵn sàng phân công
+    // Input: requestId - ID request cần xác thực
+    // Output: Request object sau verify
+    // Lỗi: 400 (request không hợp lệ), 401 (hết phiên), 403 (không quyền), 404 (không tìm), 500 (lỗi)
     const response = await api.put(`${REQUEST_BASE}/${requestId}/verify`)
     return unwrapApiData(response)
   },
 
   markRequestDuplicate: async (requestId) => {
+    // Đánh dấu request là trùng lặp (không phải cứu hộ mới)
+    // Input: requestId - ID request cần đánh dấu
+    // Output: Request object với status = Duplicate
+    // Lỗi: 400 (request không hợp lệ), 401 (hết phiên), 403 (không quyền), 404 (không tìm), 500 (lỗi)
     const response = await api.put(`${REQUEST_BASE}/${requestId}/status`, {
       status: 'Duplicate',
     })
@@ -137,6 +164,10 @@ const coordinatorService = {
   },
 
   assignRequest: async (requestId, teamId, vehicleIds, estimatedTime) => {
+    // Phân công request cho đội cứu hộ: thay đổi status Pending/Verified -> Assigned, gán đội + xe + thời gian dự kiến
+    // Input: requestId, teamId (ID đội cứu hộ), vehicleIds (ID xe - string/array), estimatedTime (minuets hoặc số phút)
+    // Output: Operation object được tạo
+    // Lỗi: 400 (dữ liệu không hợp lệ), 401 (hết phiên), 403 (không quyền), 404 (không tìm), 500 (lỗi)
     // vehicleIds được chấp nhận cả string lẫn array, FE chuẩn hóa lại trước khi gửi BE.
     const vehicleIdsString = Array.isArray(vehicleIds)
       ? vehicleIds.map((id) => Number(id)).filter((id) => Number.isFinite(id)).join(',')

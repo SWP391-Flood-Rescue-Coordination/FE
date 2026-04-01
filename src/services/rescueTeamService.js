@@ -151,6 +151,9 @@ const filterActiveMissions = (items) =>
 
 const rescueTeamService = {
   getMyOperations: async () => {
+    // Lấy danh sách nhiệm vụ hiện tại của đội cứu hộ (filter các request đã Complete/Duplicate/Cancelled)
+    // Output: Mảng mission chuẩn hóa { id, address, phone, location, estimatedTime, priority, status, vehicles }
+    // Lỗi: 401 (hết phiên hoặc không phải rescue team), 403 (không quyền), 500 (lỗi server)
     try {
       const response = await api.get('/rescue-team/my-operations')
       const data = unwrapApiData(response)
@@ -172,6 +175,10 @@ const rescueTeamService = {
   },
 
   updateOperationStatus: async (operationId, newStatus) => {
+    // Cập nhật trạng thái của một nhiệm vụ (Assigned -> Completed hoặc Cancelled)
+    // Input: operationId - ID nhiệm vụ, newStatus - trạng thái mới
+    // Output: Response success
+    // Lỗi: 400 (status không hợp lệ), 401 (hết phiên), 403 (không quyền), 404 (không tìm), 409 (conflict - thay đổi bởi người khác), 500 (lỗi)
     try {
       const response = await api.put(`/rescue-team/operations/${operationId}/status`, {
         newStatus,
@@ -185,6 +192,11 @@ const rescueTeamService = {
   },
 
   cancelMissionRequest: async (requestId) => {
+    // Hủy một request/nhiệm vụ (đi theo API hủy request hệ thống như admin dùng)
+    // Input: requestId - ID request cần hủy
+    // Output: Response success
+    // Lỗi: 400 (request không hợp lệ để hủy), 401 (hết phiên), 403 (không quyền), 404 (không tìm), 500 (lỗi)
+    // Nút thất bại/hủy ở rescue team đi theo API hủy request giống luồng admin.
     try {
       // Nút thất bại/hủy ở rescue team đi theo API hủy request giống luồng admin.
       const response = await api.put(`/RescueRequest/${requestId}/status`, {
@@ -199,6 +211,10 @@ const rescueTeamService = {
   },
 
   getOperationDetails: async (operationId) => {
+    // Lấy chi tiết một nhiệm vụ cụ thể
+    // Input: operationId - ID nhiệm vụ
+    // Output: Mission object chuẩn hóa { id, address, phone, location, description, priority, status, vehicles }
+    // Lỗi: 401 (hết phiên), 403 (không quyền), 404 (không tìm), 500 (lỗi server)
     try {
       const response = await api.get(`/rescue-team/operations/${operationId}`)
       const data = unwrapApiData(response)

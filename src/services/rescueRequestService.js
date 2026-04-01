@@ -589,12 +589,17 @@ const buildGuestUpdatePayload = (formData) => {
 const rescueRequestService = {
   // Nhóm 1: API dành cho dashboard công dân và tạo request.
   getCitizenDashboardStatistics: async () => {
+    // Gọi GET /RescueRequest/citizen-dashboard-statistics lấy thống kê dashboard công dân.
+    // Trả về số request mỜo, hoàn thành, v.v. - không cần auth token vì là public API.
     const response = await api.get('/RescueRequest/citizen-dashboard-statistics', { skipAuth: true })
     return unwrapApiData(response)
   },
 
   createRescueRequest: async (formData) => {
     const payload = buildCreatePayload(formData)
+    // Gọi POST /RescueRequest tạo yêu cầu cứu hộ mới từ form citizen.
+    // Có thể là citizen (được auth) hoặc guest (public API).
+    // Trả về requestId, nếu thất bại trả 400 (validate) hoặc 403 (không có quyền).
     const response = await api.post('/RescueRequest', payload)
     const rawData = response?.data ?? {}
     const requestId = toNullableInteger(
@@ -621,22 +626,30 @@ const rescueRequestService = {
 
   // Nhóm 2: API citizen đã đăng nhập.
   getMyRequests: async () => {
+    // Lấy danh sách các request của citizen hiện tại để hiển thị Dashboard.
+    // Cần có auth token, nếu 401 thì token hết hạn.
     const response = await api.get('/RescueRequest/my-requests')
     return normalizeArray(unwrapApiData(response))
   },
 
   getMyLatestRequest: async () => {
+    // Lấy request gần đây nhất của citizen được đăng nhập.
+    // Dùng cho ViewRequest khi citizen quay lại xem request cuối cùng.
     const response = await api.get('/RescueRequest/my-latest-request')
     return unwrapApiData(response)
   },
 
   // Nhóm 3: API guest và cache guest tracking.
   getGuestRequestStatus: async (requestId) => {
+    // Lấy trạng thái của guest request (không cần auth).
+    // Guest có thể track request qua requestId đã lưu ở localStorage khi tạo.
     const response = await api.get('/RescueRequest/guest/status', { params: { requestId } })
     return unwrapApiData(response)
   },
 
   getTrackedGuestRequestStatus: async () => {
+    // Hàm helper: lấy tracking từ localStorage rồi gọi API lấy trạng thái guest request.
+    // Ghép dữ liệu API với cache local, luôn đồng bộ cache lại với response mới nhất.
     const tracking = getGuestTracking()
     if (!tracking) {
       return null
@@ -654,6 +667,8 @@ const rescueRequestService = {
 
   updateGuestRequest: async (requestId, formData) => {
     const payload = buildGuestUpdatePayload(formData)
+    // Gọi PUT /RescueRequest/guest/update/{requestId} cập nhật request của guest.
+    // Sau khi thành công, FE sync cache local lại với dữ liệu mới.
     const response = await api.put(`/RescueRequest/guest/update/${requestId}`, payload)
     const result = response?.data ?? {}
 
@@ -675,11 +690,15 @@ const rescueRequestService = {
   // Nhóm 4: update/request detail và báo an toàn cho citizen hoặc guest.
   updateMyRequest: async (requestId, formData) => {
     const payload = buildGuestUpdatePayload(formData)
+    // Cập nhật request của citizen được đăng nhập bằng PUT /RescueRequest/{requestId}/update.
+    // Y dữ liệu trường tảnh qua buildGuestUpdatePayload giờống citizen và guest.
     const response = await api.put(`/RescueRequest/${requestId}/update`, payload)
     return response?.data ?? {}
   },
 
   confirmRescued: async (requestId) => {
+    // Citizen được đăng nhập bảo an toàn bằng PUT /RescueRequest/{requestId}/confirm-rescued.
+    // Cập nhật trạng thái request sang 'Completed'.
     const response = await api.put(`/RescueRequest/${requestId}/confirm-rescued`)
     return response?.data ?? {}
   },
@@ -688,6 +707,9 @@ const rescueRequestService = {
     const payload = {
       phone: String(phone ?? '').trim(),
     }
+    // Guest báo an toàn bằng PUT /RescueRequest/guest/{requestId}/confirm-rescued.
+    // Phải gửi køm số điện thoại để xác nhận là chủ nhân request.
+    // Nếu thành công, FE tự đổi trạng thái cache sang 'Completed'.
     const response = await api.put(`/RescueRequest/guest/${requestId}/confirm-rescued`, payload)
     const result = response?.data ?? {}
 

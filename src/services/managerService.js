@@ -608,6 +608,9 @@ const getLowStockCount = async (threshold = 6) => {
 
 const managerService = {
   getDashboardStats: async () => {
+    // Lấy thống kê tổng hợp: tổng request, request theo status, request hôm nay
+    // Output: { totalRequests, pendingRequests, verifiedRequests, inProgressRequests, completedRequests, cancelledRequests, duplicateRequests, todayRequests }
+    // Lỗi: 401 (hết phiên), 500 (lỗi server)
     try {
       const stats = await getStatistics()
       return {
@@ -649,6 +652,9 @@ const managerService = {
   },
 
   getSupplyStats: async () => {
+    // Lấy thống kê vật tư: tổng loại vật tư, số loại tồn kho thấp
+    // Output: { totalTypes, lowStock }
+    // Lỗi: 401 (hết phiên), 5009 (lỗi server)
     try {
       const supplies = await managerService.getSupplies()
       const lowStockCount = supplies.filter(isLowStockSupply).length
@@ -664,6 +670,10 @@ const managerService = {
   },
 
   getRescueTeamStatus: async (status = '') => {
+    // Lấy danh sách trạng thái các đội cứu hộ (hoạt động, ngưng)
+    // Input: status (optional) - lọc theo trạng thái đội
+    // Output: Mảng team status objects
+    // Lỗi: 401 (hết phiên), 500 (lỗi server)
     try {
       const params = status ? { status } : undefined
       const response = await api.get('/rescue-team/status', { params })
@@ -675,6 +685,9 @@ const managerService = {
   },
 
   getTodayStats: async () => {
+    // Lấy thống kê hoạt động hôm nay: request phục vụ, đội hoạt động, xe đang dùng, vật tư phân phối
+    // Output: { requestsServed, rescueTeams, peopleHelped, suppliesDistributed, vehiclesUsed, consumptionRate }
+    // Lỗi: 401 (hết phiên), 500 (lỗi server) - nếu lỗi trả về stats = 0
     try {
       const [stats, outTransactions, inUseVehicles, rescueTeams, supplies] = await Promise.all([
         getStatistics(),
@@ -727,6 +740,10 @@ const managerService = {
   },
 
   getAllVehicles: async (status = '') => {
+    // Lấy danh sách phương tiện với lọc theo trạng thái
+    // Input: status (optional) - AVAILABLE/INUSE/MAINTENANCE
+    // Output: Mảng vehicle chuẩn hóa
+    // Lỗi: 401 (hết phiên), 500 (lỗi server)
     try {
       const normalizedStatus = toVehicleApiStatusValue(status)
       const params = normalizedStatus ? { status: normalizedStatus } : undefined
@@ -739,11 +756,19 @@ const managerService = {
   },
 
   getVehicleById: async (vehicleId) => {
+    // Lấy chi tiết phương tiện cụ thể
+    // Input: vehicleId - ID phương tiện
+    // Output: Vehicle object chuẩn hóa
+    // Lỗi: 401 (hết phiên), 404 (không tìm thấy), 500 (lỗi server)
     const response = await api.get(`/Vehicle/${vehicleId}`)
     return normalizeVehicle(unwrapApiData(response))
   },
 
   createVehicle: async (vehicleData) => {
+    // Tạo phương tiện mới (VehicleCode do backend sinh, FE tạo payload theo DTO mới)
+    // Input: vehicleData - { name, type, licensePlate, capacity, location, latitude, longitude, status }
+    // Output: Response với Data chứa vehicle đã tạo
+    // Lỗi: 400 (dữ liệu không hợp lệ), 401 (hết phiên), 500 (lỗi server)
     // FE tạo payload theo DTO mới của BE, còn VehicleCode do backend sinh.
     const response = await api.post('/Vehicle', buildVehiclePayload(vehicleData, { isCreate: true }))
     const payload = response?.data ?? {}
@@ -755,6 +780,10 @@ const managerService = {
   },
 
   updateVehicle: async (vehicleId, vehicleData, originalStatus = '') => {
+    // Cập nhật thông tin phương tiện (không cập nhật status nếu xe đang INUSE)
+    // Input: vehicleId, vehicleData, originalStatus - trạng thái cũ
+    // Output: Response với Data chứa vehicle đã cập nhật
+    // Lỗi: 400 (dữ liệu không hợp lệ), 401 (hết phiên), 404 (không tìm), 500 (lỗi)
     const response = await api.put(`/Vehicle/${vehicleId}`, buildVehiclePayload(vehicleData, { originalStatus }))
     const payload = response?.data ?? {}
     return {
@@ -765,6 +794,10 @@ const managerService = {
   },
 
   deleteVehicle: async (vehicleId) => {
+    // Xóa phương tiện
+    // Input: vehicleId - ID phương tiện cần xóa
+    // Output: Response success
+    // Lỗi: 401 (hết phiên), 404 (không tìm thấy), 500 (lỗi server)
     const response = await api.delete(`/Vehicle/${vehicleId}`)
     return response?.data ?? {}
   },
@@ -772,6 +805,9 @@ const managerService = {
   getVehicleTypeOptions: () => VEHICLE_TYPE_OPTIONS.map((item) => ({ ...item })),
 
   getSupplies: async () => {
+    // Lấy danh sách vật tư cứu trợ (lương thực, nước, y tế, quần áo, nơi ở)
+    // Output: Mảng supply chuẩn hóa với id, name, type, quantity, unit, minQuantity
+    // Lỗi: 401 (hết phiên), 500 (lỗi server)
     try {
       const response = await api.get('/ReliefItem')
       const payload = response?.data
@@ -784,6 +820,9 @@ const managerService = {
   },
 
   getRecipientUnits: async () => {
+    // Lấy danh sách đơn vị tiếp nhận từ lịch sử định lộ (nhóm duy nhất)
+    // Output: Mảng unit objects { receiverUnitId, receiverUnitName, receiverType, address }
+    // Lỗi: 401 (hết phiên), 500 (lỗi server) - trả về [] nếu lỗi
     try {
       const response = await api.get('/StockHistory', {
         params: { type: 'OUT' },
@@ -815,6 +854,9 @@ const managerService = {
   },
 
   getImportOptions: async () => {
+    // Lấy danh sách tùy chọn đơn vị nhập kho
+    // Output: Mảng unit objects với thông tin đơn vị nhập
+    // Lỗi: 401 (hết phiên), 4004 (endpoint không tồn tại), 500 (lỗi) - trả về [] nếu lỗi
     // Lấy đơn vị nhập kho
     try {
       const response = await api.get('/StockUnit/import-options')
@@ -829,6 +871,9 @@ const managerService = {
   },
 
   getExportOptions: async () => {
+    // Lấy danh sách tùy chọn đơn vị xuất kho
+    // Output: Mảng unit objects với thông tin đơn vị xuất
+    // Lỗi: 401 (hết phiên), 404 (endpoint không tồn tại), 500 (lỗi) - trả về [] nếu lỗi
     // Lấy đơn vị xuất kho
     try {
       const response = await api.get('/StockUnit/export-options')
@@ -843,6 +888,9 @@ const managerService = {
   },
 
   getLowStockSupplies: async () => {
+    // Lấy danh sách vật tư có tồn kho thấp (n = 6 mặc định)
+    // Output: Mảng supply chuẩn hóa - những mặt hàng quantity <= minQuantity
+    // Lỗi: 401 (hết phiên), 500 (lỗi server)
     try {
       const response = await api.get('/ReliefItem/low-stock', {
         params: { n: 6 },
@@ -857,6 +905,10 @@ const managerService = {
   },
 
   addSupply: async (supplyData) => {
+    // Thêm vật tư mới
+    // Input: supplyData - { name, type, unit, quantity, minQuantity }
+    // Output: Supply object
+    // Lỗi: 501 (API chưa được backend hỗ trợ), 400, 401, 500
     try {
       void supplyData
       throw createNotImplementedError('API thêm vật tư chưa được backend hỗ trợ.')
@@ -867,6 +919,10 @@ const managerService = {
   },
 
   updateSupply: async (supplyId, supplyData) => {
+    // Cập nhật thông tin vật tư (tên, đơn vị, số lượng tối thiểu, loại)
+    // Input: supplyId - ID vật tư, supplyData - { name, unit, minQuantity, categoryId }
+    // Output: Cập nhật supply object
+    // Lỗi: 400 (dữ liệu không hợp lệ), 401 (hết phiên), 404 (không tìm), 500 (lỗi)
     try {
       const payload = {}
 
@@ -894,6 +950,10 @@ const managerService = {
   },
 
   deleteSupply: async (supplyId) => {
+    // Xóa vật tư
+    // Input: supplyId - ID vật tư cần xóa
+    // Output: Response success
+    // Lỗi: 501 (API chưa được backend hỗ trợ), 401, 404, 500
     try {
       void supplyId
       throw createNotImplementedError('API xóa vật tư chưa được backend hỗ trợ.')
@@ -904,6 +964,10 @@ const managerService = {
   },
 
   getDetailedReport: async (startDate, endDate) => {
+    // Lấy báo cáo chi tiết về rescue request trong khoảng thời gian
+    // Input: startDate, endDate - ngày bắt đầu và kết thúc (ISO format)
+    // Output: Mảng filtered requests theo ngày tạo
+    // Lỗi: 401 (hết phiên), 500 (lỗi server)
     try {
       const params = {}
       if (startDate) {
@@ -947,6 +1011,10 @@ const managerService = {
   },
 
   exportReport: async (reportType, startDate, endDate) => {
+    // Xuất báo cáo theo kiểu (summary hoặc completed) thành file CSV
+    // Input: reportType - 'summary' hoặc 'completed', startDate, endDate
+    // Output: Blob (file CSV để download)
+    // Lỗi: 401 (hết phiên), 500 (lỗi server)
     try {
       const reportRows = await managerService.getDetailedReport(startDate, endDate)
       const normalizedReportType = String(reportType ?? 'summary').trim().toLowerCase()
@@ -985,6 +1053,10 @@ const managerService = {
   },
 
   createReliefExportOrder: async (payload) => {
+    // Tạo đơn xuất cứu trợ: chỉ định vật tư, đơn vị xuất, địa chỉ nhận, phương tiện
+    // Input: payload - { stockUnitId, destination, items: [{itemId, quantity}], vehicleIds, notes }
+    // Output: Response success với id phiếu xuất
+    // Lỗi: 400 (dữ liệu không hợp lệ), 401 (hết phiên), 500 (lỗi server)
     try {
       const stockUnitId = toNumber(payload?.stockUnitId ?? payload?.stockUnit?.stockUnitId)
       const address = firstNonEmptyText(
@@ -1050,9 +1122,12 @@ const managerService = {
   },
 
   getCategories: async () => {
+    // Lấy danh sách loại vật tư (dedup từ danh sách supplies hoặc từ API endpoint nếu có)
+    // Output: Mảng category { categoryId, name }
+    // Lỗi: 401 (hết phiên), 500 (lỗi server) - nếu lỗi trả lại categories từ supplies
     try {
       try {
-        // Endpoint không tồn tại trên backend,  tạm skip
+        // Endpoint không tồn tại trên backend, tạm skip
         throw new Error('Categories endpoint not implemented yet')
       } catch (categoriesError) {
         if (!isNotFoundError(categoriesError)) {
@@ -1088,6 +1163,10 @@ const managerService = {
   },
 
   createImportReceipt: async (payload) => {
+    // Tạo phiếu nhập kho: chỉ định vật tư nhập, đơn vị nguồn, địa chỉ
+    // Input: payload - { stockUnitId, source, items: [{itemId, quantity}], address, notes }
+    // Output: Response success với id phiếu nhập
+    // Lỗi: 400 (dữ liệu không hợp lệ), 401 (hết phiên), 500 (lỗi server)
     try {
       const stockUnitId = toNullableNumber(payload?.stockUnitId ?? payload?.stockUnit?.stockUnitId)
       const address = firstNonEmptyText(
@@ -1145,6 +1224,9 @@ const managerService = {
   },
 
   getImportReceipts: async () => {
+    // Lấy danh sách phiếu nhập kho đã tạo
+    // Output: Mảng import receipt chuẩn hóa { receiptId, type, source, items, createdAt }
+    // Lỗi: 401 (hết phiên), 500 (lỗi server) - trả về [] nếu lỗi
     try {
       const [response, supplies, stockUnits] = await Promise.all([
         api.get('/StockHistory', { params: { type: 'IN' } }),
@@ -1162,6 +1244,9 @@ const managerService = {
   },
 
   getExportReceipts: async () => {
+    // Lấy danh sách phiếu xuất kho đã tạo
+    // Output: Mảng export receipt chuẩn hóa { receiptId, type, destination, items, createdAt }
+    // Lỗi: 401 (hết phiên), 500 (lỗi server) - trả về [] nếu lỗi
     try {
       const [response, supplies, stockUnits] = await Promise.all([
         api.get('/StockHistory', { params: { type: 'OUT' } }),
