@@ -116,6 +116,10 @@ const Register = ({ onClose, onShowLogin }) => {
     const fullName = `${lastName} ${firstName}`.trim();
     try {
       setLoading(true);
+      // Gọi API đăng ký: POST /api/Auth/register
+      // Payload: { username, phone, email, password, fullName }
+      // BE validate, create User record mới, trả về success/error message
+      // Validate: password ≥ 5 ký tự, phone định dạng, email định dạng, không trùng phone/email
       await authService.register(username, phone, email, password, fullName);
       setShowSuccessPopup(true);
     } catch (err) {

@@ -263,6 +263,9 @@ function RequestForm({ onClose }) {
     setIsSubmitting(true)
 
     try {
+      // Gọi API tạo rescue request: POST /api/RescueRequest
+      // Payload từ form: location, longitude, latitude, description, priority, numPeopleInvolved, phone
+      // BE tạo RescueRequest record mới với status=PENDING, trả về requestId
       // Thành công xong sẽ trả request vừa tạo về Dashboard để refresh lịch sử và trạng thái nút chính.
       const data = await rescueRequestService.createRescueRequest(formData)
 

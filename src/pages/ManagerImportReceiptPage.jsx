@@ -305,6 +305,9 @@ function ManagerImportReceiptPage() {
         })),
       }
       
+      // Gọi API tạo phiếu nhập kho: POST /api/StockHistory/import
+      // Payload gồm: date, supplier, items (item_id, category_id, quantity), notes
+      // BE tạo StockHistory record mới, update ReliefItem quantity
       await managerService.createImportReceipt(payload)
       
       setSuccessMessage('Tạo phiếu nhập kho thành công!')

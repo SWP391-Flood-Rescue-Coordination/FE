@@ -140,6 +140,7 @@ function AdminUsersPage() {
   }
 
   // Cập nhật role cho từng user sau khi đã qua lớp chặn restriction trong adminService.
+  // Guard Logic: Không cho update role ADMIN/MANAGER, không cho self-update
   const handleUpdateRole = async (user) => {
     const nextRole = normalizeRole(draftRoles[user.userId] || user.role)
     if (!nextRole || nextRole === normalizeRole(user.role)) {
@@ -158,6 +159,10 @@ function AdminUsersPage() {
     setSuccessMessage('')
 
     try {
+      // Gọi API thay đổi vai trò user: PUT /api/Users/{userId}/role
+      // Payload: { role: nextRole } (CITIZEN, RESCUE_TEAM, COORDINATOR, MANAGER, ADMIN)
+      // BE update User.role = nextRole, validate quyền admin
+      // Lưu ý: Không cho thay đổi role của admin khác, không cho tự sửa role bản thân
       const result = await adminService.updateUserRole(user.userId, nextRole)
       setSuccessMessage(result?.message || `Đã cập nhật vai trò cho ${user.username}.`)
       await loadUsers({ silent: true })
@@ -173,6 +178,7 @@ function AdminUsersPage() {
   }
 
   // Khóa/mở khóa tài khoản trực tiếp trên bảng và refresh lại list khi thành công.
+  // Flow: User xác nhận toggle status → call API → update isActive flag → reload list
   const handleToggleUserStatus = async (user) => {
     const nextIsActive = !user.isActive
     const confirmMessage = nextIsActive
@@ -188,6 +194,10 @@ function AdminUsersPage() {
     setSuccessMessage('')
 
     try {
+      // Gọi API cập nhật trạng thái tài khoản: PUT /api/Users/{userId}/status
+      // Payload: { status: nextIsActive hoặc { isActive: boolean } }
+      // BE update User.isActive flag, toggle kích hoạt/vô hiệu hóa tài khoản
+      // User không được login nếu account bị vô hiệu hóa
       const result = await adminService.updateUserStatus(user.userId, nextIsActive)
       setSuccessMessage(result?.message || 'Đã cập nhật trạng thái tài khoản.')
       await loadUsers({ silent: true })

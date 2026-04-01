@@ -43,6 +43,10 @@ const Login = ({ onClose, onShowForgotPassword, onShowRegister, onLoginSuccess }
     setLoading(true)
 
     try {
+      // Gọi API đăng nhập: POST /api/Auth/login
+      // Payload: { phone, password }
+      // BE validate, kiểm tra user tồn tại, password đúng, trả về { accessToken, refreshToken, user }
+      // FE lưu accessToken + user vào localStorage, sau đó navigate theo role
       const data = await authService.login(phone, password)
 
       if (onLoginSuccess) {

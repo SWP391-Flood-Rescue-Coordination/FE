@@ -52,6 +52,9 @@ function AdminRequestsPage() {
   )
 
   // Tải danh sách request theo status filter để bảng và ô tìm kiếm dùng chung một nguồn dữ liệu.
+  // API: GET /api/RescueRequest?status={status} hoặc GET /api/RescueRequest (lấy tất cả)
+  // Return: Danh sách rescue request với các field requestId, status, priority, location, description, etc.
+  // Xử lý: Set loading state, call service, catch error + handle 401
   const loadRequests = useCallback(
     async ({ fullPage = false } = {}) => {
       if (fullPage) {
@@ -65,6 +68,9 @@ function AdminRequestsPage() {
       }
 
       try {
+        // Gọi API lấy danh sách yêu cầu cứu hộ: GET /api/RescueRequest
+        // Filter theo status nếu có (PENDING, VERIFIED, ASSIGNED, etc.)
+        // FE dùng danh sách để render bảng, search, và các action
         const requestItems = await adminService.getRequests(requestStatusFilter)
         setRequests(requestItems)
       } catch (error) {
@@ -140,6 +146,7 @@ function AdminRequestsPage() {
   }
 
   // Admin chỉ có một action nghiệp vụ chính ở màn này: chuyển request sang trạng thái Hủy.
+  // Flow: User xác nhận hủy request → call API → set status = CANCELLED → reload list
   const handleCancelRequest = async (request) => {
     const requestId = request.requestId
     if (!requestId) {
@@ -155,6 +162,10 @@ function AdminRequestsPage() {
     setSuccessMessage('')
 
     try {
+      // Gọi API hủy request: PUT /api/RescueRequest/{requestId}/status
+      // Payload: { status: 'CANCELLED' }
+      // Flow: PENDING/VERIFIED/ASSIGNED → CANCELLED, người dùng sẽ nhận được thông báo
+      // BE update RescueRequest.status = CANCELLED, ghi lại admin who cancelled
       const result = await adminService.cancelRequest(requestId)
       setSuccessMessage(result?.message || `Đã chuyển yêu cầu #${requestId} sang trạng thái Hủy.`)
       await loadRequests({ fullPage: false })

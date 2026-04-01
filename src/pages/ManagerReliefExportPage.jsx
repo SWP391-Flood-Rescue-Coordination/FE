@@ -319,6 +319,9 @@ function ManagerReliefExportPage() {
     setSuccessMessage('')
 
     try {
+      // Gọi API tạo đơn xuất cứu trợ: POST /api/StockHistory/export
+      // Payload gồm: recipient info, supplyItems (supplyId, quantity), notes, vehicleIds
+      // BE tạo StockHistory record (type=OUT), update ReliefItem quantity
       await managerService.createReliefExportOrder({
         ...selectedRecipient,
         stockUnitId: selectedRecipient.stockUnitId, // truyền đúng stockUnitId cho backend

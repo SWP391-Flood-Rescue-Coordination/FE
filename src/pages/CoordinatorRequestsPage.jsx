@@ -511,6 +511,9 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
     setActionLoading(requestId, 'verify', true)
 
     try {
+      // Gọi API xác thực request: PUT /api/RescueRequest/{requestId}/verify
+      // Payload: { status: 'VERIFIED' }
+      // Flow: PENDING → VERIFIED, sau đó coordinator có thể phân công đội
       await coordinatorService.verifyRequest(requestId)
       setSuccessMessage(`Xác thực yêu cầu #${requestId} thành công.`)
       await reloadAll()
@@ -538,6 +541,9 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
     setActionLoading(requestId, 'duplicate', true)
 
     try {
+      // Gọi API đánh dấu request trùng lặp: PUT /api/RescueRequest/{requestId}/mark-duplicate
+      // Payload: { status: 'DUPLICATE' }
+      // Flow: PENDING/VERIFIED → DUPLICATE, request không được phân công thêm
       await coordinatorService.markRequestDuplicate(requestId)
       setSuccessMessage(`Đã chuyển yêu cầu #${requestId} sang trạng thái trùng lặp.`)
       await reloadAll()
@@ -621,6 +627,9 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
     setActionLoading(requestId, 'assign', true)
 
     try {
+      // Gọi API phân công request cho đội: POST /api/RescueOperation hoặc PUT /api/RescueRequest/{requestId}/assign
+      // Payload: { rescueTeamId, vehicleIds, estimatedArrivalTime }
+      // BE tạo RescueOperation record, update request status = ASSIGNED, update team/vehicle status = INUSE
       // FE vừa cập nhật cache assignment cục bộ vừa reload từ API để phản hồi nhanh nhưng vẫn nhất quán.
       const assignResult = await coordinatorService.assignRequest(requestId, assignTeamId, assignVehicleIds, parsedEstimatedTime)
       const selectedTeam = teams.find((team) => String(team.id) === String(assignTeamId))
@@ -675,6 +684,9 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
     setActionLoading(requestId, 'complete', true)
 
     try {
+      // Gọi API đánh dấu request hoàn thành: PUT /api/RescueRequest/{requestId}/status
+      // Payload: { status: 'COMPLETED' }
+      // Flow: ASSIGNED/IN_PROGRESS → COMPLETED, system sẽ gửi SMS/email cho citizen báo an toàn
       await coordinatorService.markRequestCompleted(requestId)
       setRequests((prev) =>
         prev.map((requestItem) =>

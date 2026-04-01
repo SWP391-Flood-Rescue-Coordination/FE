@@ -42,6 +42,9 @@ function ManagerSuppliesPage() {
     setErrorMessage('')
 
     try {
+      // Gọi API lấy danh sách vật tư: GET /api/ReliefItem?category={category} hoặc GET /api/ReliefItem
+      // Return: Danh sách supply với field supplyId, name, category, quantity, unit, minQuantity, etc.
+      // FE dùng để render bảng, filter, search, cảnh báo low stock
       const data = await managerService.getSupplies()
       setSupplies(data)
       setFilteredSupplies(data)
@@ -153,6 +156,11 @@ function ManagerSuppliesPage() {
     }
 
     try {
+      // Gọi API cập nhật mức tối thiểu của vật tư: PUT /api/ReliefItem/{supplyId}
+      // Payload: { minQuantity: number }
+      // BE update ReliefItem.minQuantity để dùng trong cảnh báo low stock
+      // FE sẽ so sánh quantity vs minQuantity để hiển thị "Sắp hết" warning
+      // Return: Updated supply record
       await managerService.updateSupply(selectedSupply.supplyId, {
         minQuantity: newMin,
       })
@@ -170,6 +178,10 @@ function ManagerSuppliesPage() {
     }
 
     try {
+      // Gọi API xóa vật tư: DELETE /api/ReliefItem/{supplyId}
+      // BE xóa ReliefItem record khỏi hệ thống
+      // Lưu ý: Chỉ xóa được khi vật tư không có trong bất kỳ StockHistory (import/export) nào
+      // Return: Success message
       await managerService.deleteSupply(supplyId)
       alert('Xóa vật tư thành công!')
       fetchSupplies()
@@ -182,6 +194,10 @@ function ManagerSuppliesPage() {
     event.preventDefault()
 
     try {
+      // Gọi API thêm vật tư mới: POST /api/ReliefItem
+      // Payload: { name, type, quantity, unit, minQuantity }
+      // BE create ReliefItem record, trả về supplyId và các field mặc định
+      // FE reload danh sách và hiển thị trong bảng
       await managerService.addSupply({
         ...formData,
         quantity: Number(formData.quantity),
@@ -199,6 +215,10 @@ function ManagerSuppliesPage() {
     event.preventDefault()
 
     try {
+      // Gọi API cập nhật vật tư: PUT /api/ReliefItem/{supplyId}
+      // Payload: { name, type, quantity, unit, minQuantity }
+      // BE update ReliefItem record với field được submit
+      // FE reload danh sách và hiển thị data mới nhất
       await managerService.updateSupply(selectedSupply.supplyId, {
         ...formData,
         quantity: Number(formData.quantity),

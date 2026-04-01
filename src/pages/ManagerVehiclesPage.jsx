@@ -214,6 +214,9 @@ function ManagerVehiclesPage() {
     setIsModalSubmitting(true)
 
     try {
+      // Gọi API lấy chi tiết xe: GET /api/Vehicle/{vehicleId}
+      // Return: Thông tin xe đầy đủ (vehicleCode, capacity, location, status, etc.)
+      // FE dùng dữ liệu để fill vào form edit trong modal cho user chỉnh sửa
       const vehicle = await managerService.getVehicleById(vehicleId)
       setSelectedVehicle(vehicle)
       setModalMode('edit')
@@ -240,6 +243,10 @@ function ManagerVehiclesPage() {
     }
 
     try {
+      // Gọi API xóa xe: DELETE /api/Vehicle/{vehicleId}
+      // Chỉ xóa được xe ở status AVAILABLE (không đang dùng INUSE hay bảo trì MAINTENANCE)
+      // BE xóa Vehicle record + tất cả dữ liệu liên quan (history, etc.)
+      // Return: Success message
       const response = await managerService.deleteVehicle(vehicle.vehicleId)
       await fetchVehicles()
       showToast('success', response?.message || response?.Message || 'Xóa phương tiện thành công.')
@@ -254,6 +261,13 @@ function ManagerVehiclesPage() {
 
     try {
       // Modal dùng chung cho create/edit, chỉ khác service call theo mode hiện tại.
+      // Create: POST /api/Vehicle
+      //   Payload: { vehicleCode, name, capacity, location, registrationNumber, type, purchaseDate, ... }
+      //   Validate: capacity ≥ 2, vehicleCode unique, location bắt buộc
+      // Update: PUT /api/Vehicle/{vehicleId}
+      //   Payload: { name, capacity, location, ... }
+      //   Restrict: Không cập nhật status nếu xe đang INUSE
+      // BE return: Vehicle mới/updated kèm vehicleId, status
       const response = modalMode === 'create'
         ? await managerService.createVehicle(formData)
         : await managerService.updateVehicle(
