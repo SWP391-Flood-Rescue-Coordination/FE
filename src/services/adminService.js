@@ -100,6 +100,122 @@ const toNullableText = (value) => {
   return text || null
 }
 
+const normalizeStockUnitStatus = (value) => {
+  const normalized = String(value ?? '')
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, '_')
+
+  if (normalized === '1' || normalized === 'TRUE' || normalized === 'ACTIVE') {
+    return 'ACTIVE'
+  }
+
+  if (normalized === '0' || normalized === 'FALSE' || normalized === 'INACTIVE' || normalized === 'DISABLED') {
+    return 'INACTIVE'
+  }
+
+  return normalized || 'INACTIVE'
+}
+
+const isStockUnitActive = (stockUnit) => {
+  if (typeof stockUnit?.isActive === 'boolean') {
+    return stockUnit.isActive
+  }
+
+  if (typeof stockUnit?.IsActive === 'boolean') {
+    return stockUnit.IsActive
+  }
+
+  return normalizeStockUnitStatus(stockUnit?.status ?? stockUnit?.Status) === 'ACTIVE'
+}
+
+const normalizeStockUnit = (stockUnit) => {
+  const stockUnitId = stockUnit?.stockUnitId ?? stockUnit?.StockUnitId ?? stockUnit?.id ?? stockUnit?.Id ?? null
+  const isActive = isStockUnitActive(stockUnit)
+  const unitCode = stockUnit?.unitCode ?? stockUnit?.UnitCode ?? stockUnit?.stockUnitCode ?? stockUnit?.StockUnitCode ?? ''
+  const unitName = stockUnit?.unitName ?? stockUnit?.UnitName ?? stockUnit?.name ?? stockUnit?.Name ?? stockUnit?.stockUnitName ?? stockUnit?.StockUnitName ?? ''
+  const unitType = stockUnit?.unitType ?? stockUnit?.UnitType ?? stockUnit?.type ?? stockUnit?.Type ?? ''
+
+  return {
+    stockUnitId,
+    id: stockUnitId,
+    unitCode,
+    unitName,
+    unitType,
+    name: unitName,
+    type: unitType,
+    region: stockUnit?.region ?? stockUnit?.Region ?? '',
+    address: stockUnit?.address ?? stockUnit?.Address ?? '',
+    supportsImport: Boolean(stockUnit?.supportsImport ?? stockUnit?.SupportsImport),
+    supportsExport: Boolean(stockUnit?.supportsExport ?? stockUnit?.SupportsExport),
+    isActive,
+    status: normalizeStockUnitStatus(stockUnit?.status ?? stockUnit?.Status ?? (isActive ? 'ACTIVE' : 'INACTIVE')),
+    createdAt: stockUnit?.createdAt ?? stockUnit?.CreatedAt ?? null,
+    updatedAt: stockUnit?.updatedAt ?? stockUnit?.UpdatedAt ?? null,
+    managerName: stockUnit?.managerName ?? stockUnit?.ManagerName ?? '',
+    contactName: stockUnit?.contactName ?? stockUnit?.ContactName ?? '',
+    contactPhone: stockUnit?.contactPhone ?? stockUnit?.ContactPhone ?? '',
+    note: stockUnit?.note ?? stockUnit?.Note ?? '',
+  }
+}
+
+const buildStockUnitPayload = (stockUnitData = {}, { isCreate = false } = {}) => {
+  const payload = {
+    unitCode: toNullableText(stockUnitData?.unitCode),
+    unitName: toNullableText(stockUnitData?.unitName ?? stockUnitData?.name),
+    unitType: toNullableText(stockUnitData?.unitType ?? stockUnitData?.type),
+    region: toNullableText(stockUnitData?.region),
+    address: toNullableText(stockUnitData?.address),
+    supportsImport: Boolean(stockUnitData?.supportsImport),
+    supportsExport: Boolean(stockUnitData?.supportsExport),
+  }
+
+  if (!isCreate) {
+    payload.isActive = Boolean(stockUnitData?.isActive)
+  }
+
+  return payload
+}
+
+const getMeaningfulMessage = (data, { allowSuccess = false } = {}) => {
+  const errors = data?.errors || data?.Errors
+
+  if (errors && typeof errors === 'object') {
+    const flattenedErrors = Object.values(errors)
+      .flatMap((item) => (Array.isArray(item) ? item : [item]))
+      .map((item) => String(item ?? '').trim())
+      .filter(Boolean)
+
+    if (flattenedErrors.length > 0) {
+      return flattenedErrors[0]
+    }
+  }
+
+  const candidates = [
+    data?.detail,
+    data?.Detail,
+    data?.title,
+    data?.Title,
+    data?.message,
+    data?.Message,
+  ]
+
+  for (const candidate of candidates) {
+    const text = String(candidate ?? '').trim()
+    if (!text) {
+      continue
+    }
+
+    if (!allowSuccess && text.toLowerCase() === 'success') {
+      continue
+    }
+
+    return text
+  }
+
+  return ''
+}
+
 const normalizeVehicle = (vehicle) => ({
   id: vehicle?.vehicleId ?? vehicle?.VehicleId ?? vehicle?.id ?? null,
   vehicleId: vehicle?.vehicleId ?? vehicle?.VehicleId ?? vehicle?.id ?? null,
@@ -347,6 +463,59 @@ const adminService = {
     return normalizeArray(unwrapApiData(response))
   },
 
+  // Nhóm 4: quản lý đơn vị xuất nhập cho AdminStockUnitsPage.
+  getStockUnits: async () => {
+    // Lấy toàn bộ đơn vị xuất nhập trong hệ thống
+    // Output: Mảng stock unit đã chuẩn hóa
+    // Lỗi: 401 (hết phiên), 500 (lỗi server)
+    const response = await api.get('/StockUnit/all')
+    return normalizeArray(unwrapApiData(response)).map(normalizeStockUnit)
+  },
+
+  createStockUnit: async (stockUnitData) => {
+    // Tạo đơn vị xuất nhập mới
+    // Input: { name, type, region, address, supportsImport, supportsExport, isActive }
+    // Output: Response success với stock unit đã tạo
+    // Lỗi: 400 (dữ liệu không hợp lệ), 401 (hết phiên), 500 (lỗi server)
+    const response = await api.post('/StockUnit', buildStockUnitPayload(stockUnitData, { isCreate: true }))
+    const payload = response?.data ?? {}
+    const normalizedData = normalizeStockUnit(unwrapApiData(response))
+
+    return {
+      ...payload,
+      Data: payload?.Data ? normalizeStockUnit(payload.Data) : normalizedData,
+      data: payload?.data ? normalizeStockUnit(payload.data) : normalizedData,
+    }
+  },
+
+  updateStockUnit: async (stockUnitId, stockUnitData) => {
+    // Cập nhật đơn vị xuất nhập theo ID
+    // Input: stockUnitId, { name, type, region, address, supportsImport, supportsExport, isActive }
+    // Output: Response success với stock unit đã cập nhật
+    // Lỗi: 400 (dữ liệu không hợp lệ), 401 (hết phiên), 404 (không tìm thấy), 500 (lỗi server)
+    const response = await api.put(`/StockUnit/${stockUnitId}`, buildStockUnitPayload(stockUnitData))
+    const payload = response?.data ?? {}
+    const normalizedData = normalizeStockUnit(unwrapApiData(response))
+
+    return {
+      ...payload,
+      Data: payload?.Data ? normalizeStockUnit(payload.Data) : normalizedData,
+      data: payload?.data ? normalizeStockUnit(payload.data) : normalizedData,
+    }
+  },
+
+  changeStockUnitStatus: async (stockUnitId, isActive) => {
+    // Đổi trạng thái đơn vị xuất nhập sang hoạt động / ngừng hoạt động
+    // Input: stockUnitId, isActive - true hoặc false
+    // Output: Response success
+    // Lỗi: 401 (hết phiên), 404 (không tìm thấy), 500 (lỗi server)
+    const payload = {
+      isActive: Boolean(isActive),
+    }
+    const response = await api.put(`/StockUnit/${stockUnitId}/status`, payload)
+    return response?.data ?? {}
+  },
+
   cancelRequest: async (requestId) => {
     // Hủy một rescue request (không được hủy request đã Completed, Duplicate)
     // Input: requestId - ID request cần hủy
@@ -362,9 +531,10 @@ const adminService = {
   getErrorMessage: (error) => {
     const status = error?.response?.status
     const data = error?.response?.data
+    const message = getMeaningfulMessage(data)
 
     if (status === 400) {
-      return data?.message || data?.Message || data?.title || 'Dữ liệu gửi lên không hợp lệ.'
+      return message || 'Dữ liệu gửi lên không hợp lệ.'
     }
 
     if (status === 401) {
@@ -372,18 +542,18 @@ const adminService = {
     }
 
     if (status === 403) {
-      return data?.message || data?.Message || 'Bạn không có quyền truy cập chức năng này.'
+      return message || 'Bạn không có quyền truy cập chức năng này.'
     }
 
     if (status === 404) {
-      return data?.message || data?.Message || 'Không tìm thấy dữ liệu cần thao tác.'
+      return message || 'Không tìm thấy dữ liệu cần thao tác.'
     }
 
     if (status >= 500) {
       return 'Hệ thống đang gặp lỗi. Vui lòng thử lại sau.'
     }
 
-    return data?.message || data?.Message || data?.title || 'Có lỗi xảy ra. Vui lòng thử lại.'
+    return message || 'Có lỗi xảy ra. Vui lòng thử lại.'
   },
 }
 

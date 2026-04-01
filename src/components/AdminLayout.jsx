@@ -3,6 +3,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   ArrowLeftOnRectangleIcon,
   ArrowPathIcon,
+  BuildingOffice2Icon,
   Bars3Icon,
   ClipboardDocumentListIcon,
   Squares2X2Icon,
@@ -44,6 +45,13 @@ const NAV_ITEMS = [
     label: 'Quản lý yêu cầu',
     description: 'Chuyển yêu cầu về trạng thái hủy',
     icon: ClipboardDocumentListIcon,
+  },
+  {
+    to: '/admin/stock-units',
+    end: true,
+    label: 'Đơn vị xuất nhập',
+    description: 'Quản lý thông tin và trạng thái đơn vị',
+    icon: BuildingOffice2Icon,
   },
 ]
 
