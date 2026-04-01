@@ -34,6 +34,48 @@ const Register = ({ onClose, onShowLogin }) => {
     })
   }
 
+  // Validate họ (lastName) khi user blur field
+  const handleLastNameBlur = () => {
+    const validation = authService.validateRegisterInput(
+      email.split('@')[0] || phone,
+      phone,
+      email,
+      password,
+      confirmPassword,
+      firstName,
+      lastName
+    )
+    if (validation.errors?.lastName) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        lastName: validation.errors.lastName
+      }))
+    } else {
+      clearFieldError('lastName')
+    }
+  }
+
+  // Validate tên (firstName) khi user blur field
+  const handleFirstNameBlur = () => {
+    const validation = authService.validateRegisterInput(
+      email.split('@')[0] || phone,
+      phone,
+      email,
+      password,
+      confirmPassword,
+      firstName,
+      lastName
+    )
+    if (validation.errors?.firstName) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        firstName: validation.errors.firstName
+      }))
+    } else {
+      clearFieldError('firstName')
+    }
+  }
+
   // Submit chính của form đăng ký.
   // Component chuẩn hóa dữ liệu trước khi chuyển cho authService gọi API thật.
   const handleSubmit = async (e) => {
@@ -158,11 +200,12 @@ const Register = ({ onClose, onShowLogin }) => {
                     setLastName(e.target.value)
                     clearFieldError('lastName')
                   }}
+                  onBlur={handleLastNameBlur}
                   required
                   disabled={loading}
                 />
                 {fieldErrors.lastName && (
-                  <span className="field-error"><span className="error-icon">&#9888;</span> Vui lòng nhập họ.</span>
+                  <span className="field-error"><span className="error-icon">&#9888;</span> {fieldErrors.lastName}</span>
                 )}
               </div>
               <div style={{width: '50%'}}>
@@ -176,11 +219,12 @@ const Register = ({ onClose, onShowLogin }) => {
                     setFirstName(e.target.value)
                     clearFieldError('firstName')
                   }}
+                  onBlur={handleFirstNameBlur}
                   required
                   disabled={loading}
                 />
                 {fieldErrors.firstName && (
-                  <span className="field-error"><span className="error-icon">&#9888;</span> Vui lòng nhập tên.</span>
+                  <span className="field-error"><span className="error-icon">&#9888;</span> {fieldErrors.firstName}</span>
                 )}
               </div>
             </div>
