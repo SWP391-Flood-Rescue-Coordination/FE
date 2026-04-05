@@ -11,6 +11,8 @@ import {
   UserGroupIcon,
   CheckIcon,
   XMarkIcon,
+  UsersIcon,
+  ChevronUpIcon,
 } from '@heroicons/react/24/outline'
 import authService from '../services/authService'
 import LogoutConfirmModal from '../components/LogoutConfirmModal'
@@ -58,20 +60,59 @@ function RescueTeamMemberPage() {
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const [selectedTask, setSelectedTask] = useState(null)
-  const [filterStatus, setFilterStatus] = useState('ACTIVE')
+  const [filterStatus, setFilterStatus] = useState('HISTORY')
   const [showFinishModal, setShowFinishModal] = useState(false)
   const [finishReason, setFinishReason] = useState('COMPLETED')
+  const [showTaskModal, setShowTaskModal] = useState(false)
+  const [modalTask, setModalTask] = useState(null)
 
   // TODO: REMOVE MOCK DATA - Fetch từ API: GET /api/rescue-team/my-tasks
-  const [tasks, setTasks] = useState([])
+  const [tasks, setTasks] = useState([
+    {
+      id: 1,
+      requestId: '1001',
+      status: 'ASSIGNED',
+      priority: 'URGENT',
+      address: 'Phường Tân Sơn Hòa, Thuận An, Bình Dương',
+      phone: '0912222222',
+      description: 'Cháy nhà, cần cứu hộ khẩn cấp',
+      totalPeople: 5,
+      elderly: 2,
+      children: 1,
+      estimatedTime: '1h 30p',
+      location: { lat: 10.8741, lng: 106.6741 },
+      startedAt: null,
+      completedAt: null,
+      leaderName: 'Nguyễn Văn A',
+      timeline: []
+    },
+    {
+      id: 2,
+      requestId: '1002',
+      status: 'ASSIGNED',
+      priority: 'HIGH',
+      address: 'Huyện Bến Cát, Bình Dương',
+      phone: '0913333333',
+      description: 'Lũ lụt, cần sơ tán người dân',
+      totalPeople: 10,
+      elderly: 3,
+      children: 2,
+      estimatedTime: '2h',
+      location: { lat: 10.8624, lng: 106.6584 },
+      startedAt: null,
+      completedAt: null,
+      leaderName: 'Nguyễn Văn A',
+      timeline: []
+    }
+  ])
+
+  // ===== Team Members Management State =====
+  // TODO: REMOVE MOCK DATA - Fetch từ API: GET /api/rescue-team/members
+  const [teamMembers, setTeamMembers] = useState([])
+  const [expandedMemberId, setExpandedMemberId] = useState(null)
 
   const userMenuRef = useRef(null)
   const roleLabel = ROLE_LABEL_MAP[currentUser?.role?.toUpperCase()] || currentUser?.role || 'Không xác định'
-
-  // Kiểm tra quyền
-  const isTeamMember =
-    currentUser?.role?.toUpperCase() === 'RESCUE_TEAM_MEMBER' ||
-    currentUser?.role?.toUpperCase() === 'RESCUE_TEAM'
 
   // Close user menu
   useEffect(() => {
@@ -165,6 +206,15 @@ function RescueTeamMemberPage() {
     return `${hours}h ${mins}p`
   }
 
+  // ===== Team Members Management Handlers =====
+  const toggleMemberExpand = (memberId) => {
+    setExpandedMemberId(expandedMemberId === memberId ? null : memberId)
+  }
+
+  const getMemberRoleLabel = (role) => {
+    return ROLE_LABEL_MAP[role?.toUpperCase()] || role || 'Thành viên'
+  }
+
   return (
     <div className="rescue-team-member-page">
       {/* ===== HEADER ===== */}
@@ -216,23 +266,94 @@ function RescueTeamMemberPage() {
 
       {/* ===== MAIN CONTENT ===== */}
       <div className="rtmp-content">
-        {!isTeamMember ? (
-          <div className="rtmp-error-container">
-            <ExclamationCircleIcon className="rtmp-error-icon" />
-            <h2>Truy cập bị từ chối</h2>
-            <p>Chỉ thành viên đội cứu hộ mới có thể xem trang này.</p>
-          </div>
-        ) : (
-          <>
+        {/* ===== DANH SÁCH NHIỆM VỤ TABLE ===== */}
+            <div className="mission-list-container">
+              <h2 className="mission-list-title">Danh sách nhiệm vụ được giao</h2>
+              <div className="mission-table-wrapper">
+                <table className="mission-table">
+                  <thead>
+                    <tr>
+                      <th className="sortable-header">
+                        Operation ID 
+                        <span className="sort-icon">▴</span>
+                      </th>
+                      <th className="sortable-header">
+                        Địa chỉ 
+                        <span className="sort-icon">▴</span>
+                      </th>
+                      <th className="sortable-header">
+                        Số điện thoại 
+                        <span className="sort-icon">▴</span>
+                      </th>
+                      <th className="sortable-header">
+                        Mức độ ưu tiên 
+                        <span className="sort-icon">▴</span>
+                      </th>
+                      <th className="sortable-header">
+                        Thời gian xử lý 
+                        <span className="sort-icon">▴</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tasks.length === 0 ? (
+                      <tr>
+                        <td colSpan="5" style={{padding: '20px', textAlign: 'center', color: '#999'}}>
+                          Không có nhiệm vụ nào được giao
+                        </td>
+                      </tr>
+                    ) : (
+                      tasks.map((task) => {
+                        const getPriorityClassName = (priority) => {
+                          const normalized = String(priority ?? '')
+                            .toLowerCase()
+                            .normalize('NFD')
+                            .replace(/[\u0300-\u036f]/g, '')
+
+                          if (normalized.includes('khan cap') || normalized.includes('urgent')) {
+                            return 'priority-urgent'
+                          }
+                          if (normalized.includes('cao') || normalized.includes('high')) {
+                            return 'priority-high'
+                          }
+                          if (normalized.includes('trung binh') || normalized.includes('medium')) {
+                            return 'priority-medium'
+                          }
+                          if (normalized.includes('thap') || normalized.includes('low')) {
+                            return 'priority-low'
+                          }
+                          return 'priority-default'
+                        }
+
+                        return (
+                          <tr
+                            key={task.id}
+                            onClick={() => {
+                              setModalTask(task)
+                              setShowTaskModal(true)
+                            }}
+                            className="mission-row"
+                          >
+                            <td>{task.requestId}</td>
+                            <td>{task.address}</td>
+                            <td>{task.phone}</td>
+                            <td>
+                              <span className={`priority-badge ${getPriorityClassName(task.priority)}`}>
+                                {task.priority}
+                              </span>
+                            </td>
+                            <td>{task.estimatedTime}</td>
+                          </tr>
+                        )
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
             {/* Status Tabs */}
             <div className="rtmp-tabs">
-              <button
-                className={`rtmp-tab ${filterStatus === 'ACTIVE' ? 'active' : ''}`}
-                onClick={() => setFilterStatus('ACTIVE')}
-              >
-                <CheckCircleIcon />
-                Đang Thực Hiện ({getActiveTasks().length})
-              </button>
               <button
                 className={`rtmp-tab ${filterStatus === 'HISTORY' ? 'active' : ''}`}
                 onClick={() => setFilterStatus('HISTORY')}
@@ -397,9 +518,113 @@ function RescueTeamMemberPage() {
                 })
               )}
             </div>
-          </>
-        )}
       </div>
+
+
+      {/* Task Details Modal */}
+      {showTaskModal && modalTask && (
+        <div className="rtmp-modal-overlay" onClick={() => setShowTaskModal(false)}>
+          <div className="rtmp-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="rtmp-modal-header">
+              <h3>Chi Tiết Nhiệm Vụ</h3>
+              <button
+                className="rtmp-modal-close"
+                onClick={() => setShowTaskModal(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="rtmp-modal-body">
+              <div className="rtmp-modal-content">
+                {/* Header Info */}
+                <div style={{marginBottom: '12px', paddingBottom: '12px'}}>
+                  <div style={{display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap'}}>
+                    <span style={{
+                      background: modalTask.priority === 'URGENT' ? '#f97316' : modalTask.priority === 'HIGH' ? '#fbbf24' : '#6b7280',
+                      color: 'white',
+                      padding: '6px 12px',
+                      borderRadius: '4px',
+                      fontSize: '13px',
+                      fontWeight: '700',
+                      textTransform: 'uppercase'
+                    }}>
+                      {modalTask.priority}
+                    </span>
+                    <span style={{fontSize: '16px', fontWeight: '700', color: '#1f2937'}}>#{modalTask.requestId}</span>
+                  </div>
+                </div>
+
+                {/* Main Details */}
+                <div style={{marginBottom: '12px'}}>
+                  <div style={{marginBottom: '8px'}}>
+                    <label style={{fontSize: '13px', fontWeight: '600', color: '#1f2937', display: 'block', marginBottom: '2px'}}>ĐỊA CHỈ</label>
+                    <p style={{fontSize: '15px', color: '#6b7280', margin: 0}}>{modalTask.address}</p>
+                  </div>
+                  
+                  <div style={{marginBottom: '8px'}}>
+                    <label style={{fontSize: '13px', fontWeight: '600', color: '#1f2937', display: 'block', marginBottom: '2px'}}>SỐ ĐIỆN THOẠI</label>
+                    <a href={`tel:${modalTask.phone}`} style={{fontSize: '15px', color: '#6b7280', textDecoration: 'none', fontWeight: '600'}}>{modalTask.phone}</a>
+                  </div>
+
+                  <div style={{marginBottom: '8px'}}>
+                    <label style={{fontSize: '13px', fontWeight: '600', color: '#1f2937', display: 'block', marginBottom: '2px'}}>TỌA ĐỘ</label>
+                    <p style={{fontSize: '15px', color: '#6b7280', margin: 0, fontFamily: 'monospace'}}>
+                      {modalTask.location ? `${modalTask.location.lat.toFixed(4)}, ${modalTask.location.lng.toFixed(4)}` : 'N/A'}
+                    </p>
+                  </div>
+
+                  <div style={{marginBottom: '8px'}}>
+                    <label style={{fontSize: '13px', fontWeight: '600', color: '#1f2937', display: 'block', marginBottom: '2px'}}>MÔ TẢ SỰ CỐ</label>
+                    <p style={{fontSize: '15px', color: '#6b7280', margin: 0, lineHeight: '1.5'}}>{modalTask.description}</p>
+                  </div>
+
+                  <div>
+                    <label style={{fontSize: '13px', fontWeight: '600', color: '#1f2937', display: 'block', marginBottom: '4px'}}>THỜI GIAN DỰ KIẾN</label>
+                    <p style={{fontSize: '15px', color: '#6b7280', margin: 0}}>⏱️ {modalTask.estimatedTime}</p>
+                  </div>
+                </div>
+
+                {/* People Info */}
+                <div style={{marginBottom: '12px', paddingBottom: '12px'}}>
+                  <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px'}}>
+                    <div style={{textAlign: 'center'}}>
+                      <p style={{fontSize: '13px', color: '#1f2937', margin: '0 0 4px 0', fontWeight: '600'}}>Người Lớn</p>
+                      <p style={{fontSize: '15px', color: '#6b7280', margin: 0, fontWeight: '600'}}>{modalTask.totalPeople} người</p>
+                    </div>
+                    <div style={{textAlign: 'center'}}>
+                      <p style={{fontSize: '13px', color: '#1f2937', margin: '0 0 4px 0', fontWeight: '600'}}>Người Già</p>
+                      <p style={{fontSize: '15px', color: '#6b7280', margin: 0, fontWeight: '600'}}>{modalTask.elderly} người</p>
+                    </div>
+                    <div style={{textAlign: 'center'}}>
+                      <p style={{fontSize: '13px', color: '#1f2937', margin: '0 0 4px 0', fontWeight: '600'}}>Trẻ Em</p>
+                      <p style={{fontSize: '15px', color: '#6b7280', margin: 0, fontWeight: '600'}}>{modalTask.children} người</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Other Info */}
+                <div>
+                  <p style={{fontSize: '13px', color: '#1f2937', margin: '0 0 4px 0', fontWeight: '600'}}>TRƯỞNG ĐỘI CỨU HỘ</p>
+                  <p style={{fontSize: '15px', color: '#6b7280', margin: 0, fontWeight: '600'}}>{modalTask.leaderName}</p>
+                </div>
+              </div>
+
+              <div className="rtmp-modal-actions">
+                <button
+                  className="rtmp-btn rtmp-btn-start"
+                  onClick={() => {
+                    handleStartTask(modalTask);
+                    setShowTaskModal(false);
+                  }}
+                >
+                  Bắt Đầu Thực Hiện
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Finish Task Modal */}
       {showFinishModal && selectedTask && (

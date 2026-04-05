@@ -1,19 +1,13 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import LogoutConfirmModal from './LogoutConfirmModal';
 import './RescueTeamDashboard.css';
 import rescueTeamService from '../services/rescueTeamService';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeftIcon,
   ArrowLeftOnRectangleIcon,
   UserCircleIcon,
-  UsersIcon,
   CheckCircleIcon,
-  ChevronDownIcon,
-  ChevronUpIcon,
-  PencilIcon,
-  TrashIcon,
-  PlusIcon,
 } from '@heroicons/react/24/outline';
 import authService from '../services/authService';
 const normalizeVietnamese = (value) =>
@@ -60,6 +54,7 @@ const ROLE_LABEL_MAP = {
 // danh sách nhiệm vụ được giao và màn chi tiết để hoàn tất / thất bại.
 function RescueTeamDashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   // State: danh sách nhiệm vụ và nhiệm vụ được chọn
   const [missions, setMissions] = useState([]);
   const [selectedMission, setSelectedMission] = useState(null);
@@ -71,115 +66,58 @@ function RescueTeamDashboard() {
   const [currentUser, setCurrentUser] = useState(() => authService.getUserInfo());
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-
-  // TODO: REMOVE MOCK DATA - Fetch từ API: GET /api/rescue-team/info
-  const [teamInfo, setTeamInfo] = useState({
-    teamId: '',
-    teamName: '',
-    baseLocation: '',
-    phone: '',
-    totalMembers: 0,
-    activeMembers: 0,
-  })
-
-  // TODO: REMOVE MOCK DATA - Fetch từ API: GET /api/rescue-team/members
-  const [teamMembers, setTeamMembers] = useState([])
-  const [expandedMemberId, setExpandedMemberId] = useState(null)
-
-  // CRUD Team states
-  const [showTeamCrudModal, setShowTeamCrudModal] = useState(false)
-  const [crudMode, setCrudMode] = useState(null)
-  const [selectedTeam, setSelectedTeam] = useState(null)
-  const [teamFormData, setTeamFormData] = useState({
-    teamName: '',
-    baseLocation: '',
-    phone: '',
-    totalMembers: '',
-  })
-  // TODO: REMOVE MOCK DATA - Fetch từ API: GET /api/rescue-teams
-  const [rescueTeams, setRescueTeams] = useState([])
-
-  // Tab state
-  const [activeTab, setActiveTab] = useState('dashboard') // 'dashboard' | 'teams' | 'members'
+  
+  // ===== Team Leader CRUD State =====
+  const [requests, setRequests] = useState([
+    {
+      id: 1,
+      requestId: '1001',
+      status: 'PENDING',
+      priority: 'URGENT',
+      address: 'Phường Tân Sơn Hòa, Thuận An, Bình Dương',
+      phone: '0912222222',
+      description: 'Cháy nhà, cần cứu hộ khẩn cấp',
+      totalPeople: 5,
+      elderly: 2,
+      children: 1,
+      estimatedTime: '1h 30p',
+      assignedMembers: []
+    },
+    {
+      id: 2,
+      requestId: '1002',
+      status: 'PENDING',
+      priority: 'HIGH',
+      address: 'Huyện Bến Cát, Bình Dương',
+      phone: '0913333333',
+      description: 'Lũ lụt, cần sơ tán người dân',
+      totalPeople: 10,
+      elderly: 3,
+      children: 2,
+      estimatedTime: '2h',
+      assignedMembers: []
+    }
+  ]);
+  const [teamMembers, setTeamMembers] = useState([
+    { id: 1, name: 'Nguyễn Văn A', role: 'RESCUE_TEAM_MEMBER' },
+    { id: 2, name: 'Trần Thị B', role: 'RESCUE_TEAM_MEMBER' },
+    { id: 3, name: 'Lê Văn C', role: 'RESCUE_TEAM_MEMBER' }
+  ]);
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [expandedRequestId, setExpandedRequestId] = useState(null);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [filterStatus, setFilterStatus] = useState('ALL');
+  const [sortBy, setSortBy] = useState('priority');
+  
   const userMenuRef = React.useRef(null);
   const roleLabel = ROLE_LABEL_MAP[String(currentUser?.role ?? '').toUpperCase()] || currentUser?.role || '-';
 
   // ============================================
-  // CRUD Team handlers
+  // Role-based access control
   // ============================================
-  const handleOpenCrudModal = (mode, team = null) => {
-    setCrudMode(mode)
-    setSelectedTeam(team)
-    if (team) {
-      setTeamFormData({
-        teamName: team.teamName,
-        baseLocation: team.baseLocation,
-        phone: team.phone,
-        totalMembers: team.totalMembers.toString(),
-      })
-    } else {
-      setTeamFormData({ teamName: '', baseLocation: '', phone: '', totalMembers: '' })
-    }
-    setShowTeamCrudModal(true)
-  }
-
-  const handleCloseCrudModal = () => {
-    setShowTeamCrudModal(false)
-    setCrudMode(null)
-    setSelectedTeam(null)
-    setTeamFormData({ teamName: '', baseLocation: '', phone: '', totalMembers: '' })
-  }
-
-  const handleFormChange = (e) => {
-    const { name, value } = e.target
-    setTeamFormData(prev => ({ ...prev, [name]: value }))
-  }
-
-  const handleSaveTeam = () => {
-    if (!teamFormData.teamName.trim() || !teamFormData.baseLocation.trim() || !teamFormData.phone.trim() || !teamFormData.totalMembers.trim()) {
-      alert('Vui lòng điền đầy đủ thông tin')
-      return
-    }
-
-    if (crudMode === 'add') {
-      const newTeam = {
-        id: `TEAM_${Date.now()}`,
-        teamName: teamFormData.teamName,
-        baseLocation: teamFormData.baseLocation,
-        phone: teamFormData.phone,
-        totalMembers: parseInt(teamFormData.totalMembers),
-      }
-      setRescueTeams([...rescueTeams, newTeam])
-    } else if (crudMode === 'edit' && selectedTeam) {
-      setRescueTeams(rescueTeams.map(team =>
-        team.id === selectedTeam.id
-          ? {
-              ...team,
-              teamName: teamFormData.teamName,
-              baseLocation: teamFormData.baseLocation,
-              phone: teamFormData.phone,
-              totalMembers: parseInt(teamFormData.totalMembers),
-            }
-          : team
-      ))
-    }
-    handleCloseCrudModal()
-  }
-
-  const handleDeleteTeam = (teamId) => {
-    if (confirm('Bạn chắc chắn muốn xóa đội cứu hộ này?')) {
-      setRescueTeams(rescueTeams.filter(team => team.id !== teamId))
-      handleCloseCrudModal()
-    }
-  }
-
-  const toggleMemberExpand = (memberId) => {
-    setExpandedMemberId(expandedMemberId === memberId ? null : memberId)
-  }
-
-  const getMemberRoleLabel = (role) => {
-    return ROLE_LABEL_MAP[role?.toUpperCase()] || role || 'Thành viên'
-  }
+  const isRescueTeam = currentUser?.role?.toUpperCase() === 'RESCUE_TEAM' || 
+                       currentUser?.role?.toUpperCase() === 'RESCUE_TEAM_LEADER' ||
+                       currentUser?.role?.toUpperCase() === 'RESCUE_TEAM_MEMBER';
 
   // ============================================
   // Fetch missions từ API
@@ -406,6 +344,73 @@ function RescueTeamDashboard() {
     });
   };
 
+  // ============================================
+  // Team Leader Handlers
+  // ============================================
+  const REQUEST_STATUS_MAP = {
+    PENDING: { label: 'Chờ Chấp Nhận', className: 'status-pending', color: '#f59e0b' },
+    ACCEPTED: { label: 'Đã Chấp Nhận', className: 'status-accepted', color: '#10b981' },
+    REJECTED: { label: 'Bị Từ Chối', className: 'status-rejected', color: '#ef4444' },
+    IN_PROGRESS: { label: 'Đang Thực Hiện', className: 'status-in-progress', color: '#3b82f6' },
+    COMPLETED: { label: 'Hoàn Tất', className: 'status-completed', color: '#059669' },
+  };
+
+  const PRIORITY_MAP = {
+    URGENT: { label: 'Khẩn Cấp', className: 'priority-urgent' },
+    HIGH: { label: 'Cao', className: 'priority-high' },
+    MEDIUM: { label: 'Trung Bình', className: 'priority-medium' },
+    LOW: { label: 'Thấp', className: 'priority-low' },
+  };
+
+  const getStatusInfo = (status) => REQUEST_STATUS_MAP[status] || REQUEST_STATUS_MAP['PENDING'];
+  const getPriorityInfo = (priority) => PRIORITY_MAP[priority] || PRIORITY_MAP['MEDIUM'];
+
+  const filteredRequests = requests.filter((req) => {
+    if (filterStatus === 'ALL') return true;
+    return req.status === filterStatus;
+  });
+
+  const sortedRequests = [...filteredRequests].sort((a, b) => {
+    if (sortBy === 'priority') {
+      const priorityOrder = { URGENT: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
+      return (priorityOrder[a.priority] || 99) - (priorityOrder[b.priority] || 99);
+    } else if (sortBy === 'time') {
+      return new Date(b.assignedAt) - new Date(a.assignedAt);
+    }
+    return 0;
+  });
+
+  const handleAcceptRequest = (request) => {
+    setSelectedRequest(request);
+    setShowAssignModal(true);
+  };
+
+  const handleRejectRequest = (requestId) => {
+    setRequests(requests.map((req) => (req.id === requestId ? { ...req, status: 'REJECTED' } : req)));
+    setSelectedRequest(null);
+  };
+
+  const handleAssignMembers = (memberIds) => {
+    if (selectedRequest) {
+      setRequests(
+        requests.map((req) =>
+          req.id === selectedRequest.id
+            ? { ...req, status: 'ACCEPTED', assignedMembers: memberIds }
+            : req,
+        ),
+      );
+      setShowAssignModal(false);
+      setSelectedRequest(null);
+    }
+  };
+
+  const getAssignedMemberNames = (memberIds) => {
+    return memberIds
+      .map((id) => teamMembers.find((m) => m.id === id)?.name)
+      .filter(Boolean)
+      .join(', ');
+  };
+
   return (
     <div className="rescue-dashboard">
       <LogoutConfirmModal open={showLogoutConfirm} onConfirm={handleLogoutConfirm} onCancel={handleLogoutCancel} />
@@ -456,7 +461,24 @@ function RescueTeamDashboard() {
         </div>
       </header>
 
+      {/* ===== ACCESS CONTROL ===== */}
+      {!isRescueTeam ? (
+        <div style={{
+          padding: '40px 20px',
+          textAlign: 'center',
+          color: '#dc2626'
+        }}>
+          <div style={{
+            fontSize: '48px',
+            marginBottom: '16px'
+          }}>⚠️</div>
+          <h2>Truy cập bị từ chối</h2>
+          <p>Chỉ các thành viên đội cứu hộ mới có thể xem trang này.</p>
+        </div>
+      ) : (
+        <>
       {/* Navigation Tabs */}
+      {/* TODO: Navigation tabs tạm ẩn - giữ lại routes nhưng không hiển thị nút điều hướng
       <div style={{
         display: 'flex',
         gap: '10px',
@@ -465,52 +487,166 @@ function RescueTeamDashboard() {
         backgroundColor: '#f9f9f9'
       }}>
         <button
-          onClick={() => setActiveTab('dashboard')}
+          onClick={() => {}}
           style={{
             padding: '8px 16px',
             border: 'none',
-            backgroundColor: activeTab === 'dashboard' ? '#dc2626' : '#f0f0f0',
-            color: activeTab === 'dashboard' ? 'white' : '#333',
+            backgroundColor: location.pathname === '/rescue-team' ? '#dc2626' : '#f0f0f0',
+            color: location.pathname === '/rescue-team' ? 'white' : '#333',
             borderRadius: '4px',
             cursor: 'pointer',
-            fontWeight: activeTab === 'dashboard' ? '600' : '400'
+            fontWeight: location.pathname === '/rescue-team' ? '600' : '400'
           }}
+          disabled={location.pathname === '/rescue-team'}
         >
-          Dashboard
+          Trang Chủ
         </button>
         <button
-          onClick={() => setActiveTab('teams')}
+          onClick={() => navigate('/rescue-team/member')}
           style={{
             padding: '8px 16px',
             border: 'none',
-            backgroundColor: activeTab === 'teams' ? '#dc2626' : '#f0f0f0',
-            color: activeTab === 'teams' ? 'white' : '#333',
+            backgroundColor: location.pathname === '/rescue-team/member' ? '#dc2626' : '#f0f0f0',
+            color: location.pathname === '/rescue-team/member' ? 'white' : '#333',
             borderRadius: '4px',
             cursor: 'pointer',
-            fontWeight: activeTab === 'teams' ? '600' : '400'
-          }}
-        >
-          Quản Lý Đội
-        </button>
-        <button
-          onClick={() => setActiveTab('members')}
-          style={{
-            padding: '8px 16px',
-            border: 'none',
-            backgroundColor: activeTab === 'members' ? '#dc2626' : '#f0f0f0',
-            color: activeTab === 'members' ? 'white' : '#333',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontWeight: activeTab === 'members' ? '600' : '400'
+            fontWeight: location.pathname === '/rescue-team/member' ? '600' : '400'
           }}
         >
           Thành Viên
         </button>
       </div>
+      */}
+
+      {/* ===== QUẢN LÝ ĐỘI SECTION (Team Leader & Members) ===== */}
+      {/* TODO: Khi có API, thay requests & teamMembers từ backend */}
+      <div style={{padding: '20px', borderBottom: '2px solid #e5e5e5', backgroundColor: '#fafafa'}}>
+          
+          {/* Filters & Sort */}
+          <div style={{display: 'flex', gap: '15px', marginBottom: '15px', flexWrap: 'wrap'}}>
+            <div>
+              <label style={{fontSize: '12px', color: '#666', marginRight: '8px'}}>Trạng Thái:</label>
+              <select 
+                value={filterStatus} 
+                onChange={(e) => setFilterStatus(e.target.value)}
+                style={{padding: '6px 8px', fontSize: '12px', borderRadius: '4px', border: '1px solid #ddd'}}
+              >
+                <option value="ALL">Tất Cả</option>
+                <option value="PENDING">Chờ Chấp Nhận</option>
+                <option value="ACCEPTED">Đã Chấp Nhận</option>
+                <option value="REJECTED">Bị Từ Chối</option>
+              </select>
+            </div>
+            <div>
+              <label style={{fontSize: '12px', color: '#666', marginRight: '8px'}}>Sắp Xếp:</label>
+              <select 
+                value={sortBy} 
+                onChange={(e) => setSortBy(e.target.value)}
+                style={{padding: '6px 8px', fontSize: '12px', borderRadius: '4px', border: '1px solid #ddd'}}
+              >
+                <option value="priority">Độ Ưu Tiên</option>
+                <option value="time">Thời Gian Xử lý(Nhanh Nhất)</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Requests List */}
+          <div style={{display: 'grid', gap: '10px'}}>
+            {sortedRequests.length === 0 ? (
+              <div style={{textAlign: 'center', padding: '20px', color: '#999', fontSize: '12px'}}>
+                <p>Không có yêu cầu cứu hộ nào</p>
+              </div>
+            ) : (
+              sortedRequests.map((request) => {
+                  const statusInfo = getStatusInfo(request.status);
+                  const priorityInfo = getPriorityInfo(request.priority);
+                  const isExpanded = expandedRequestId === request.id;
+
+                  return (
+                    <div key={request.id} style={{
+                      border: '1px solid #ddd',
+                      borderRadius: '6px',
+                      overflow: 'hidden',
+                      backgroundColor: 'white'
+                    }}>
+                      {/* Header - Click to expand */}
+                      <div 
+                        onClick={() => setExpandedRequestId(isExpanded ? null : request.id)}
+                        style={{
+                          padding: '12px',
+                          display: 'grid',
+                          gridTemplateColumns: '80px 70px 1fr 110px 90px 65px 30px',
+                          gap: '12px',
+                          alignItems: 'center',
+                          backgroundColor: '#f9f9f9',
+                          borderBottom: isExpanded ? '1px solid #ddd' : 'none',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          fontWeight: '500'
+                        }}
+                      >
+                        <span style={{
+                          background: request.priority === 'URGENT' ? '#f97316' : request.priority === 'HIGH' ? '#fbbf24' : '#6b7280',
+                          color: 'white',
+                          padding: '2px 6px',
+                          borderRadius: '3px',
+                          fontSize: '11px',
+                          fontWeight: '600',
+                          textAlign: 'center'
+                        }}>
+                          {priorityInfo.label}
+                        </span>
+                        <span style={{fontWeight: '600', textAlign: 'center'}}>#{request.requestId}</span>
+                        <span style={{overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#374151'}}>
+                          {request.address}
+                        </span>
+                        <span style={{color: '#374151', textAlign: 'center'}}>{request.phone}</span>
+                        <span style={{background: '#e5e7eb', padding: '2px 6px', borderRadius: '3px', fontSize: '11px', color: '#374151', textAlign: 'center'}}>
+                          {statusInfo.label}
+                        </span>
+                        <span style={{color: '#374151', textAlign: 'center'}}>{request.estimatedTime}</span>
+                        <span style={{textAlign: 'center'}}>{isExpanded ? '▲' : '▼'}</span>
+                      </div>
+
+                      {/* Expanded Details */}
+                      {isExpanded && (
+                        <div style={{padding: '12px', backgroundColor: '#fafafa', fontSize: '12px', color: '#374151'}}>
+                          <div style={{marginBottom: '8px'}}><strong>Địa Chỉ:</strong> {request.address}</div>
+                          <div style={{marginBottom: '8px'}}><strong>SĐT:</strong> <a href={`tel:${request.phone}`} style={{color: '#0066cc', textDecoration: 'none'}}>{request.phone}</a></div>
+                          <div style={{marginBottom: '8px'}}><strong>Mô Tả:</strong> {request.description}</div>
+                          <div style={{marginBottom: '8px'}}><strong>Tổng số người:</strong> {request.totalPeople} (Người già: {request.elderly}, Trẻ em: {request.children})</div>
+                          {request.assignedMembers && request.assignedMembers.length > 0 && (
+                            <div style={{marginBottom: '8px'}}><strong>Giao cho:</strong> {getAssignedMemberNames(request.assignedMembers)}</div>
+                          )}
+                          
+                          {/* Action Buttons */}
+                          {request.status === 'PENDING' && (
+                            <div style={{display: 'flex', gap: '6px', marginTop: '12px'}}>
+                              <button
+                                onClick={() => handleAcceptRequest(request)}
+                                style={{padding: '6px 12px', fontSize: '11px', background: '#10b981', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer'}}
+                              >
+                                ✓ Chấp Nhận & Giao việc
+                              </button>
+                              <button
+                                onClick={() => handleRejectRequest(request.id)}
+                                style={{padding: '6px 12px', fontSize: '11px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer'}}
+                              >
+                                ✕ Từ Chối
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+            )}
+          </div>
+        </div>
 
       {/* Content based on active tab */}
       <div className="rescue-content">
-        {activeTab === 'dashboard' && (
         <>
           {loading ? (
             /* Trạng thái: Đang tải */
@@ -546,67 +682,7 @@ function RescueTeamDashboard() {
               </div>
             </div>
           ) : !selectedMission ? (
-            /* Trạng thái: Có nhiệm vụ - Hiển thị danh sách */
-            <div className="mission-list-container">
-              <h2 className="mission-list-title">Danh sách nhiệm vụ được giao</h2>
-              <div className="mission-table-wrapper">
-                <table className="mission-table">
-                  <thead>
-                    <tr>
-                      <th onClick={() => handleSort('id')} className="sortable-header">
-                        Operation ID 
-                        <span className="sort-icon">
-                          {sortConfig.key === 'id' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : '▴'}
-                        </span>
-                      </th>
-                    <th onClick={() => handleSort('address')} className="sortable-header">
-                      Địa chỉ 
-                      <span className="sort-icon">
-                        {sortConfig.key === 'address' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : '▴'}
-                      </span>
-                    </th>
-                    <th onClick={() => handleSort('phone')} className="sortable-header">
-                      Số điện thoại 
-                      <span className="sort-icon">
-                        {sortConfig.key === 'phone' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : '▴'}
-                      </span>
-                    </th>
-                    <th onClick={() => handleSort('priority')} className="sortable-header">
-                      Mức độ ưu tiên 
-                      <span className="sort-icon">
-                        {sortConfig.key === 'priority' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : '▴'}
-                      </span>
-                    </th>
-                    <th onClick={() => handleSort('time')} className="sortable-header">
-                      Thời gian xử lý 
-                      <span className="sort-icon">
-                        {sortConfig.key === 'time' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : '▴'}
-                      </span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {getSortedMissions().map((mission, index) => (
-                    <tr 
-                      key={mission.id}
-                      onClick={() => handleSelectMission(mission)}
-                      className="mission-row"
-                    >
-                      <td>{mission.id}</td>
-                      <td>{mission.address}</td>
-                      <td>{mission.phone}</td>
-                      <td>
-                        <span className={`priority-badge ${getPriorityClassName(mission.priority)}`}>
-                          {mission.priority}
-                        </span>
-                      </td>
-                      <td>{mission.estimatedTime}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+            null
         ) : (
           /* Trạng thái: Xem chi tiết nhiệm vụ */
           <div className="mission-container" style={{position: 'relative'}}>
@@ -689,360 +765,79 @@ function RescueTeamDashboard() {
           </div>
         )}
         </>
-        )}
-
-        {/* Teams Management Tab */}
-        {activeTab === 'teams' && (
-        <div style={{padding: '20px'}}>
-          <div style={{marginBottom: '20px'}}>
-            <button
-              onClick={() => handleOpenCrudModal('add')}
-              style={{
-                padding: '10px 18px',
-                backgroundColor: '#10b981',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                fontWeight: '600',
-                cursor: 'pointer'
-              }}
-            >
-              + Tạo Đội Mới
-            </button>
-          </div>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-            gap: '16px'
-          }}>
-            {rescueTeams.map((team) => (
-              <div key={team.id} style={{
-                background: 'white',
-                border: '1px solid #e5e5e5',
-                borderRadius: '8px',
-                padding: '16px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start'
-              }}>
-                <div>
-                  <h4 style={{fontSize: '15px', fontWeight: '700', margin: '0 0 12px 0'}}>{team.teamName}</h4>
-                  <p style={{fontSize: '13px', color: '#6b7280', margin: '6px 0'}}>📍 {team.baseLocation}</p>
-                  <p style={{fontSize: '13px', color: '#6b7280', margin: '6px 0'}}>📞 {team.phone}</p>
-                  <p style={{fontSize: '13px', color: '#6b7280', margin: '6px 0'}}>👥 {team.totalMembers} thành viên</p>
-                </div>
-                <div style={{display: 'flex', gap: '8px'}}>
-                  <button
-                    onClick={() => handleOpenCrudModal('edit', team)}
-                    style={{
-                      width: '36px', height: '36px',
-                      border: '1px solid #e5e5e5',
-                      background: 'white',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: '#3b82f6'
-                    }}
-                    title="Chỉnh sửa"
-                  >
-                    ✏️
-                  </button>
-                  <button
-                    onClick={() => handleOpenCrudModal('delete', team)}
-                    style={{
-                      width: '36px', height: '36px',
-                      border: '1px solid #e5e5e5',
-                      background: 'white',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: '#ef4444'
-                    }}
-                    title="Xóa"
-                  >
-                    🗑️
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-          {rescueTeams.length === 0 && (
-            <div style={{textAlign: 'center', padding: '40px', color: '#999'}}>
-              <p>Chưa có đội cứu hộ nào. Hãy tạo đội mới!</p>
-            </div>
-          )}
-        </div>
-        )}
-
-        {/* Members Tab */}
-        {activeTab === 'members' && (
-        <div style={{padding: '20px'}}>
-          <h2 style={{marginTop: 0}}>Danh Sách Thành Viên Đội</h2>
-          <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
-            {teamMembers.map((member) => {
-              const isExpanded = expandedMemberId === member.id
-              return (
-                <div key={member.id} style={{
-                  border: '1px solid #e5e5e5',
-                  borderRadius: '8px',
-                  background: 'white'
-                }}>
-                  <div
-                    onClick={() => toggleMemberExpand(member.id)}
-                    style={{
-                      padding: '12px',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <div style={{ flex: 1 }}>
-                      <div style={{fontWeight: '600', color: '#1f2937'}}>
-                        {member.name}
-                        {member.role === 'RESCUE_TEAM_LEADER' && (
-                          <span style={{
-                            marginLeft: '8px',
-                            padding: '2px 8px',
-                            background: '#fef3c7',
-                            color: '#92400e',
-                            borderRadius: '4px',
-                            fontSize: '11px',
-                            fontWeight: '600',
-                            textTransform: 'uppercase'
-                          }}>Trưởng Đội</span>
-                        )}
-                      </div>
-                      <div style={{fontSize: '12px', color: '#6b7280', marginTop: '2px'}}>
-                        {getMemberRoleLabel(member.role)}
-                      </div>
-                      <div style={{fontSize: '13px', fontWeight: '600', color: '#dc2626', marginTop: '4px'}}>
-                        {member.request_id ? `Y/C: ${member.request_id}` : 'Chưa giao'}
-                      </div>
-                    </div>
-                    <div>
-                      {isExpanded ? '▲' : '▼'}
-                    </div>
-                  </div>
-                  {isExpanded && (
-                    <div style={{
-                      padding: '12px',
-                      borderTop: '1px solid #e5e5e5',
-                      backgroundColor: '#fafafa'
-                    }}>
-                      <div style={{marginBottom: '10px'}}>
-                        <label style={{fontSize: '12px', fontWeight: '600', color: '#374151'}}>Số Điện Thoại</label>
-                        <div style={{fontSize: '13px', color: '#6b7280'}}>{member.phone}</div>
-                      </div>
-                      <div style={{marginBottom: '10px'}}>
-                        <label style={{fontSize: '12px', fontWeight: '600', color: '#374151'}}>Ngày Tham Gia</label>
-                        <div style={{fontSize: '13px', color: '#6b7280'}}>{member.joinDate}</div>
-                      </div>
-                      <div>
-                        <label style={{fontSize: '12px', fontWeight: '600', color: '#374151'}}>Nhiệm Vụ</label>
-                        <div style={{fontSize: '13px', color: '#6b7280'}}>
-                          Giao: {member.assignedRequests || 0} | Hoàn thành: {member.completedRequests || 0}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-          {teamMembers.length === 0 && (
-            <div style={{textAlign: 'center', padding: '40px', color: '#999'}}>
-              <p>Chưa có thành viên nào trong đội.</p>
-            </div>
-          )}
-        </div>
-        )}
       </div>
+      </>
+      )}
 
-      {/* CRUD Modal */}
-      {showTeamCrudModal && (
+      {/* Assign Members Modal */}
+      {showAssignModal && selectedRequest && (
         <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center',
           zIndex: 1000
-        }} onClick={handleCloseCrudModal}>
+        }} onClick={() => setShowAssignModal(false)}>
           <div style={{
-            background: 'white',
-            borderRadius: '12px',
-            padding: '28px',
-            maxWidth: '500px',
-            width: '90%',
-            maxHeight: '90vh',
-            overflowY: 'auto',
-            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.15)'
+            backgroundColor: 'white', borderRadius: '8px', padding: '24px', maxWidth: '500px', width: '90%',
+            maxHeight: '90vh', overflowY: 'auto'
           }} onClick={(e) => e.stopPropagation()}>
-            {crudMode === 'delete' ? (
-              <>
-                <h3 style={{fontSize: '18px', fontWeight: '700', margin: '0 0 16px 0'}}>Xóa Đội Cứu Hộ</h3>
-                <p style={{fontSize: '14px', color: '#6b7280', margin: '0 0 20px 0'}}>
-                  Bạn chắc chắn muốn xóa đội <strong>{selectedTeam?.teamName}</strong>?
-                </p>
-                <div style={{display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '20px'}}>
-                  <button
-                    onClick={handleCloseCrudModal}
-                    style={{
-                      padding: '10px 20px',
-                      background: '#f3f4f6',
-                      color: '#374151',
-                      border: 'none',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontWeight: '600'
-                    }}
-                  >
-                    Hủy
-                  </button>
-                  <button
-                    onClick={() => handleDeleteTeam(selectedTeam?.id)}
-                    style={{
-                      padding: '10px 20px',
-                      background: '#ef4444',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontWeight: '600'
-                    }}
-                  >
-                    Xóa
-                  </button>
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
+              <h3 style={{margin: 0, fontSize: '16px', fontWeight: '600'}}>Giao Việc Cho Thành Viên</h3>
+              <button onClick={() => setShowAssignModal(false)} style={{background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer'}}>✕</button>
+            </div>
+            
+            <div style={{marginBottom: '16px', padding: '12px', backgroundColor: '#f0f0f0', borderRadius: '4px', fontSize: '12px'}}>
+              <p style={{margin: '4px 0'}}><strong>Yêu cầu:</strong> {selectedRequest.requestId}</p>
+              <p style={{margin: '4px 0'}}><strong>Địa chỉ:</strong> {selectedRequest.address}</p>
+            </div>
+
+            <div style={{marginBottom: '16px'}}>
+              <label style={{display: 'block', marginBottom: '8px', fontSize: '12px', fontWeight: '600'}}>
+                Chọn thành viên:
+              </label>
+              {teamMembers.length === 0 ? (
+                <p style={{fontSize: '12px', color: '#999'}}>Không có thành viên trong đội</p>
+              ) : (
+                <div style={{display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', overflowY: 'auto'}}>
+                  {teamMembers.map((member) => (
+                    <label key={member.id} style={{display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: 'pointer'}}>
+                      <input
+                        type="checkbox"
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            if (!selectedRequest.assignedMembers) selectedRequest.assignedMembers = [];
+                            selectedRequest.assignedMembers.push(member.id);
+                          } else {
+                            selectedRequest.assignedMembers = selectedRequest.assignedMembers.filter((id) => id !== member.id);
+                          }
+                        }}
+                      />
+                      <span>{member.name}</span>
+                    </label>
+                  ))}
                 </div>
-              </>
-            ) : (
-              <>
-                <h3 style={{fontSize: '18px', fontWeight: '700', margin: '0 0 16px 0'}}>
-                  {crudMode === 'add' ? 'Tạo Đội Cứu Hộ Mới' : 'Chỉnh Sửa Thông Tin Đội'}
-                </h3>
-                <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
-                  <div>
-                    <label style={{fontSize: '14px', fontWeight: '600', color: '#374151', display: 'block', marginBottom: '6px'}}>Tên Đội</label>
-                    <input
-                      type="text"
-                      name="teamName"
-                      placeholder="Ví dụ: Đội Cứu Hộ Số 3"
-                      value={teamFormData.teamName}
-                      onChange={handleFormChange}
-                      style={{
-                        width: '100%',
-                        padding: '10px 12px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        fontFamily: 'inherit',
-                        boxSizing: 'border-box'
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{fontSize: '14px', fontWeight: '600', color: '#374151', display: 'block', marginBottom: '6px'}}>Địa Điểm Đặt Trụ Sở</label>
-                    <input
-                      type="text"
-                      name="baseLocation"
-                      placeholder="Ví dụ: Quận 7, TP.HCM"
-                      value={teamFormData.baseLocation}
-                      onChange={handleFormChange}
-                      style={{
-                        width: '100%',
-                        padding: '10px 12px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        fontFamily: 'inherit',
-                        boxSizing: 'border-box'
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{fontSize: '14px', fontWeight: '600', color: '#374151', display: 'block', marginBottom: '6px'}}>Số Điện Thoại</label>
-                    <input
-                      type="tel"
-                      name="phone"
-                      placeholder="Ví dụ: 0903-456-789"
-                      value={teamFormData.phone}
-                      onChange={handleFormChange}
-                      style={{
-                        width: '100%',
-                        padding: '10px 12px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        fontFamily: 'inherit',
-                        boxSizing: 'border-box'
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{fontSize: '14px', fontWeight: '600', color: '#374151', display: 'block', marginBottom: '6px'}}>Tổng Số Thành Viên</label>
-                    <input
-                      type="number"
-                      name="totalMembers"
-                      min="1"
-                      placeholder="Ví dụ: 10"
-                      value={teamFormData.totalMembers}
-                      onChange={handleFormChange}
-                      style={{
-                        width: '100%',
-                        padding: '10px 12px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        fontFamily: 'inherit',
-                        boxSizing: 'border-box'
-                      }}
-                    />
-                  </div>
-                  <div style={{display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '20px'}}>
-                    <button
-                      onClick={handleCloseCrudModal}
-                      style={{
-                        padding: '10px 20px',
-                        background: '#f3f4f6',
-                        color: '#374151',
-                        border: 'none',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        fontWeight: '600'
-                      }}
-                    >
-                      Hủy
-                    </button>
-                    <button
-                      onClick={handleSaveTeam}
-                      style={{
-                        padding: '10px 20px',
-                        background: '#3b82f6',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        fontWeight: '600'
-                      }}
-                    >
-                      {crudMode === 'add' ? 'Tạo Đội' : 'Cập Nhật'}
-                    </button>
-                  </div>
-                </div>
-              </>
-            )}
+              )}
+            </div>
+
+            <div style={{display: 'flex', gap: '8px', justifyContent: 'flex-end'}}>
+              <button
+                onClick={() => setShowAssignModal(false)}
+                style={{padding: '8px 16px', fontSize: '12px', background: '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer'}}
+              >
+                Hủy
+              </button>
+              <button
+                onClick={() => {
+                  handleAssignMembers(selectedRequest.assignedMembers || []);
+                }}
+                style={{padding: '8px 16px', fontSize: '12px', background: '#10b981', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer'}}
+              >
+                Giao Việc
+              </button>
+            </div>
           </div>
         </div>
       )}
+      
     </div>
   );
 }
