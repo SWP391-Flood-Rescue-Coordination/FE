@@ -53,6 +53,13 @@ const NAV_ITEMS = [
     description: 'Quản lý thông tin và trạng thái đơn vị',
     icon: BuildingOffice2Icon,
   },
+  {
+    to: '/admin/rescue-teams',
+    end: true,
+    label: 'Đội cứu hộ',
+    description: 'Quản lý team, leader và thành viên',
+    icon: UserGroupIcon,
+  },
 ]
 
 function AdminLayout({

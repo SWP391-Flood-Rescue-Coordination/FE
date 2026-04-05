@@ -303,7 +303,7 @@ function AdminUsersPage() {
                 const selectedRoleRestriction = adminService.getRoleUpdateRestriction(user, currentUserId, selectedRole)
                 const roleOptions = roles.filter((role) => {
                   const roleValue = normalizeRole(role.value)
-                  return roleValue === currentRole || adminService.isAssignableRole(roleValue)
+                  return roleValue === currentRole || (adminService.isAssignableRole(roleValue) && roleValue !== 'RESCUE_TEAM')
                 })
                 const isRoleSelectDisabled = Boolean(roleRestriction) || isRoleUpdating || isStatusUpdating
                 const isRoleActionDisabled =

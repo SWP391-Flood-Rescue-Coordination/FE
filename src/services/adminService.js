@@ -2,6 +2,7 @@ import api from './api'
 
 const ADMIN_BASE = '/UserInfo'
 const TEAM_BASE = '/rescue-team/status'
+const ADMIN_RESCUE_TEAM_BASE = '/admin/rescue-teams'
 const RESTRICTED_ROLE_SET = new Set(['ADMIN', 'MANAGER'])
 
 const ROLE_LABEL_MAP = {
@@ -239,6 +240,103 @@ const normalizeVehicle = (vehicle) => ({
   updatedAt: vehicle?.updatedAt ?? vehicle?.UpdatedAt ?? null,
 })
 
+const normalizeBooleanFlag = (value, fallback = false) => {
+  if (typeof value === 'boolean') {
+    return value
+  }
+
+  if (typeof value === 'number') {
+    return value === 1
+  }
+
+  const normalized = String(value ?? '').trim().toUpperCase()
+
+  if (['ACTIVE', 'TRUE', '1', 'ENABLED', 'ENABLE'].includes(normalized)) {
+    return true
+  }
+
+  if (['INACTIVE', 'FALSE', '0', 'DISABLED', 'DISABLE'].includes(normalized)) {
+    return false
+  }
+
+  return fallback
+}
+
+const normalizeRescueTeamMember = (member, { isLeader = false } = {}) => {
+  const userId = member?.userId ?? member?.UserId ?? member?.memberUserId ?? member?.MemberUserId ?? member?.id ?? member?.Id ?? null
+
+  return {
+    userId,
+    id: userId,
+    username: member?.username ?? member?.Username ?? member?.userName ?? member?.UserName ?? '',
+    fullName: member?.fullName ?? member?.FullName ?? member?.name ?? member?.Name ?? '',
+    email: member?.email ?? member?.Email ?? '',
+    phone: member?.phone ?? member?.Phone ?? '',
+    role: normalizeRole(member?.role ?? member?.Role ?? 'RESCUE_TEAM'),
+    isActive: normalizeBooleanFlag(member?.isActive ?? member?.IsActive ?? member?.status ?? member?.Status ?? member?.membershipStatus ?? member?.MembershipStatus, true),
+    isLeader: Boolean(member?.isLeader ?? member?.IsLeader ?? isLeader),
+    requestId: member?.requestId ?? member?.RequestId ?? member?.rescueRequestId ?? member?.RescueRequestId ?? null,
+    createdAt: member?.createdAt ?? member?.CreatedAt ?? member?.joinedAt ?? member?.JoinedAt ?? null,
+    raw: member,
+  }
+}
+
+const normalizeRescueTeam = (team) => {
+  const rawMembers = normalizeArray(team?.members ?? team?.Members ?? team?.teamMembers ?? team?.TeamMembers)
+  const normalizedMembers = rawMembers.map((member) => normalizeRescueTeamMember(member))
+
+  const leaderCandidate =
+    team?.leader ??
+    team?.Leader ??
+    team?.teamLeader ??
+    team?.TeamLeader ??
+    normalizedMembers.find((member) => member.isLeader) ??
+    null
+
+  const normalizedLeader = leaderCandidate ? normalizeRescueTeamMember(leaderCandidate, { isLeader: true }) : null
+  const leaderUserId =
+    team?.leaderUserId ??
+    team?.LeaderUserId ??
+    normalizedLeader?.userId ??
+    normalizedMembers.find((member) => member.isLeader)?.userId ??
+    null
+
+  const mergedMembers = [...normalizedMembers]
+  if (normalizedLeader && !mergedMembers.some((member) => String(member.userId) === String(normalizedLeader.userId))) {
+    mergedMembers.unshift(normalizedLeader)
+  }
+
+  const uniqueMembers = mergedMembers.filter(
+    (member, index, array) => array.findIndex((item) => String(item.userId) === String(member.userId)) === index,
+  )
+
+  const activeMemberCount =
+    team?.activeMemberCount ??
+    team?.ActiveMemberCount ??
+    uniqueMembers.filter((member) => member.isActive).length
+
+  const inactiveMemberCount =
+    team?.inactiveMemberCount ??
+    team?.InactiveMemberCount ??
+    uniqueMembers.filter((member) => !member.isActive).length
+
+  return {
+    teamId: team?.teamId ?? team?.TeamId ?? team?.id ?? team?.Id ?? null,
+    id: team?.teamId ?? team?.TeamId ?? team?.id ?? team?.Id ?? null,
+    teamName: team?.teamName ?? team?.TeamName ?? team?.name ?? team?.Name ?? '',
+    name: team?.teamName ?? team?.TeamName ?? team?.name ?? team?.Name ?? '',
+    baseLatitude: team?.baseLatitude ?? team?.BaseLatitude ?? team?.latitude ?? team?.Latitude ?? null,
+    baseLongitude: team?.baseLongitude ?? team?.BaseLongitude ?? team?.longitude ?? team?.Longitude ?? null,
+    leaderUserId,
+    leader: normalizedLeader,
+    members: uniqueMembers,
+    memberCount: team?.memberCount ?? team?.MemberCount ?? uniqueMembers.length,
+    activeMemberCount,
+    inactiveMemberCount,
+    raw: team,
+  }
+}
+
 const normalizeRole = (value) =>
   String(value ?? '')
     .trim()
@@ -362,6 +460,79 @@ const adminService = {
     const params = status ? { status: String(status).trim().toUpperCase() } : undefined
     const response = await api.get(TEAM_BASE, { params })
     return normalizeArray(unwrapApiData(response))
+  },
+
+  getAdminRescueTeams: async () => {
+    // Lấy danh sách toàn bộ đội cứu hộ cho màn quản trị.
+    // Output: Mảng team với leader, số member và trạng thái member đã chuẩn hóa.
+    // Lỗi: 401 (hết phiên), 500 (lỗi server)
+    const response = await api.get(ADMIN_RESCUE_TEAM_BASE)
+    return normalizeArray(unwrapApiData(response)).map(normalizeRescueTeam)
+  },
+
+  getAdminRescueTeamById: async (teamId) => {
+    // Lấy chi tiết một team theo teamId để hiển thị leader và toàn bộ member.
+    // Output: Team object đã chuẩn hóa.
+    // Lỗi: 401 (hết phiên), 404 (không tìm thấy), 500 (lỗi server)
+    const response = await api.get(`${ADMIN_RESCUE_TEAM_BASE}/${teamId}`)
+    return normalizeRescueTeam(unwrapApiData(response) ?? {})
+  },
+
+  createAdminRescueTeam: async (teamData) => {
+    // Tạo team cứu hộ mới và gán leader ban đầu.
+    // Input: { teamName, baseLatitude, baseLongitude, leaderUserId }
+    // Output: Response success với team mới tạo.
+    // Lỗi: 400 (dữ liệu không hợp lệ), 401 (hết phiên), 500 (lỗi server)
+    const response = await api.post(ADMIN_RESCUE_TEAM_BASE, {
+      teamName: toNullableText(teamData?.teamName),
+      baseLatitude: toNullableNumber(teamData?.baseLatitude),
+      baseLongitude: toNullableNumber(teamData?.baseLongitude),
+      leaderUserId: toNullableNumber(teamData?.leaderUserId),
+    })
+
+    return response?.data ?? {}
+  },
+
+  addAdminRescueTeamMember: async (teamId, userId) => {
+    // Thêm thành viên vào team và để backend chuyển role sang RESCUE_TEAM.
+    // Input: teamId, userId
+    // Output: Response success.
+    // Lỗi: 400 (user/team không hợp lệ), 401 (hết phiên), 404 (không tìm thấy), 500 (lỗi server)
+    const response = await api.post(`${ADMIN_RESCUE_TEAM_BASE}/${teamId}/members`, {
+      userId: toNullableNumber(userId),
+    })
+
+    return response?.data ?? {}
+  },
+
+  removeAdminRescueTeamMember: async (teamId, userId) => {
+    // Xóa hẳn một member khỏi team.
+    // Leader không thể bị xóa ở backend.
+    // Output: Response success.
+    // Lỗi: 400 (xóa leader hoặc user không hợp lệ), 401 (hết phiên), 404 (không tìm thấy), 500 (lỗi server)
+    const response = await api.delete(`${ADMIN_RESCUE_TEAM_BASE}/${teamId}/members/${userId}`)
+    return response?.data ?? {}
+  },
+
+  updateAdminRescueTeamLeader: async (teamId, leaderUserId) => {
+    // Chuyển leader sang một member khác trong cùng team.
+    // Input: teamId, leaderUserId
+    // Output: Response success.
+    // Lỗi: 400 (leader không hợp lệ), 401 (hết phiên), 404 (không tìm thấy), 500 (lỗi server)
+    const response = await api.put(`${ADMIN_RESCUE_TEAM_BASE}/${teamId}/leader`, {
+      leaderUserId: toNullableNumber(leaderUserId),
+    })
+
+    return response?.data ?? {}
+  },
+
+  deleteAdminRescueTeam: async (teamId) => {
+    // Xóa hẳn một team cứu hộ, bao gồm toàn bộ member của team đó.
+    // Backend sẽ tự chặn nếu team còn rescue_request hoặc rescue_operation liên kết.
+    // Output: Response success.
+    // Lỗi: 400 (team không hợp lệ / còn liên kết), 401 (hết phiên), 404 (không tìm thấy), 500 (lỗi server)
+    const response = await api.delete(`${ADMIN_RESCUE_TEAM_BASE}/${teamId}`)
+    return response?.data ?? {}
   },
 
   getVehicles: async (status = '') => {

@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ArrowPathIcon,
-  BuildingOffice2Icon,
   CheckCircleIcon,
   ExclamationTriangleIcon,
   MagnifyingGlassIcon,
-  PencilSquareIcon,
   PlusIcon,
 } from '@heroicons/react/24/outline'
 import { useNavigate } from 'react-router-dom'
@@ -472,7 +470,7 @@ function AdminStockUnitsPage() {
               </div>
             </div>
 
-            <div className="admin-table-wrap">
+            <div className="admin-table-wrap admin-stock-unit-table-wrap">
               <table className="admin-table admin-stock-unit-table">
                 <thead>
                   <tr>
@@ -480,18 +478,15 @@ function AdminStockUnitsPage() {
                     <th>Tên đơn vị</th>
                     <th>Loại</th>
                     <th>Khu vực</th>
-                    <th>Địa chỉ</th>
                     <th>Nhập</th>
                     <th>Xuất</th>
                     <th>Trạng thái</th>
-                    <th>Cập nhật</th>
-                    <th>Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredStockUnits.length === 0 && (
                     <tr>
-                      <td colSpan="10" className="admin-table-placeholder">
+                      <td colSpan="7" className="admin-table-placeholder">
                         Không có đơn vị nào phù hợp với bộ lọc hiện tại.
                       </td>
                     </tr>
@@ -509,15 +504,17 @@ function AdminStockUnitsPage() {
                       >
                         <td>{stockUnit.stockUnitId ?? '-'}</td>
                         <td>
-                          <div className="admin-main-cell">
-                            <strong>{stockUnit.unitName || stockUnit.name || '-'}</strong>
-                            <span>{stockUnit.unitCode || '-'}</span>
-                            <span>{stockUnit.contactName || stockUnit.managerName || '-'}</span>
-                          </div>
+                          <span className="admin-stock-unit-name" title={stockUnit.unitName || stockUnit.name || '-'}>
+                            {stockUnit.unitName || stockUnit.name || '-'}
+                          </span>
+                          {stockUnit.unitCode ? (
+                            <span className="admin-stock-unit-code" title={stockUnit.unitCode}>
+                              {` (${stockUnit.unitCode})`}
+                            </span>
+                          ) : null}
                         </td>
                         <td>{stockUnit.unitType || stockUnit.type || '-'}</td>
                         <td>{stockUnit.region || '-'}</td>
-                        <td className="admin-stock-unit-address-cell">{stockUnit.address || '-'}</td>
                         <td>
                           <span className={`admin-badge ${stockUnit.supportsImport ? 'active' : 'inactive'}`}>
                             {stockUnit.supportsImport ? 'Có' : 'Không'}
@@ -530,20 +527,6 @@ function AdminStockUnitsPage() {
                         </td>
                         <td>
                           <span className={`admin-badge ${statusMeta.badgeClass}`}>{statusMeta.label}</span>
-                        </td>
-                        <td>{formatDateTimeVN(stockUnit.updatedAt || stockUnit.createdAt)}</td>
-                        <td>
-                          <button
-                            type="button"
-                            className="admin-secondary-button small"
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              handleSelectStockUnit(stockUnit)
-                            }}
-                          >
-                            <PencilSquareIcon className="admin-button-icon" />
-                            Chi tiết
-                          </button>
                         </td>
                       </tr>
                     )
@@ -580,10 +563,6 @@ function AdminStockUnitsPage() {
               <div>
                 <span>Mã đơn vị</span>
                 <strong>{selectedStockUnit?.stockUnitId ?? '-'}</strong>
-              </div>
-              <div>
-                <span>Mã nghiệp vụ</span>
-                <strong>{selectedStockUnit?.unitCode || '-'}</strong>
               </div>
               <div>
                 <span>Tạo lúc</span>
@@ -687,17 +666,6 @@ function AdminStockUnitsPage() {
               </button>
             </div>
 
-            <div className="admin-stock-unit-note">
-              <BuildingOffice2Icon className="admin-stock-unit-note-icon" />
-              <div>
-                <strong>{selectedStockUnit ? 'Đơn vị đang chọn' : 'Chưa chọn đơn vị nào'}</strong>
-                <p>
-                  {selectedStockUnit
-                    ? 'Khi bấm lưu, hệ thống sẽ gọi API cập nhật tương ứng với schema unitCode/unitName/unitType. Nút trạng thái bên phải dùng để chuyển active/inactive.'
-                    : 'Bấm vào một dòng trong danh sách hoặc chọn Tạo đơn vị để bắt đầu.'}
-                </p>
-              </div>
-            </div>
           </aside>
         </div>
       </section>
