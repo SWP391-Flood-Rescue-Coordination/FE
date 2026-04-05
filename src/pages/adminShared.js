@@ -1,11 +1,5 @@
 export const ROLE_ORDER = ['ADMIN', 'MANAGER', 'COORDINATOR', 'RESCUE_TEAM', 'CITIZEN']
 
-/*
-  adminShared.js là bộ helper chia sẻ cho admin và coordinator.
-  Khi trình bày code có thể giải thích file này như "tầng normalize/format dùng chung"
-  để các page không phải lặp lại logic status, role, time format.
-*/
-// Bộ helper chung cho admin/coordinator nhằm tránh lặp lại logic format/normalize ở nhiều page.
 export const REQUEST_STATUS_OPTIONS = [
   { value: '', label: 'Tất cả trạng thái' },
   { value: 'PENDING', label: 'Mới tạo' },
@@ -65,28 +59,34 @@ export const normalizeText = (value) =>
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
 
+const VIETNAM_TIME_ZONE = 'Asia/Bangkok'
 
-// Chuyển đổi sang giờ Việt Nam (UTC+7)
-export const toVietnamTime = (dateString) => {
-  if (!dateString) return null;
-  const date = new Date(dateString);
-  date.setHours(date.getHours() + 7);
-  return date;
-};
+export const toVietnamTime = (value) => {
+  if (!value) {
+    return null
+  }
 
-// Format ngày giờ chuẩn Việt Nam
-export const formatDateTimeVN = (value) => {
-  const date = toVietnamTime(value);
-  if (!date || Number.isNaN(date.getTime())) return '-';
-  return date.toLocaleString('vi-VN', {
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+export const formatDateTimeVN = (value, extraOptions = {}) => {
+  const date = toVietnamTime(value)
+  if (!date) {
+    return '-'
+  }
+
+  return new Intl.DateTimeFormat('vi-VN', {
+    timeZone: VIETNAM_TIME_ZONE,
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
-  });
-};
+    ...extraOptions,
+  }).format(date)
+}
 
 export const formatPriority = (priorityLevelId) => {
   const numericPriority = Number(priorityLevelId)

@@ -1875,6 +1875,176 @@
   font-size: 13px;
 }
 
+.admin-section-note {
+  margin: 0;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.admin-team-form {
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 16px;
+  background: #ffffff;
+}
+
+.admin-team-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.admin-team-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.admin-team-form input,
+.admin-team-form select,
+.admin-team-form textarea {
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #ffffff;
+  font-size: 14px;
+  color: #111827;
+  font-family: inherit;
+}
+
+.admin-team-form textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+
+.admin-team-form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.admin-team-form-full {
+  grid-column: 1 / -1;
+}
+
+.admin-team-table-wrap {
+  border-radius: 16px;
+}
+
+@media (max-width: 900px) {
+.admin-team-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-action-stack {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+}
+
+.admin-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 24px;
+}
+
+.admin-modal {
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 24px;
+  width: min(640px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.3);
+}
+
+.admin-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.admin-modal-header h3 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.admin-modal-icon {
+  width: 28px;
+  height: 28px;
+  margin-right: 8px;
+}
+
+.admin-modal-map-section,
+.admin-modal-address {
+  margin-top: 20px;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid #e5e7eb;
+}
+
+.admin-modal-label-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.admin-modal-label-icon {
+  width: 20px;
+  height: 20px;
+  color: #dc2626;
+}
+
+.admin-modal-leaflet {
+  height: 240px;
+  border-radius: 12px;
+  border: 1px solid #d1d5db;
+  background: linear-gradient(135deg, #fef3c7, #fee2e2);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-map-overlay {
+  text-align: center;
+  color: #991b1b;
+}
+
+.admin-modal-address-value {
+  background: #f8fafc;
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 14px;
+  color: #111827;
+}
+
+.admin-modal-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.admin-modal-actions {
+  margin-top: 24px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
 @keyframes admin-spin {
   from {
     transform: rotate(0deg);

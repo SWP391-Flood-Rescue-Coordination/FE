@@ -8,6 +8,7 @@ import {
   Squares2X2Icon,
   UserCircleIcon,
   UserGroupIcon,
+  UsersIcon,
   XMarkIcon,
   XCircleIcon,
 } from '@heroicons/react/24/outline'
@@ -44,6 +45,13 @@ const NAV_ITEMS = [
     label: 'Quản lý yêu cầu',
     description: 'Chuyển yêu cầu về trạng thái hủy',
     icon: ClipboardDocumentListIcon,
+  },
+  {
+    to: '/admin/rescue-teams',
+    end: true,
+    label: 'Quản lý đội cứu hộ',
+    description: 'Tạo, cập nhật và xóa đội cứu hộ',
+    icon: UsersIcon,
   },
 ]
 

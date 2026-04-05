@@ -85,14 +85,14 @@ const toVehicleApiStatusValue = (status) => {
 
 const coordinatorService = {
   // NhÃ³m 1: táº£i dá»¯ liá»‡u ná»n cho dashboard vÃ  báº£ng request.
-  getRescueRequests: async (status = '', priorityId = null) => {
+  getRescueRequests: async (status = '', priorityLevelId = null) => {
     const params = {}
     const normalizedStatus = toApiStatusValue(status)
     if (normalizedStatus) {
       params.status = normalizedStatus
     }
-    if (priorityId !== null && priorityId !== undefined && priorityId !== '') {
-      params.priorityId = Number(priorityId)
+    if (priorityLevelId !== null && priorityLevelId !== undefined && priorityLevelId !== '') {
+      params.priorityLevelId = Number(priorityLevelId)
     }
     const response = await api.get(`${REQUEST_BASE}`, { params })
     return normalizeArray(unwrapApiData(response))

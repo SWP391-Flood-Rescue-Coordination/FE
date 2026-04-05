@@ -1,4 +1,4 @@
-import { formatDateTimeVN, toVietnamTime } from './adminShared'
+import { formatDateTimeVN } from './adminShared'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
@@ -41,20 +41,7 @@ const formatCoordinates = (latitude, longitude) => {
 }
 
 const formatDateTimeWithSecondsVN = (value) => {
-  const date = toVietnamTime(value)
-  if (!date || Number.isNaN(date.getTime())) {
-    return '-'
-  }
-
-  return date.toLocaleString('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  })
+  return formatDateTimeVN(value, { second: '2-digit' })
 }
 
 function ManagerVehiclesPage() {

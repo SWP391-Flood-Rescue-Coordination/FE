@@ -17,6 +17,7 @@ import ManagerImportReceiptsListPage from './pages/ManagerImportReceiptsListPage
 import AdminDashboardPage from './pages/AdminDashboardPage'
 import AdminUsersPage from './pages/AdminUsersPage'
 import AdminRequestsPage from './pages/AdminRequestsPage'
+import AdminRescueTeamsPage from './pages/AdminRescueTeamsPage'
 import './App.css'
 
 /*
@@ -47,6 +48,7 @@ function App() {
           <Route path="/admin" element={<AdminDashboardPage />} />
           <Route path="/admin/users" element={<AdminUsersPage />} />
           <Route path="/admin/requests" element={<AdminRequestsPage />} />
+          <Route path="/admin/rescue-teams" element={<AdminRescueTeamsPage />} />
           <Route path="/manager" element={<ManagerDashboardPage />} />
           <Route path="/manager/vehicles" element={<ManagerVehiclesPage />} />
           <Route path="/manager/supplies" element={<ManagerSuppliesPage />} />

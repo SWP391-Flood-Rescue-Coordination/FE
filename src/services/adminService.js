@@ -123,6 +123,54 @@ const normalizeVehicle = (vehicle) => ({
   updatedAt: vehicle?.updatedAt ?? vehicle?.UpdatedAt ?? null,
 })
 
+const TEAM_MANAGEMENT_BASE = '/rescue-team'
+
+const normalizeTeamStatusKey = (value) =>
+  String(value ?? '')
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, '_')
+
+const buildRescueTeamPayload = (teamData) => {
+  const payload = {}
+  const nameValue = toNullableText(teamData?.teamName ?? teamData?.name)
+  if (nameValue) {
+    payload.TeamName = nameValue
+  }
+
+  const statusValue = toNullableText(teamData?.status)
+  if (statusValue) {
+    payload.Status = normalizeTeamStatusKey(statusValue)
+  }
+
+  const leaderName = toNullableText(teamData?.leaderName)
+  if (leaderName) {
+    payload.LeaderName = leaderName
+  }
+
+  const leaderPhone = toNullableText(teamData?.leaderPhone)
+  if (leaderPhone) {
+    payload.LeaderPhone = leaderPhone
+  }
+
+  const leaderUserIdValue = toNullableNumber(teamData?.leaderUserId ?? teamData?.leaderId)
+  if (leaderUserIdValue !== null) {
+    payload.LeaderUserId = leaderUserIdValue
+  }
+
+  const baseLatitude = toNullableNumber(teamData?.baseLatitude ?? teamData?.base_latitude)
+  if (baseLatitude !== null) {
+    payload.BaseLatitude = baseLatitude
+  }
+
+  const baseLongitude = toNullableNumber(teamData?.baseLongitude ?? teamData?.base_longitude)
+  if (baseLongitude !== null) {
+    payload.BaseLongitude = baseLongitude
+  }
+
+  return payload
+}
+
 const normalizeRole = (value) =>
   String(value ?? '')
     .trim()
@@ -246,6 +294,32 @@ const adminService = {
     const params = status ? { status: String(status).trim().toUpperCase() } : undefined
     const response = await api.get(TEAM_BASE, { params })
     return normalizeArray(unwrapApiData(response))
+  },
+
+  createRescueTeam: async (teamData) => {
+    // Táº¡o Ä‘á»™i cá»©u há»™ má»›i
+    // Input: teamData - { teamName, status, leaderName, leaderPhone, baseLocation, notes }
+    // Output: Response vÃ  data chá»©a Ä‘á»™i
+    const payload = buildRescueTeamPayload(teamData)
+    const response = await api.post(`${TEAM_MANAGEMENT_BASE}`, payload)
+    return unwrapApiData(response)
+  },
+
+  updateRescueTeam: async (teamId, teamData) => {
+    // Cáº­p nháº­t thÃ´ng tin Ä‘á»™i cá»©u há»™
+    // Input: teamId, teamData - trÃ¡nh gá»­i dá»¯ liá»‡u rá»“ng
+    // Output: Response cáº­p nháº­t
+    const payload = buildRescueTeamPayload(teamData)
+    const response = await api.put(`${TEAM_MANAGEMENT_BASE}/${teamId}`, payload)
+    return unwrapApiData(response)
+  },
+
+  deleteRescueTeam: async (teamId) => {
+    // XÃ³a Ä‘á»™i cá»©u há»™
+    // Input: teamId
+    // Output: Response success
+    const response = await api.delete(`${TEAM_MANAGEMENT_BASE}/${teamId}`)
+    return response?.data ?? {}
   },
 
   getVehicles: async (status = '') => {

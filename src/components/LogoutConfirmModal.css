@@ -29,6 +29,11 @@
   margin-bottom: 40px;
   line-height: 1.4;
 }
+
+.logout-confirm-message {
+  margin-bottom: 40px;
+}
+
 .success-button {
   width: 100%;
   padding: 16px;
@@ -41,6 +46,11 @@
   cursor: pointer;
   transition: background-color 0.3s;
 }
+
+.confirm-action {
+  margin-bottom: 16px;
+}
+
 .success-button.cancel {
   background: #ccc;
   color: #222;
