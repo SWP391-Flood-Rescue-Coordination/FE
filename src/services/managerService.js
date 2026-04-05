@@ -669,34 +669,20 @@ const managerService = {
     }
   },
 
-  getRescueTeamStatus: async (status = '') => {
-    // Lấy danh sách trạng thái các đội cứu hộ (hoạt động, ngưng)
-    // Input: status (optional) - lọc theo trạng thái đội
-    // Output: Mảng team status objects
-    // Lỗi: 401 (hết phiên), 500 (lỗi server)
-    try {
-      const params = status ? { status } : undefined
-      const response = await api.get('/rescue-team/status', { params })
-      return normalizeArray(unwrapApiData(response))
-    } catch (error) {
-      console.error('[managerService] getRescueTeamStatus error:', error)
-      throw error
-    }
-  },
+
 
   getTodayStats: async () => {
-    // Lấy thống kê hoạt động hôm nay: request phục vụ, đội hoạt động, xe đang dùng, vật tư phân phối
-    // Output: { requestsServed, rescueTeams, peopleHelped, suppliesDistributed, vehiclesUsed, consumptionRate }
+    // Lấy thống kê hoạt động hôm nay: request phục vụ, xe đang dùng, vật tư phân phối
+    // Output: { requestsServed, suppliesDistributed, vehiclesUsed }
     // Lỗi: 401 (hết phiên), 500 (lỗi server) - nếu lỗi trả về stats = 0
     try {
-      const [stats, outTransactions, inUseVehicles, rescueTeams, supplies] = await Promise.all([
+      const [stats, outTransactions, inUseVehicles, supplies] = await Promise.all([
         getStatistics(),
         api
           .get('/StockHistory', { params: { type: 'OUT' } })
           .then((response) => normalizeArray(unwrapApiData(response)).map(normalizeStockEntry))
           .catch(() => []),
         managerService.getAllVehicles('INUSE'),
-        managerService.getRescueTeamStatus(),
         managerService.getSupplies(),
       ])
 
@@ -712,29 +698,17 @@ const managerService = {
         return sum + parseStockBody(entry.body).reduce((entrySum, part) => entrySum + toNumber(part.quantity), 0)
       }, 0)
 
-      const totalStockQuantity = supplies.reduce((sum, item) => sum + toNumber(item.quantity), 0)
-      const consumptionRate =
-        totalStockQuantity > 0
-          ? Math.min(100, Math.round((suppliesDistributed / totalStockQuantity) * 100))
-          : 0
-
       return {
         requestsServed: toNumber(stats?.todayRequests ?? stats?.TodayRequests),
-        rescueTeams: normalizeArray(rescueTeams).length,
-        peopleHelped: normalizeArray(rescueTeams).length,
         suppliesDistributed,
         vehiclesUsed: inUseVehicles.length,
-        consumptionRate,
       }
     } catch (error) {
       console.error('[managerService] getTodayStats error:', error)
       return {
         requestsServed: 0,
-        rescueTeams: 0,
-        peopleHelped: 0,
         suppliesDistributed: 0,
         vehiclesUsed: 0,
-        consumptionRate: 0,
       }
     }
   },

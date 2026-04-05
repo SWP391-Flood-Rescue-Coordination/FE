@@ -337,12 +337,17 @@ function Dashboard() {
 
     try {
       if (isAuthenticated) {
+        // Gọi API xác nhận an toàn (citizen đã login): PUT /api/RescueRequest/{requestId}/confirm-rescued
+        // BE update request status = COMPLETED/SAFE
         await rescueRequestService.confirmRescued(requestId)
       } else {
         const phone = String(latestRequest?.phone ?? '').trim()
         if (!phone) {
           return
         }
+        // Gọi API xác nhận an toàn (guest không login): PUT /api/RescueRequest/guest/{requestId}/confirm-rescued
+        // Payload: { phone }
+        // BE verify phone match request, update status = SAFE
         await rescueRequestService.confirmRescuedAsGuest(requestId, phone)
       }
 

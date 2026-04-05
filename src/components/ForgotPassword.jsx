@@ -339,6 +339,9 @@ const ForgotPassword = ({
     setSendingOtp(true)
 
     try {
+      // Gọi API gửi OTP: POST /api/Auth/forgot-password
+      // Payload: { phone }
+      // BE verify phone tồn tại, generate OTP, gửi qua email/SMS, trả về masked email để confirm
       const response = await authService.sendForgotPasswordOtp(normalizedPhone)
 
       if (!response?.success) {
@@ -420,6 +423,9 @@ const ForgotPassword = ({
     setIsSubmittingReset(true)
 
     try {
+      // Gọi API verify OTP và đặt lại password: POST /api/Auth/reset-password
+      // Payload: { phone, otp, newPassword }
+      // BE verify OTP không hết hạn + đúng format, validate password ≥ 5 ký tự, update user password
       const response = await authService.resetForgotPassword(submittedPhone, otpValue, newPassword)
 
       if (!response?.success) {

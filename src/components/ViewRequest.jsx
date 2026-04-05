@@ -94,12 +94,16 @@ function ViewRequest({ onClose, requestData, requestId }) {
 
         if (usesCitizenRequestFlow) {
           if (resolvedRequestId) {
+            // Gọi API lấy chi tiết request: GET /api/RescueRequest/{requestId}
+            // Lấy dữ liệu request đầy đủ để display: status, location, timeline, team, vehicle...
             const detailData = await rescueRequestService.getRequestById(resolvedRequestId)
             sourceData = {
               ...(sourceData || {}),
               ...(detailData || {}),
             }
           } else if (!sourceData) {
+            // Gọi API lấy request mới nhất của citizen: GET /api/RescueRequest/my-latest
+            // Dùng khi không có requestId, fetch request mới tạo nhất của user
             sourceData = await rescueRequestService.getMyLatestRequest()
           }
         } else if (resolvedRequestId) {
@@ -360,6 +364,10 @@ function ViewRequest({ onClose, requestData, requestId }) {
     setSuccessMessage('')
 
     try {
+      // Gọi API cập nhật request theo role:
+      // - Citizen (đã login): PUT /api/RescueRequest/{requestId}/update (chỉ khi status=PENDING)
+      // - Guest (không login): PUT /api/RescueRequest/guest/{requestId}/update
+      // Payload: location, description, priority, numPeopleInvolved, phone, conditions...
       // FE tách route update citizen/guest nhưng sau đó luôn load lại detail để đồng bộ UI.
       const updateResult = usesCitizenRequestFlow
         ? await rescueRequestService.updateMyRequest(formData.requestId, formData)
