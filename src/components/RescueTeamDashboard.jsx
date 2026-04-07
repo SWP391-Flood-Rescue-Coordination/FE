@@ -274,27 +274,34 @@ function RescueTeamDashboard() {
       return;
     }
 
-    if (!window.confirm(`Xác nhận chấp nhận yêu cầu và giao nhiệm vụ cho ${selectedMembers.length} thành viên?`)) {
+    if (!window.confirm(`Xác nhận giao nhiệm vụ cho ${selectedMembers.length} thành viên?`)) {
       return;
     }
 
     setUpdating(true);
     setUpdatingAction('accept-assign');
     try {
-      // Step 1: Accept request
-      await rescueTeamService.acceptRequest(selectedMission.requestId);
+      console.log('📋 Request details before assign:', {
+        requestId: selectedMission.requestId,
+        status: selectedMission.status,
+        members: selectedMembers
+      });
       
-      // Step 2: Assign members
+      // Assign members directly (coordinator already assigned request to team)
+      // No need to accept first - just assign members to the request
+      console.log('⏳ Assigning members to request...');
       const response = await rescueTeamService.assignTaskToMembers(
         selectedMission.requestId,
         selectedMembers
       );
+      console.log('✅ Members assigned successfully');
+      
       setError(null);
       
       const assigned = response?.assignedUserIds?.length || 0;
       const skipped = response?.skippedUserIds?.length || 0;
       
-      let message = `Đã chấp nhận yêu cầu và giao nhiệm vụ cho ${assigned} thành viên.`;
+      let message = `Đã giao nhiệm vụ cho ${assigned} thành viên.`;
       if (skipped > 0) {
         message += ` ${skipped} thành viên đang bận hoặc không khả dụng.`;
       }
@@ -303,9 +310,7 @@ function RescueTeamDashboard() {
       handleCloseAssignModal();
       await fetchMissions({ suppressError: true });
     } catch (err) {
-      const errorMessage = err?.response?.status === 403 
-        ? rescueTeamService.getAssignMembersErrorMessage(err)
-        : rescueTeamService.getAcceptRejectErrorMessage(err);
+      const errorMessage = rescueTeamService.getAssignMembersErrorMessage(err);
       setError(`Lỗi: ${errorMessage}`);
     } finally {
       setUpdating(false);

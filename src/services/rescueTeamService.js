@@ -260,12 +260,15 @@ const rescueTeamService = {
   // Leader giao nhiệm vụ cho một hoặc nhiều thành viên
   assignTaskToMembers: async (requestId, userIds) => {
     try {
-      const response = await api.post('/rescue-team/members/assign-task', {
+      const payload = {
         userIds: Array.isArray(userIds) ? userIds : [userIds],
         requestId: Number(requestId),
-      })
+      }
+      console.log('🔍 Assigning task - Payload:', payload)
+      const response = await api.post('/rescue-team/members/assign-task', payload)
       return response.data
     } catch (error) {
+      console.error('❌ Assign task error:', error?.response?.status, error?.response?.data)
       throw error
     }
   },
@@ -276,11 +279,6 @@ const rescueTeamService = {
       const params = search ? { search } : {}
       const response = await api.get('/rescue-team/members', { params })
       const data = unwrapApiData(response)
-      console.log('🔍 Team members API response:', data)
-      if (data?.[0]) {
-        console.log('🔍 First member structure:', Object.keys(data[0]))
-        console.log('🔍 First member data:', data[0])
-      }
       
       // Normalize member data to have consistent field names
       // Filter out leaders (only show actual team members)
@@ -317,9 +315,10 @@ const rescueTeamService = {
       }
       return null
     } catch (error) {
-      // Don't log 404 as it's expected when member has no assignment
-      if (error?.response?.status !== 404) {
-        console.warn('⚠️ getMyAssignment error:', error)
+      // Silently handle 404 - it's expected when member has no assignment
+      // Don't throw, just return null to avoid console errors
+      if (error?.response?.status === 404) {
+        return null
       }
       throw error
     }
@@ -417,34 +416,6 @@ const rescueTeamService = {
       // Lấy my-operations, filter những cái ở status Assigned
       const response = await api.get('/rescue-team/my-operations')
       const data = unwrapApiData(response)
-      console.log('🔍 API /rescue-team/my-operations response:', data)
-      if (data?.[0]) {
-        console.log('🔍 First item structure:', Object.keys(data[0]))
-        console.log('🔍 First item data:', data[0])
-        console.log('🔍 phone fields check:', {
-          phone: data[0].phone,
-          Phone: data[0].Phone,
-          contactPhone: data[0].contactPhone,
-          ContactPhone: data[0].ContactPhone,
-          contact_phone: data[0].contact_phone,
-          request_phone: data[0].request_phone,
-          RequestPhone: data[0].RequestPhone
-        })
-        console.log('🔍 count fields check:', {
-          adultCount: data[0].adultCount,
-          AdultCount: data[0].AdultCount,
-          adult_count: data[0].adult_count,
-          elderlyCount: data[0].elderlyCount,
-          ElderlyCount: data[0].ElderlyCount,
-          elderly_count: data[0].elderly_count,
-          childrenCount: data[0].childrenCount,
-          ChildrenCount: data[0].ChildrenCount,
-          children_count: data[0].children_count,
-          numberOfAffectedPeople: data[0].numberOfAffectedPeople,
-          NumberOfAffectedPeople: data[0].NumberOfAffectedPeople,
-          number_of_affected_people: data[0].number_of_affected_people
-        })
-      }
 
       if (Array.isArray(data)) {
         // Filter chỉ những requests ở trạng thái "Assigned" (chưa phân công members)
@@ -460,7 +431,6 @@ const rescueTeamService = {
             try {
               const fullReqResponse = await api.get(`/RescueRequest/${requestId}`)
               const fullReq = unwrapApiData(fullReqResponse)
-              console.log(`🔍 Full request details for ${requestId}:`, fullReq)
               
               return {
                 // IDs
@@ -513,7 +483,6 @@ const rescueTeamService = {
                 })(),
               }
             } catch (err) {
-              console.warn(`⚠️ Failed to fetch full request details for ${requestId}:`, err)
               // Fallback to operation data if full request fetch fails
               return {
                 id: req.id ?? req.Id ?? req.requestId ?? req.RequestId ?? req.operationId ?? req.OperationId,

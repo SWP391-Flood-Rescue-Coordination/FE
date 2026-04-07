@@ -124,8 +124,12 @@ const coordinatorService = {
   },
 
   // Nhóm 2: action nghiệp vụ trên từng request trong CoordinatorRequestsPage.
-  verifyRequest: async (requestId) => {
-    const response = await api.put(`${REQUEST_BASE}/${requestId}/verify`)
+  verifyRequest: async (requestId, teamId = null) => {
+    let url = `${REQUEST_BASE}/${requestId}/verify`
+    if (teamId) {
+      url += `?team_id=${teamId}`
+    }
+    const response = await api.put(url)
     return unwrapApiData(response)
   },
 
@@ -145,7 +149,14 @@ const coordinatorService = {
   },
 
   assignRequest: async (requestId, teamId, vehicleIds, estimatedTime) => {
-    // vehicleIds được chấp nhận cả string lẫn array, FE chuẩn hóa lại trước khi gửi BE.
+    // Phân công request cho team: POST /api/RescueOperation/assign
+    // Flow: Verify request first (set team_id) → Call assign (create Operation)
+    // BE sẽ:
+    // 1. Check request.Status = "Verified"
+    // 2. Check request.TeamId được set
+    // 3. Create RescueOperation
+    // 4. Update request.Status = "Assigned"
+    
     const vehicleIdsString = Array.isArray(vehicleIds)
       ? vehicleIds.map((id) => Number(id)).filter((id) => Number.isFinite(id)).join(',')
       : String(vehicleIds ?? '')
@@ -155,13 +166,16 @@ const coordinatorService = {
           .join(',')
 
     const payload = {
-      requestId: Number(requestId),
-      teamId: Number(teamId),
-      vehicleIds: vehicleIdsString,
-      estimatedTime: Number(estimatedTime),
+      RequestId: Number(requestId),
+      TeamId: Number(teamId),
+      VehicleIds: vehicleIdsString,
+      EstimatedTime: Number(estimatedTime),
     }
+    
+    console.log('🔍 Assigning operation:', payload)
     const response = await api.post('/RescueOperation/assign', payload)
-    return unwrapApiData(response)
+    console.log('✅ Operation assigned:', response.data)
+    return response.data
   },
 }
 

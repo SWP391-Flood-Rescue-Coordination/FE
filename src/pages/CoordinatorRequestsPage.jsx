@@ -627,20 +627,18 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
     setActionLoading(requestId, 'assign', true)
 
     try {
-      // Gọi API phân công request cho đội: POST /api/RescueOperation hoặc PUT /api/RescueRequest/{requestId}/assign
-      // Payload: { rescueTeamId, vehicleIds, estimatedArrivalTime }
-      // BE tạo RescueOperation record, update request status = ASSIGNED, update team/vehicle status = INUSE
-      // FE vừa cập nhật cache assignment cục bộ vừa reload từ API để phản hồi nhanh nhưng vẫn nhất quán.
-      const assignResult = await coordinatorService.assignRequest(requestId, assignTeamId, assignVehicleIds, parsedEstimatedTime)
+      // STEP 1: Verify request with team_id (set request.TeamId)
+      console.log('⏳ Verifying request with team...')
+      await coordinatorService.verifyRequest(requestId, assignTeamId)
+      console.log('✅ Request verified and assigned to team')
+      
       const selectedTeam = teams.find((team) => String(team.id) === String(assignTeamId))
       const selectedVehicles = vehicles.filter((vehicle) => assignVehicleIds.includes(String(vehicle.id)))
-      const responseVehicleIds = normalizeVehicleIdList(assignResult?.assignedVehicleIds)
-      const finalVehicleIds = responseVehicleIds.length > 0 ? responseVehicleIds : normalizeVehicleIdList(assignVehicleIds)
 
       const assignment = {
-        teamId: normalizeIdText(assignResult?.teamId ?? assignTeamId),
+        teamId: normalizeIdText(assignTeamId),
         teamName: selectedTeam?.name || '',
-        vehicleIds: finalVehicleIds,
+        vehicleIds: normalizeVehicleIdList(assignVehicleIds),
         vehicleLabels:
           selectedVehicles
             .map((vehicle) => vehicle.name || vehicle.vehicleCode || vehicle.licensePlate || '')
