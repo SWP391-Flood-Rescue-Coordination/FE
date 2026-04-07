@@ -67,47 +67,16 @@ function RescueTeamDashboard() {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   
-  // ===== Team Leader CRUD State =====
-  const [requests, setRequests] = useState([
-    {
-      id: 1,
-      requestId: '1001',
-      status: 'PENDING',
-      priority: 'URGENT',
-      address: 'Phường Tân Sơn Hòa, Thuận An, Bình Dương',
-      phone: '0912222222',
-      description: 'Cháy nhà, cần cứu hộ khẩn cấp',
-      totalPeople: 5,
-      elderly: 2,
-      children: 1,
-      estimatedTime: '1h 30p',
-      assignedMembers: []
-    },
-    {
-      id: 2,
-      requestId: '1002',
-      status: 'PENDING',
-      priority: 'HIGH',
-      address: 'Huyện Bến Cát, Bình Dương',
-      phone: '0913333333',
-      description: 'Lũ lụt, cần sơ tán người dân',
-      totalPeople: 10,
-      elderly: 3,
-      children: 2,
-      estimatedTime: '2h',
-      assignedMembers: []
-    }
-  ]);
-  const [teamMembers, setTeamMembers] = useState([
-    { id: 1, name: 'Nguyễn Văn A', role: 'RESCUE_TEAM_MEMBER' },
-    { id: 2, name: 'Trần Thị B', role: 'RESCUE_TEAM_MEMBER' },
-    { id: 3, name: 'Lê Văn C', role: 'RESCUE_TEAM_MEMBER' }
-  ]);
+  // ===== Team Leader State =====
+  const [teamMembers, setTeamMembers] = useState([]);
   const [selectedRequest, setSelectedRequest] = useState(null);
-  const [expandedRequestId, setExpandedRequestId] = useState(null);
+  const [selectedMembers, setSelectedMembers] = useState([]);
   const [showAssignModal, setShowAssignModal] = useState(false);
+  const [memberLoading, setMemberLoading] = useState(false);
+  const [requests, setRequests] = useState([]);
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [sortBy, setSortBy] = useState('priority');
+  const [expandedRequestId, setExpandedRequestId] = useState(null);
   
   const userMenuRef = React.useRef(null);
   const roleLabel = ROLE_LABEL_MAP[String(currentUser?.role ?? '').toUpperCase()] || currentUser?.role || '-';
@@ -131,7 +100,6 @@ function RescueTeamDashboard() {
       // Service đã lọc bỏ các request trạng thái cuối trước khi trả về page.
       setMissions(data);
     } catch (err) {
-      console.error('Error fetching missions:', err);
       const errorMessage = rescueTeamService.getOperationsErrorMessage(err);
       if (!suppressError) {
         setError(errorMessage);
@@ -148,36 +116,73 @@ function RescueTeamDashboard() {
     }
   };
 
+  // ============================================
+  // Fetch team members (Leader only)
+  // ============================================
+  const fetchTeamMembers = async () => {
+    try {
+      setMemberLoading(true);
+      const data = await rescueTeamService.getTeamMembers();
+      setTeamMembers(data);
+    } catch (err) {
+      // Silently fail if members can't load
+    } finally {
+      setMemberLoading(false);
+    }
+  };
+
+  // ============================================
+  // Fetch team assigned requests (Leader only)
+  // ============================================
+  const fetchTeamAssignedRequests = async () => {
+    try {
+      const data = await rescueTeamService.getTeamAssignedRequests();
+      setRequests(data);
+    } catch (err) {
+      // Silently fail if requests can't load
+    }
+  };
+
   // Load missions khi component mount
   useEffect(() => {
-    fetchMissions();
+    // ===== ROLE VALIDATION: Chỉ RESCUE_TEAM LEADER được vào trang này =====
+    if (!currentUser) {
+      // Chưa login - redirect về login
+      navigate('/login', { replace: true });
+      return;
+    }
+
+    const role = String(currentUser?.role ?? '').toUpperCase();
+    const userName = String(currentUser?.userName ?? currentUser?.username ?? '').toLowerCase();
     
-    // Auto-refresh mỗi 30 giây (như Dashboard.jsx)
+    // DB lưu leader là "RESCUE_TEAM", nhưng phải có "leader" trong username
+    if (role !== 'RESCUE_TEAM' && role !== 'RESCUE_TEAM_LEADER') {
+      // Role sai - redirect về home
+      alert('Bạn không có quyền truy cập trang này! Chỉ Trưởng đội cứu hộ mới có quyền.');
+      navigate('/', { replace: true });
+      return;
+    }
+    
+    // Nếu RESCUE_TEAM nhưng username không có "leader", đó là member - redirect về member page
+    if (role === 'RESCUE_TEAM' && !userName.includes('leader')) {
+      alert('Bạn là thành viên đội. Vui lòng vào trang Nhiệm vụ Cá nhân.');
+      navigate('/rescue-team-member', { replace: true });
+      return;
+    }
+
+    // Fetch data sau khi validate role thành công
+    fetchMissions();
+    fetchTeamMembers();
+    fetchTeamAssignedRequests();
+    
+    // Auto-refresh mỗi 30 giây
     const interval = setInterval(() => {
       fetchMissions();
+      fetchTeamAssignedRequests();
     }, 30000);
     
     return () => clearInterval(interval);
-  }, []);
-
-  // TODO: FETCH DATA FROM API - Thêm API calls khi backend sẵn sàng
-  // useEffect(() => {
-  //   const fetchData = async () => {
-  //     try {
-  //       // const teamInfoRes = await api.get('/api/rescue-team/info')
-  //       // setTeamInfo(teamInfoRes.data)
-  //       
-  //       // const membersRes = await api.get('/api/rescue-team/members')
-  //       // setTeamMembers(membersRes.data)
-  //       
-  //       // const teamsRes = await api.get('/api/rescue-teams')
-  //       // setRescueTeams(teamsRes.data)
-  //     } catch (error) {
-  //       console.error('Error fetching rescue team data:', error)
-  //     }
-  //   }
-  //   fetchData()
-  // }, [])
+  }, [currentUser, navigate]);
 
   useEffect(() => {
     const handleOutsideClick = (event) => {
@@ -191,6 +196,122 @@ function RescueTeamDashboard() {
       document.removeEventListener('mousedown', handleOutsideClick);
     };
   }, []);
+
+  // ============================================
+  // Leader Action Handlers
+  // ============================================
+  const handleAcceptRequest = async () => {
+    if (!selectedMission) return;
+    
+    if (!window.confirm(`Xác nhận tiếp nhận yêu cầu #${selectedMission.requestId}?`)) {
+      return;
+    }
+
+    setUpdating(true);
+    setUpdatingAction('accept');
+    try {
+      await rescueTeamService.acceptRequest(selectedMission.requestId);
+      setError(null);
+      alert('Tiếp nhận yêu cầu thành công! Bây giờ bạn có thể giao nhiệm vụ cho các thành viên.');
+      await fetchMissions({ suppressError: true });
+      setSelectedMission(null);
+    } catch (err) {
+      const errorMessage = rescueTeamService.getAcceptRejectErrorMessage(err);
+      setError(`Lỗi: ${errorMessage}`);
+    } finally {
+      setUpdating(false);
+      setUpdatingAction('');
+    }
+  };
+
+  const handleRejectRequest = async () => {
+    if (!selectedMission) return;
+    
+    const reason = window.prompt('Vui lòng nhập lý do từ chối (nếu có):');
+    if (reason === null) return; // User cancelled
+
+    if (!window.confirm(`Xác nhận từ chối yêu cầu #${selectedMission.requestId}?`)) {
+      return;
+    }
+
+    setUpdating(true);
+    setUpdatingAction('reject');
+    try {
+      await rescueTeamService.rejectRequest(selectedMission.requestId, reason);
+      setError(null);
+      alert('Từ chối yêu cầu thành công. Yêu cầu sẽ quay trở lại trạng thái Chờ xử lý.');
+      await fetchMissions({ suppressError: true });
+      setSelectedMission(null);
+    } catch (err) {
+      const errorMessage = rescueTeamService.getAcceptRejectErrorMessage(err);
+      setError(`Lỗi: ${errorMessage}`);
+    } finally {
+      setUpdating(false);
+      setUpdatingAction('');
+    }
+  };
+
+  const handleOpenAssignModal = () => {
+    if (!selectedMission) return;
+    setSelectedMembers([]);
+    setShowAssignModal(true);
+  };
+
+  const handleCloseAssignModal = () => {
+    setShowAssignModal(false);
+    setSelectedMembers([]);
+  };
+
+  const handleToggleMemberSelection = (memberId) => {
+    setSelectedMembers((prev) =>
+      prev.includes(memberId) ? prev.filter((id) => id !== memberId) : [...prev, memberId]
+    );
+  };
+
+  const handleAssignMembers = async () => {
+    if (!selectedMission || selectedMembers.length === 0) {
+      alert('Vui lòng chọn ít nhất một thành viên.');
+      return;
+    }
+
+    if (!window.confirm(`Xác nhận chấp nhận yêu cầu và giao nhiệm vụ cho ${selectedMembers.length} thành viên?`)) {
+      return;
+    }
+
+    setUpdating(true);
+    setUpdatingAction('accept-assign');
+    try {
+      // Step 1: Accept request
+      await rescueTeamService.acceptRequest(selectedMission.requestId);
+      
+      // Step 2: Assign members
+      const response = await rescueTeamService.assignTaskToMembers(
+        selectedMission.requestId,
+        selectedMembers
+      );
+      setError(null);
+      
+      const assigned = response?.assignedUserIds?.length || 0;
+      const skipped = response?.skippedUserIds?.length || 0;
+      
+      let message = `Đã chấp nhận yêu cầu và giao nhiệm vụ cho ${assigned} thành viên.`;
+      if (skipped > 0) {
+        message += ` ${skipped} thành viên đang bận hoặc không khả dụng.`;
+      }
+      alert(message);
+      
+      handleCloseAssignModal();
+      await fetchMissions({ suppressError: true });
+    } catch (err) {
+      const errorMessage = err?.response?.status === 403 
+        ? rescueTeamService.getAssignMembersErrorMessage(err)
+        : rescueTeamService.getAcceptRejectErrorMessage(err);
+      setError(`Lỗi: ${errorMessage}`);
+    } finally {
+      setUpdating(false);
+      setUpdatingAction('');
+    }
+  };
 
   const handleSort = (key) => {
     let direction = 'asc';
@@ -302,7 +423,6 @@ function RescueTeamDashboard() {
 
       fetchMissions({ suppressError: true });
     } catch (err) {
-      console.error('Error updating mission:', err);
       const errorMessage = rescueTeamService.getUpdateStatusErrorMessage(err);
       alert(`Lỗi: ${errorMessage}`);
 
@@ -340,7 +460,6 @@ function RescueTeamDashboard() {
     navigator.clipboard.writeText(coordinates).then(() => {
       alert('Đã sao chép tọa độ: ' + coordinates);
     }).catch(err => {
-      console.error('Không thể sao chép:', err);
     });
   };
 
@@ -380,29 +499,7 @@ function RescueTeamDashboard() {
     return 0;
   });
 
-  const handleAcceptRequest = (request) => {
-    setSelectedRequest(request);
-    setShowAssignModal(true);
-  };
 
-  const handleRejectRequest = (requestId) => {
-    setRequests(requests.map((req) => (req.id === requestId ? { ...req, status: 'REJECTED' } : req)));
-    setSelectedRequest(null);
-  };
-
-  const handleAssignMembers = (memberIds) => {
-    if (selectedRequest) {
-      setRequests(
-        requests.map((req) =>
-          req.id === selectedRequest.id
-            ? { ...req, status: 'ACCEPTED', assignedMembers: memberIds }
-            : req,
-        ),
-      );
-      setShowAssignModal(false);
-      setSelectedRequest(null);
-    }
-  };
 
   const getAssignedMemberNames = (memberIds) => {
     return memberIds
@@ -614,22 +711,30 @@ function RescueTeamDashboard() {
                           <div style={{marginBottom: '8px'}}><strong>Địa Chỉ:</strong> {request.address}</div>
                           <div style={{marginBottom: '8px'}}><strong>SĐT:</strong> <a href={`tel:${request.phone}`} style={{color: '#0066cc', textDecoration: 'none'}}>{request.phone}</a></div>
                           <div style={{marginBottom: '8px'}}><strong>Mô Tả:</strong> {request.description}</div>
-                          <div style={{marginBottom: '8px'}}><strong>Tổng số người:</strong> {request.totalPeople} (Người già: {request.elderly}, Trẻ em: {request.children})</div>
+                          <div style={{marginBottom: '8px'}}><strong>Tổng số người:</strong> {request.numberOfAffectedPeople} (Người lớn: {request.adultCount}, Người già: {request.elderlyCount}, Trẻ em: {request.childrenCount})</div>
                           {request.assignedMembers && request.assignedMembers.length > 0 && (
                             <div style={{marginBottom: '8px'}}><strong>Giao cho:</strong> {getAssignedMemberNames(request.assignedMembers)}</div>
                           )}
                           
                           {/* Action Buttons */}
-                          {request.status === 'PENDING' && (
+                          {(request.status === 'Assigned' || request.status === 'Verified') && (
                             <div style={{display: 'flex', gap: '6px', marginTop: '12px'}}>
                               <button
-                                onClick={() => handleAcceptRequest(request)}
+                                onClick={() => {
+                                  setSelectedMission(request);
+                                  setSelectedRequest(request);
+                                  setSelectedMembers([]);
+                                  setShowAssignModal(true);
+                                }}
                                 style={{padding: '6px 12px', fontSize: '11px', background: '#10b981', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer'}}
                               >
                                 ✓ Chấp Nhận & Giao việc
                               </button>
                               <button
-                                onClick={() => handleRejectRequest(request.id)}
+                                onClick={() => {
+                                  setSelectedMission(request);
+                                  handleRejectRequest(request.requestId);
+                                }}
                                 style={{padding: '6px 12px', fontSize: '11px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer'}}
                               >
                                 ✕ Từ Chối
@@ -645,127 +750,9 @@ function RescueTeamDashboard() {
           </div>
         </div>
 
-      {/* Content based on active tab */}
-      <div className="rescue-content">
-        <>
-          {loading ? (
-            /* Trạng thái: Đang tải */
-            <div className="no-mission-container">
-              <div className="no-mission-box">
-                <div className="no-mission-icon">⏳</div>
-                <h2>Đang tải danh sách nhiệm vụ...</h2>
-              </div>
-            </div>
-          ) : error ? (
-            /* Trạng thái: Có lỗi */
-            <div className="no-mission-container">
-              <div className="no-mission-box">
-                <h2>Không thể tải danh sách nhiệm vụ</h2>
-                <p>{error}</p>
-                <button 
-                  className="btn-retry"
-                  onClick={() => {
-                    setLoading(true);
-                    fetchMissions();
-                  }}
-                >
-                  Thử lại
-                </button>
-              </div>
-            </div>
-          ) : missions.length === 0 ? (
-            /* Trạng thái: Không có nhiệm vụ */
-            <div className="no-mission-container">
-              <div className="no-mission-box">
-                <h2>Hiện tại không có nhiệm vụ cứu hộ.</h2>
-                <p>Vui lòng chờ điều phối.</p>
-              </div>
-            </div>
-          ) : !selectedMission ? (
-            null
-        ) : (
-          /* Trạng thái: Xem chi tiết nhiệm vụ */
-          <div className="mission-container" style={{position: 'relative'}}>
-            {/* Nút X đóng form */}
-            <button
-              className="close-chrome-btn"
-              aria-label="Đóng chi tiết nhiệm vụ"
-              onClick={() => setSelectedMission(null)}
-            >
-              <span className="close-chrome-icon">×</span>
-            </button>
-            <div className="mission-content">
-              <div className="mission-left">
-                <div className="mission-card">
-                  <label>Địa chỉ</label>
-                  <div className="info-value">{selectedMission.address}</div>
-                </div>
-                <div className="mission-card">
-                  <label>Số điện thoại</label>
-                  <div className="info-value">{selectedMission.phone}</div>
-                </div>
-                <div className="mission-card large">
-                  <label>Bản đồ vị trí</label>
-                  <button className="btn-map" onClick={() => handleViewMap(selectedMission)}>
-                    🗺️ Xem trên Google Maps
-                  </button>
-                  <div className="coordinates-container">
-                    <div className="coordinates-display">
-                      <span className="coordinate-icon">📍</span>
-                      <div className="coordinate-text">
-                        <div className="coordinate-label">Tọa độ:</div>
-                        <div className="coordinate-value">
-                          {selectedMission.location.lat}, {selectedMission.location.lng}
-                        </div>
-                      </div>
-                    </div>
-                    <button 
-                      className="btn-copy-coordinates"
-                      onClick={() => handleCopyCoordinates(selectedMission.location.lat, selectedMission.location.lng)}
-                    >
-                      📋 Sao chép
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <div className="mission-right">
-                <div className="mission-card large">
-                  <label>Mô tả sự cố</label>
-                  <div className="info-value description">
-                    {selectedMission.description}
-                  </div>
-                </div>
-                <div className="mission-card">
-                  <label>Thời gian xử lý dự kiến</label>
-                  <div className="info-value time-estimate">
-                    ⏱️ {selectedMission.estimatedTime}
-                  </div>
-                </div>
-                <div className="action-buttons">
-                  <button
-                    className="btn-cancel-mission"
-                    onClick={handleCancelMission}
-                    disabled={updating}
-                  >
-                    {updating && updatingAction === 'cancel' ? 'Đang xử lý...' : 'Thất bại'}
-                  </button>
-                  <button 
-                    className="btn-complete" 
-                    onClick={handleComplete}
-                    disabled={updating}
-                  >
-                    {updating && updatingAction === 'complete' ? 'Đang xử lý...' : 'Hoàn tất'}
-                  </button>
-                </div>
-                <div className="action-buttons" style={{marginTop: 10, justifyContent: 'center'}}>
-                  {/* Back button removed as requested */}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-        </>
-      </div>
+      
+      {/* Content based on active tab - HIDDEN for leader view */}
+      {null}
       </>
       )}
 
@@ -802,12 +789,12 @@ function RescueTeamDashboard() {
                     <label key={member.id} style={{display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: 'pointer'}}>
                       <input
                         type="checkbox"
+                        checked={selectedMembers.includes(member.id)}
                         onChange={(e) => {
                           if (e.target.checked) {
-                            if (!selectedRequest.assignedMembers) selectedRequest.assignedMembers = [];
-                            selectedRequest.assignedMembers.push(member.id);
+                            setSelectedMembers([...selectedMembers, member.id]);
                           } else {
-                            selectedRequest.assignedMembers = selectedRequest.assignedMembers.filter((id) => id !== member.id);
+                            setSelectedMembers(selectedMembers.filter((id) => id !== member.id));
                           }
                         }}
                       />
@@ -826,9 +813,7 @@ function RescueTeamDashboard() {
                 Hủy
               </button>
               <button
-                onClick={() => {
-                  handleAssignMembers(selectedRequest.assignedMembers || []);
-                }}
+                onClick={handleAssignMembers}
                 style={{padding: '8px 16px', fontSize: '12px', background: '#10b981', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer'}}
               >
                 Giao Việc

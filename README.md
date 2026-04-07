@@ -63,10 +63,24 @@ Project đang chia thành 3 lớp chính:
 | `/register` | Auth | [`src/pages/RegisterPage.jsx`](./src/pages/RegisterPage.jsx) | Đăng ký |
 | `/forgot-password` | Auth | [`src/pages/ForgotPasswordPage.jsx`](./src/pages/ForgotPasswordPage.jsx) | Quên mật khẩu |
 | `/reset-password` | Auth legacy | [`src/pages/ResetPasswordPage.jsx`](./src/pages/ResetPasswordPage.jsx) | Route tương thích ngược, tự chuyển về `/forgot-password` |
+| **Admin Routes** |  |  |  |
 | `/admin` | Admin | [`src/pages/AdminDashboardPage.jsx`](./src/pages/AdminDashboardPage.jsx) | Dashboard admin |
-| `/admin/users` | Admin | [`src/pages/AdminUsersPage.jsx`](./src/pages/AdminUsersPage.jsx) | Quản lý user |
-| `/admin/requests` | Admin | [`src/pages/AdminRequestsPage.jsx`](./src/pages/AdminRequestsPage.jsx) | Quản lý rescue request |
+| `/admin/users` | Admin | [`src/pages/AdminUsersPage.jsx`](./src/pages/AdminUsersPage.jsx) | Quản lý người dùng |
+| `/admin/requests` | Admin | [`src/pages/AdminRequestsPage.jsx`](./src/pages/AdminRequestsPage.jsx) | Quản lý cứu hộ requests |
+| `/admin/rescue-teams` | Admin | [`src/pages/AdminRescueTeamsPage.jsx`](./src/pages/AdminRescueTeamsPage.jsx) | Quản lý đội cứu hộ |
+| **Coordinator Routes** |  |  |  |
 | `/rescue-coordinator` | Coordinator | [`src/pages/CoordinatorDashboardPage.jsx`](./src/pages/CoordinatorDashboardPage.jsx) | Dashboard điều phối |
+| `/rescue-coordinator/requests` | Coordinator | [`src/pages/CoordinatorRequestsPage.jsx`](./src/pages/CoordinatorRequestsPage.jsx) | Quản lý requests điều phối |
+| **Manager Routes** |  |  |  |
+| `/manager` | Manager | [`src/pages/ManagerDashboardPage.jsx`](./src/pages/ManagerDashboardPage.jsx) | Dashboard quản lý |
+| `/manager/vehicles` | Manager | [`src/pages/ManagerVehiclesPage.jsx`](./src/pages/ManagerVehiclesPage.jsx) | Quản lý phương tiện |
+| `/manager/supplies` | Manager | [`src/pages/ManagerSuppliesPage.jsx`](./src/pages/ManagerSuppliesPage.jsx) | Quản lý vật tư |
+| `/manager/relief-export` | Manager | [`src/pages/ManagerReliefExportPage.jsx`](./src/pages/ManagerReliefExportPage.jsx) | Xuất cứu trợ |
+| `/manager/import-receipts` | Manager | [`src/pages/ManagerImportReceiptsListPage.jsx`](./src/pages/ManagerImportReceiptsListPage.jsx) | Danh sách phiếu nhập |
+| `/manager/import-receipts/:id` | Manager | [`src/pages/ManagerImportReceiptPage.jsx`](./src/pages/ManagerImportReceiptPage.jsx) | Chi tiết phiếu nhập |
+| **Rescue Team Routes** |  |  |  |
+| `/rescue-team` | Rescue Team Leader | [`src/components/RescueTeamDashboard.jsx`](./src/components/RescueTeamDashboard.jsx) | Dashboard trưởng đội |
+| `/rescue-team/member` | Rescue Team Member | [`src/pages/RescueTeamMemberPage.jsx`](./src/pages/RescueTeamMemberPage.jsx) | Dashboard thành viên đội |
 
 ## 4. Tầng hạ tầng dùng chung
 

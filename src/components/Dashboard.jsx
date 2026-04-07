@@ -156,7 +156,7 @@ function Dashboard() {
       setHasActiveRequest(historyItem ? !rescueRequestService.isTerminalStatus(historyItem?.status) : false)
     } catch (error) {
       if (error?.response?.status !== 404) {
-        console.error('Error loading request history:', error)
+
       }
       setRequestHistory([])
       setHasActiveRequest(false)
@@ -177,7 +177,7 @@ function Dashboard() {
         safeCount: Number(stats?.safeReports ?? 0),
       })
     } catch (error) {
-      console.error('Error loading dashboard statistics:', error)
+
       setRemoteDashboardStats(null)
     }
   }, [])
@@ -353,7 +353,7 @@ function Dashboard() {
 
       await Promise.all([loadRequestHistory(), loadDashboardStatistics()])
     } catch (error) {
-      console.error('Error reporting safe from dashboard:', error)
+
     } finally {
       setIsReportingSafeFromDashboard(false)
     }

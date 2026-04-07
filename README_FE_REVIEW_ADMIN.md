@@ -10,30 +10,36 @@ Phạm vi chính:
 
 ## 1. Các file chính
 
-### Page
+### Pages
 
 - [src/pages/AdminDashboardPage.jsx](./src/pages/AdminDashboardPage.jsx)
 - [src/pages/AdminUsersPage.jsx](./src/pages/AdminUsersPage.jsx)
+- [src/pages/AdminRequestsPage.jsx](./src/pages/AdminRequestsPage.jsx)
+- [src/pages/AdminRescueTeamsPage.jsx](./src/pages/AdminRescueTeamsPage.jsx)
+- [src/pages/AdminRescueTeamsPage.css](./src/pages/AdminRescueTeamsPage.css)
 
-### Service
+### Services
 
 - [src/services/adminService.js](./src/services/adminService.js)
 
-### Helper dùng chung
+### Helpers
 
 - [src/pages/adminShared.js](./src/pages/adminShared.js)
 
 ### CSS
 
 - [src/pages/AdminDashboardPage.css](./src/pages/AdminDashboardPage.css)
+- [src/pages/AdminUsersPage.css](./src/pages/AdminUsersPage.css)
+- [src/pages/AdminRequestsPage.css](./src/pages/AdminRequestsPage.css)
 
 ## 2. Route admin
 
 Các route chính:
 
-- `/admin`
-- `/admin/users`
-- `/admin/requests`
+- `/admin` - Dashboard
+- `/admin/users` - Quản lý người dùng
+- `/admin/requests` - Quản lý cứu hộ requests
+- `/admin/rescue-teams` - Quản lý đội cứu hộ
 
 ## 3. Dashboard admin
 

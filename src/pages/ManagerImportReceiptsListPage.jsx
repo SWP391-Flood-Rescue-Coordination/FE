@@ -83,7 +83,7 @@ function ManagerImportReceiptsListPage() {
       setReceipts(data)
       setFilteredReceipts(data)
     } catch (error) {
-      console.error('Error fetching receipts:', error)
+
       const errorMsg = managerService.getErrorMessage(error)
       setErrorMessage(errorMsg)
     } finally {

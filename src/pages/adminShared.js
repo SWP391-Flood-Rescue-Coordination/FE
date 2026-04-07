@@ -32,6 +32,8 @@ export const HOME_ROUTE_BY_ROLE = {
   MANAGER: '/manager',
   COORDINATOR: '/rescue-coordinator',
   RESCUE_TEAM: '/rescue-team',
+  RESCUE_TEAM_LEADER: '/rescue-team',
+  RESCUE_TEAM_MEMBER: '/rescue-team/member',
   CITIZEN: '/',
 }
 
@@ -41,7 +43,15 @@ export const normalizeRole = (value) => {
     .toUpperCase()
     .replace(/[\s-]+/g, '_')
 
-  return normalized === 'RESCUE_COORDINATOR' ? 'COORDINATOR' : normalized
+  // Normalize rescue coordinator name
+  if (normalized === 'RESCUE_COORDINATOR') return 'COORDINATOR'
+  
+  // Keep specific rescue team roles distinct (don't collapse to RESCUE_TEAM)
+  if (normalized === 'RESCUE_TEAM_LEADER' || normalized === 'RESCUE_TEAM_MEMBER') {
+    return normalized
+  }
+  
+  return normalized
 }
 
 export const normalizeStatus = (value) => {

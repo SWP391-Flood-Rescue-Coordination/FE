@@ -47,7 +47,31 @@ Các phần sau đây vẫn có code nhưng đang bị ẩn khỏi giao diện n
 - Nút chấp nhận & giao, từ chối
 - Modal giao việc cho thành viên
 
-**Trạng thái:** **Hiển thị** - Mock data sẵn có, chưa kết nối API
+**Trạng thái:** **Hiển thị** - Kết nối API với endpoints:
+  - `GET /rescue-team/my-operations`
+  - `PUT /rescue-team/requests/{requestId}/accept`
+  - `PUT /rescue-team/requests/{requestId}/reject`
+  - `POST /rescue-team/members/assign-task`
+
+**Data Source:** Sử dụng API thực từ BE, không còn mock data
+
+---
+
+### 4. Dash Board Thành Viên Đội (Member Assignment)
+**Vị trí:** `src/pages/RescueTeamMemberPage.jsx`
+
+**Nội dung:**
+- Hiển thị nhiệm vụ được giao cho thành viên
+- Xem chi tiết nhiệm vụ
+- Bắt đầu thực hiện, hoàn tất hoặc báo lỗi
+- Loading state với spinner
+- Error state với retry button
+
+**Trạng thái:** **Hiển thị** - Kết nối API với endpoints:
+  - `GET /rescue-team/my-assignment`
+  - `PUT /rescue-team/my-assignment/confirm`
+
+**Data Source:** Sử dụng API thực từ BE, không còn mock data
 
 **Cần làm:** 
 - [ ] Kết nối API backend lấy danh sách requests thực

@@ -25,7 +25,6 @@ const ReportForm = ({ onClose }) => {
       ...formData,
       status: 'pending'
     };
-    console.log('Report submitted:', reportData);
     onClose(reportData);
   };
 

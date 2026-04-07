@@ -102,7 +102,7 @@ function ManagerVehiclesPage() {
       const data = await managerService.getAllVehicles('')
       setVehicles(Array.isArray(data) ? data : [])
     } catch (error) {
-      console.error('Error fetching vehicles:', error)
+
       setErrorMessage(managerService.getErrorMessage(error))
 
       if (error?.response?.status === 401) {

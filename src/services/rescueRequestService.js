@@ -296,9 +296,9 @@ const toRequestFormData = (requestItem) => {
     totalPeople = String(peopleValue).trim();
   } else {
     // Nếu không có trường tổng, tự tính lại từ các trường thành phần
-    const adult = Number.parseInt(requestItem?.adultCount ?? requestItem?.AdultCount ?? 0, 10);
-    const elderly = Number.parseInt(requestItem?.elderly ?? requestItem?.elderlyCount ?? requestItem?.ElderlyCount ?? 0, 10);
-    const children = Number.parseInt(requestItem?.children ?? requestItem?.childrenCount ?? requestItem?.ChildrenCount ?? 0, 10);
+    const adult = Number.parseInt(requestItem?.adultCount ?? requestItem?.AdultCount ?? requestItem?.adult_count ?? 0, 10);
+    const elderly = Number.parseInt(requestItem?.elderly ?? requestItem?.elderlyCount ?? requestItem?.ElderlyCount ?? requestItem?.elderly_count ?? 0, 10);
+    const children = Number.parseInt(requestItem?.children ?? requestItem?.childrenCount ?? requestItem?.ChildrenCount ?? requestItem?.children_count ?? 0, 10);
     const sum = [adult, elderly, children].map(x => Number.isFinite(x) ? x : 0).reduce((a, b) => a + b, 0);
     totalPeople = sum > 0 ? String(sum) : '';
   }

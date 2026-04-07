@@ -232,7 +232,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
         }
       })
     } catch (error) {
-      console.error('Map initialization error:', error)
+
     }
 
     return () => {

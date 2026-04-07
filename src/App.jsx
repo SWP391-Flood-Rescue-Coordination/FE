@@ -43,7 +43,7 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/rescue-team" element={<RescueTeamDashboard />} />
-          <Route path="/rescue-team/member" element={<RescueTeamMemberPage />} />
+          <Route path="/rescue-team-member" element={<RescueTeamMemberPage />} />
           <Route path="/rescue-coordinator" element={<CoordinatorDashboardPage />} />
           <Route path="/admin" element={<AdminDashboardPage />} />
           <Route path="/admin/users" element={<AdminUsersPage />} />

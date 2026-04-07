@@ -7,7 +7,7 @@ import Login from '../components/Login'
 const ROLE_ROUTE_MAP = {
   CITIZEN: '/',
   COORDINATOR: '/rescue-coordinator',
-  RESCUE_TEAM: '/rescue-team',
+  RESCUE_TEAM: '/rescue-team', // DEFAULT - được override nếu là team member
   MANAGER: '/manager',
   ADMIN: '/admin',
 }
@@ -18,7 +18,18 @@ const LoginPage = () => {
   // Login.jsx chỉ xử lý form + gọi API. Việc chọn route sau đăng nhập được gom hết về đây.
   const handleLoginSuccess = (user) => {
     const role = String(user?.role ?? '').toUpperCase()
-    const destination = ROLE_ROUTE_MAP[role] || '/'
+    let destination = ROLE_ROUTE_MAP[role] || '/'
+    
+    // Special handling for RESCUE_TEAM: distinguish between leader and member by username
+    if (role === 'RESCUE_TEAM') {
+      const userName = String(user?.userName ?? user?.username ?? '').toLowerCase()
+      // If username contains "leader", it's a team leader → dashboard
+      // Otherwise, it's a team member → member page
+      if (!userName.includes('leader')) {
+        destination = '/rescue-team-member'
+      }
+    }
+    
     navigate(destination, { replace: true })
   }
 

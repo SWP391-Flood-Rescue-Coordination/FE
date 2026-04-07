@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeftOnRectangleIcon,
   UserCircleIcon,
@@ -15,6 +16,7 @@ import {
   ChevronUpIcon,
 } from '@heroicons/react/24/outline'
 import authService from '../services/authService'
+import rescueTeamService from '../services/rescueTeamService'
 import LogoutConfirmModal from '../components/LogoutConfirmModal'
 import './RescueTeamMemberPage.css'
 
@@ -56,6 +58,7 @@ const PRIORITY_MAP = {
 }
 
 function RescueTeamMemberPage() {
+  const navigate = useNavigate()
   const [currentUser, setCurrentUser] = useState(() => authService.getUserInfo())
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
@@ -65,56 +68,76 @@ function RescueTeamMemberPage() {
   const [finishReason, setFinishReason] = useState('COMPLETED')
   const [showTaskModal, setShowTaskModal] = useState(false)
   const [modalTask, setModalTask] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [confirming, setConfirming] = useState(false)
 
-  // TODO: REMOVE MOCK DATA - Fetch từ API: GET /api/rescue-team/my-tasks
-  const [tasks, setTasks] = useState([
-    {
-      id: 1,
-      requestId: '1001',
-      status: 'ASSIGNED',
-      priority: 'URGENT',
-      address: 'Phường Tân Sơn Hòa, Thuận An, Bình Dương',
-      phone: '0912222222',
-      description: 'Cháy nhà, cần cứu hộ khẩn cấp',
-      totalPeople: 5,
-      elderly: 2,
-      children: 1,
-      estimatedTime: '1h 30p',
-      location: { lat: 10.8741, lng: 106.6741 },
-      startedAt: null,
-      completedAt: null,
-      leaderName: 'Nguyễn Văn A',
-      timeline: []
-    },
-    {
-      id: 2,
-      requestId: '1002',
-      status: 'ASSIGNED',
-      priority: 'HIGH',
-      address: 'Huyện Bến Cát, Bình Dương',
-      phone: '0913333333',
-      description: 'Lũ lụt, cần sơ tán người dân',
-      totalPeople: 10,
-      elderly: 3,
-      children: 2,
-      estimatedTime: '2h',
-      location: { lat: 10.8624, lng: 106.6584 },
-      startedAt: null,
-      completedAt: null,
-      leaderName: 'Nguyễn Văn A',
-      timeline: []
-    }
-  ])
-
-  // ===== Team Members Management State =====
-  // TODO: REMOVE MOCK DATA - Fetch từ API: GET /api/rescue-team/members
-  const [teamMembers, setTeamMembers] = useState([])
-  const [expandedMemberId, setExpandedMemberId] = useState(null)
+  const [tasks, setTasks] = useState([])  // Will be populated from API
 
   const userMenuRef = useRef(null)
   const roleLabel = ROLE_LABEL_MAP[currentUser?.role?.toUpperCase()] || currentUser?.role || 'Không xác định'
 
-  // Close user menu
+  // ============================================
+  // Fetch member's assignment
+  // ============================================
+  const fetchMyAssignment = async () => {
+    try {
+      setError(null)
+      setLoading(true)
+      const assignment = await rescueTeamService.getMyAssignment()
+      if (assignment) {
+        setTasks([assignment])  // Only one task per member at a time
+      } else {
+        setTasks([])
+      }
+    } catch (err) {
+
+      const errorMessage = rescueTeamService.getOperationsErrorMessage(err)
+      setError(errorMessage)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // ===== ROLE VALIDATION & DATA LOADING =====
+  useEffect(() => {
+    // ===== ROLE VALIDATION: Chỉ RESCUE_TEAM members (không phải leader) được vào trang này =====
+    // NOTE: DB quy định member cũng có role "RESCUE_TEAM" như leader, nhưng có username khác (tùy member1, member2)
+    if (!currentUser) {
+      // Chưa login - redirect về login
+      navigate('/login', { replace: true })
+      return
+    }
+
+    const role = String(currentUser?.role ?? '').toUpperCase()
+    const userName = String(currentUser?.userName ?? currentUser?.username ?? '').toLowerCase()
+    
+    // Reject nếu không phải RESCUE_TEAM role
+    if (role !== 'RESCUE_TEAM') {
+      alert('Bạn không có quyền truy cập trang này! Chỉ Thành viên đội cứu hộ mới có quyền.')
+      navigate('/', { replace: true })
+      return
+    }
+    
+    // Reject nếu là leader (username contains "leader") - leaders nên vào /rescue-team dashboard
+    if (userName.includes('leader')) {
+      alert('Trưởng đội vui lòng sử dụng trang Quản lý Đội Cứu Hộ. Thành viên vui lòng vào trang này.')
+      navigate('/rescue-team', { replace: true })
+      return
+    }
+
+    // Fetch data sau khi validate role thành công
+    fetchMyAssignment()
+    
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(() => {
+      fetchMyAssignment()
+    }, 30000)
+    
+    return () => clearInterval(interval)
+  }, [currentUser, navigate])
+
+  // Close user menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
@@ -126,61 +149,61 @@ function RescueTeamMemberPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // TODO: FETCH DATA FROM API - Thêm API calls khi backend sẵn sàng
-  // useEffect(() => {
-  //   const fetchTasks = async () => {
-  //     try {
-  //       // const tasksRes = await api.get('/api/rescue-team/my-tasks')
-  //       // setTasks(tasksRes.data)
-  //     } catch (error) {
-  //       console.error('Error fetching tasks:', error)
-  //     }
-  //   }
-  //   fetchTasks()
-  // }, [])
-
   const handleToggleUserMenu = () => {
     setShowUserMenu(!showUserMenu)
   }
 
   const handleLogout = () => {
     authService.logout()
-    window.location.href = '/'
+    window.location.href = '/login'
   }
 
   const getActiveTasks = () => {
-    return tasks.filter((task) => task.status === 'ASSIGNED' || task.status === 'IN_PROGRESS')
+    return tasks.filter((task) => task.rawStatus === 'Assigned')
   }
 
   const getCompletedTasks = () => {
-    return tasks.filter((task) => task.status === 'COMPLETED' || task.status === 'FAILED')
+    return tasks.filter((task) => task.rawStatus !== 'Assigned')
   }
 
   const displayTasks = filterStatus === 'ACTIVE' ? getActiveTasks() : getCompletedTasks()
 
+  // ============================================
+  // Member Action Handlers
+  // ============================================
+  const handleConfirmTask = async (task) => {
+    if (!task) return
+
+    if (!window.confirm('Xác nhận đã hoàn tất nhiệm vụ này?')) {
+      return
+    }
+
+    setConfirming(true)
+    try {
+      await rescueTeamService.confirmMyTask()
+      setError(null)
+      alert('Xác nhận hoàn tất nhiệm vụ thành công!')
+      await fetchMyAssignment()
+      setSelectedTask(null)
+    } catch (err) {
+
+      const errorMessage = rescueTeamService.getConfirmTaskErrorMessage(err)
+      setError(`Lỗi: ${errorMessage}`)
+    } finally {
+      setConfirming(false)
+    }
+  }
+
   const handleStartTask = (task) => {
-    setTasks(tasks.map((t) => (t.id === task.id ? { ...t, status: 'IN_PROGRESS', startedAt: new Date().toISOString() } : t)))
-    setSelectedTask(null)
+    if (!task) return
+    // Note: Currently no API to mark task as "IN_PROGRESS"
+    // In future, could add an API call here if needed
+    setSelectedTask(task)
   }
 
   const handleFinishTask = (task, reason) => {
-    const newTimeline = [
-      ...task.timeline,
-      {
-        time: new Date().toISOString(),
-        status: reason,
-        message: reason === 'COMPLETED' ? 'Hoàn tất nhiệm vụ' : 'Gặp lỗi/thất bại',
-      },
-    ]
-
-    setTasks(
-      tasks.map((t) =>
-        t.id === task.id
-          ? { ...t, status: reason, completedAt: new Date().toISOString(), timeline: newTimeline }
-          : t,
-      ),
-    )
-
+    // After member confirms task, it will be removed from active tasks
+    // This handler can be adapted if we need intermediate status updates
     setSelectedTask(null)
     setShowFinishModal(false)
     setFinishReason('COMPLETED')
@@ -266,6 +289,33 @@ function RescueTeamMemberPage() {
 
       {/* ===== MAIN CONTENT ===== */}
       <div className="rtmp-content">
+        {/* Loading State */}
+        {loading && (
+          <div className="rtmp-loading-state">
+            <div className="rtmp-spinner"></div>
+            <p>Đang tải dữ liệu...</p>
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && !loading && (
+          <div className="rtmp-error-banner">
+            <ExclamationCircleIcon className="error-icon" />
+            <div className="error-content">
+              <strong>Lỗi:</strong>
+              <p>{error}</p>
+            </div>
+            <button
+              className="rtmp-btn rtmp-btn-small"
+              onClick={fetchMyAssignment}
+            >
+              Thử lại
+            </button>
+          </div>
+        )}
+
+        {!loading && !error && (
+          <>
         {/* ===== DANH SÁCH NHIỆM VỤ TABLE ===== */}
             <div className="mission-list-container">
               <h2 className="mission-list-title">Danh sách nhiệm vụ được giao</h2>
@@ -518,8 +568,8 @@ function RescueTeamMemberPage() {
                 })
               )}
             </div>
-      </div>
-
+          </>
+        )}
 
       {/* Task Details Modal */}
       {showTaskModal && modalTask && (
@@ -680,6 +730,7 @@ function RescueTeamMemberPage() {
           onCancel={() => setShowLogoutConfirm(false)}
         />
       )}
+      </div>
     </div>
   )
 }

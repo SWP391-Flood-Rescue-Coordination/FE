@@ -84,7 +84,7 @@ const toVehicleApiStatusValue = (status) => {
 }
 
 const coordinatorService = {
-  // NhÃ³m 1: táº£i dá»¯ liá»‡u ná»n cho dashboard vÃ  báº£ng request.
+  // Nhóm 1: tải dữ liệu nền cho dashboard và bảng request.
   getRescueRequests: async (status = '', priorityLevelId = null) => {
     const params = {}
     const normalizedStatus = toApiStatusValue(status)
@@ -123,7 +123,7 @@ const coordinatorService = {
     return normalizeArray(unwrapApiData(response)).map(normalizeVehicle)
   },
 
-  // NhÃ³m 2: action nghiá»‡p vá»¥ trÃªn tá»«ng request trong CoordinatorRequestsPage.
+  // Nhóm 2: action nghiệp vụ trên từng request trong CoordinatorRequestsPage.
   verifyRequest: async (requestId) => {
     const response = await api.put(`${REQUEST_BASE}/${requestId}/verify`)
     return unwrapApiData(response)

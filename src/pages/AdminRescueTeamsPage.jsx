@@ -9,31 +9,6 @@ import adminService from '../services/adminService'
 import { HOME_ROUTE_BY_ROLE, formatDateTimeVN, normalizeRole } from './adminShared'
 import './AdminRescueTeamsPage.css'
 
-const MOCK_TEAMS = [
-  {
-    id: 'mock-1',
-    name: 'Đội ứng phó Quận 1',
-    leaderName: 'Nguyễn Văn An',
-    leaderPhone: '0901888777',
-    memberCount: 8,
-    baseLatitude: 10.77555,
-    baseLongitude: 106.70099,
-    baseAddress: 'Số 1 Nguyễn Huệ, Quận 1',
-    createdAt: '2026-03-29T07:30:00Z',
-  },
-  {
-    id: 'mock-2',
-    name: 'Đội cứu hộ Bắc Sài Gòn',
-    leaderName: 'Lê Thị Hồng',
-    leaderPhone: '0912888999',
-    memberCount: 5,
-    baseLatitude: 10.90458,
-    baseLongitude: 106.73599,
-    baseAddress: 'Đường Cộng Hòa, Tân Bình',
-    createdAt: '2026-03-25T14:20:00Z',
-  },
-]
-
 const INITIAL_FORM_STATE = {
   teamName: '',
   leaderUserId: '',
@@ -521,7 +496,7 @@ function AdminRescueTeamsPage() {
 
   const visibleTeams = useMemo(() => {
     const baseList = [...draftTeams, ...sortedTeams]
-    return baseList.length > 0 ? baseList : MOCK_TEAMS
+    return baseList
   }, [draftTeams, sortedTeams])
 
   const handleLogout = () => {

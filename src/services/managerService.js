@@ -624,7 +624,6 @@ const managerService = {
         todayRequests: toNumber(stats?.todayRequests ?? stats?.TodayRequests),
       }
     } catch (error) {
-      console.error('[managerService] getDashboardStats error:', error)
       throw error
     }
   },
@@ -646,7 +645,6 @@ const managerService = {
         maintenance: maintenanceVehicles.length,
       }
     } catch (error) {
-      console.error('[managerService] getVehicleStats error:', error)
       throw error
     }
   },
@@ -664,7 +662,6 @@ const managerService = {
         lowStock: lowStockCount,
       }
     } catch (error) {
-      console.error('[managerService] getSupplyStats error:', error)
       throw error
     }
   },
@@ -704,7 +701,6 @@ const managerService = {
         vehiclesUsed: inUseVehicles.length,
       }
     } catch (error) {
-      console.error('[managerService] getTodayStats error:', error)
       return {
         requestsServed: 0,
         suppliesDistributed: 0,
@@ -724,7 +720,6 @@ const managerService = {
       const response = await api.get('/Vehicle', { params })
       return normalizeArray(unwrapApiData(response)).map(normalizeVehicle)
     } catch (error) {
-      console.error('[managerService] getAllVehicles error:', error)
       throw error
     }
   },
@@ -788,7 +783,6 @@ const managerService = {
       const items = payload?.items ?? payload?.Items ?? unwrapApiData(response)
       return normalizeArray(items).map(normalizeSupply)
     } catch (error) {
-      console.error('[managerService] getSupplies error:', error)
       throw error
     }
   },
@@ -822,7 +816,6 @@ const managerService = {
 
       return Array.from(unique.values())
     } catch (error) {
-      console.error('[managerService] getRecipientUnits error:', error)
       return []
     }
   },
@@ -839,7 +832,6 @@ const managerService = {
         : (response.data?.data || response.data?.Data || [])
       return data
     } catch (error) {
-      console.error('[managerService] getImportOptions error:', error)
       return []
     }
   },
@@ -856,7 +848,6 @@ const managerService = {
         : (response.data?.data || response.data?.Data || [])
       return data
     } catch (error) {
-      console.error('[managerService] getExportOptions error:', error)
       return []
     }
   },
@@ -873,7 +864,6 @@ const managerService = {
       const items = payload?.items ?? payload?.Items ?? unwrapApiData(response)
       return normalizeArray(items).map(normalizeSupply)
     } catch (error) {
-      console.error('[managerService] getLowStockSupplies error:', error)
       throw error
     }
   },
@@ -887,7 +877,6 @@ const managerService = {
       void supplyData
       throw createNotImplementedError('API thêm vật tư chưa được backend hỗ trợ.')
     } catch (error) {
-      console.error('[managerService] addSupply error:', error)
       throw error
     }
   },
@@ -918,7 +907,6 @@ const managerService = {
       const response = await api.put(`/ReliefItem/${supplyId}`, payload)
       return unwrapApiData(response)
     } catch (error) {
-      console.error('[managerService] updateSupply error:', error)
       throw error
     }
   },
@@ -932,7 +920,6 @@ const managerService = {
       void supplyId
       throw createNotImplementedError('API xóa vật tư chưa được backend hỗ trợ.')
     } catch (error) {
-      console.error('[managerService] deleteSupply error:', error)
       throw error
     }
   },
@@ -979,7 +966,6 @@ const managerService = {
         return true
       })
     } catch (error) {
-      console.error('[managerService] getDetailedReport error:', error)
       throw error
     }
   },
@@ -1021,7 +1007,6 @@ const managerService = {
         type: 'text/csv;charset=utf-8;',
       })
     } catch (error) {
-      console.error('[managerService] exportReport error:', error)
       throw error
     }
   },
@@ -1070,27 +1055,10 @@ const managerService = {
         vehicleIds: normalizeArray(payload?.vehicleIds).map((id) => toNumber(id)).filter(Number.isFinite),
       }
 
-      console.log('[managerService] createReliefExportOrder REQUEST BODY:', JSON.stringify(body, null, 2))
-      console.log('[managerService] createReliefExportOrder Items Detail:', body.items)
-      console.log('[managerService] createReliefExportOrder VehicleIds:', body.vehicleIds)
-
       const response = await api.post('/StockHistory/export', body)
-      
-      console.log('[managerService] createReliefExportOrder RESPONSE:', {
-        status: response.status,
-        data: response.data,
-      })
       
       return unwrapApiData(response)
     } catch (error) {
-      console.error('[managerService] createReliefExportOrder ERROR DETAIL:', {
-        status: error?.response?.status,
-        statusText: error?.response?.statusText,
-        data: error?.response?.data,
-        message: error?.message,
-        url: error?.config?.url,
-        requestBody: error?.config?.data,
-      })
       throw error
     }
   },
@@ -1131,7 +1099,6 @@ const managerService = {
 
       return normalizedCategories
     } catch (error) {
-      console.error('[managerService] getCategories error:', error)
       throw error
     }
   },
@@ -1172,27 +1139,10 @@ const managerService = {
         items: normalizeReceiptItemsInput(payload?.items),
       }
 
-      console.log('[managerService] createImportReceipt REQUEST:', {
-        endpoint: '/StockHistory/import',
-        body,
-      })
-
       const response = await api.post('/StockHistory/import', body)
-      
-      console.log('[managerService] createImportReceipt RESPONSE:', {
-        status: response.status,
-        data: response.data,
-      })
       
       return unwrapApiData(response)
     } catch (error) {
-      console.error('[managerService] createImportReceipt ERROR:', {
-        status: error?.response?.status,
-        statusText: error?.response?.statusText,
-        data: error?.response?.data,
-        message: error?.message,
-        url: error?.config?.url,
-      })
       throw error
     }
   },
@@ -1212,7 +1162,6 @@ const managerService = {
       const rows = normalizeArray(unwrapApiData(response)).map(normalizeStockEntry)
       return rows.map((entry) => normalizeImportReceiptEntry(entry, supplyNameMap, stockUnitAddressMap))
     } catch (error) {
-      console.error('[managerService] getImportReceipts error:', error)
       return []
     }
   },
@@ -1232,7 +1181,6 @@ const managerService = {
       const rows = normalizeArray(unwrapApiData(response)).map(normalizeStockEntry)
       return rows.map((entry) => normalizeExportReceiptEntry(entry, supplyNameMap, stockUnitAddressMap))
     } catch (error) {
-      console.error('[managerService] getExportReceipts error:', error)
       return []
     }
   },

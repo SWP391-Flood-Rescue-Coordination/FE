@@ -103,7 +103,7 @@ function MapLocationPicker({
         onError?.('')
         onLocationChange?.({ latitude: lat, longitude: lng, address: resolvedAddress })
       } catch (error) {
-        console.warn('Reverse geocoding error:', error)
+
         const fallbackMessage = 'Không thể xác định địa chỉ từ vị trí này.'
         setMapError(fallbackMessage)
         onError?.(fallbackMessage)

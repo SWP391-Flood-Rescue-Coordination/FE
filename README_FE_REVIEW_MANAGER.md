@@ -10,28 +10,45 @@ Phạm vi chính:
 
 ## 1. Các file chính
 
-### Page
+### Pages
 
+**Dashboard & Vehicles:**
 - [src/pages/ManagerDashboardPage.jsx](./src/pages/ManagerDashboardPage.jsx)
 - [src/pages/ManagerVehiclesPage.jsx](./src/pages/ManagerVehiclesPage.jsx)
 
-### Component
+**Supplies Management:**
+- [src/pages/ManagerSuppliesPage.jsx](./src/pages/ManagerSuppliesPage.jsx)
+- [src/pages/ManagerReliefExportPage.jsx](./src/pages/ManagerReliefExportPage.jsx)
+
+**Import/Export Receipts:**
+- [src/pages/ManagerImportReceiptsListPage.jsx](./src/pages/ManagerImportReceiptsListPage.jsx)
+- [src/pages/ManagerImportReceiptPage.jsx](./src/pages/ManagerImportReceiptPage.jsx)
+
+### Components
 
 - [src/components/VehicleFormModal.jsx](./src/components/VehicleFormModal.jsx)
 
-### Service
+### Services
 
 - [src/services/managerService.js](./src/services/managerService.js)
 
 ### CSS
 
 - [src/pages/ManagerVehiclesPage.css](./src/pages/ManagerVehiclesPage.css)
+- [src/pages/ManagerSuppliesPage.css](./src/pages/ManagerSuppliesPage.css)
+- [src/pages/ManagerReliefExportPage.css](./src/pages/ManagerReliefExportPage.css)
+- [src/pages/ManagerImportReceiptsListPage.css](./src/pages/ManagerImportReceiptsListPage.css)
+- [src/pages/ManagerImportReceiptPage.css](./src/pages/ManagerImportReceiptPage.css)
 - [src/components/VehicleFormModal.css](./src/components/VehicleFormModal.css)
 
 ## 2. Route manager
 
-- `/manager`
-- `/manager/vehicles`
+- `/manager` - Dashboard
+- `/manager/vehicles` - Quản lý phương tiện
+- `/manager/supplies` - Quản lý vật tư (Relief Items)
+- `/manager/relief-export` - Xuất cứu trợ
+- `/manager/import-receipts` - Danh sách phiếu nhập kho
+- `/manager/import-receipts/:id` - Chi tiết phiếu nhập kho
 
 ## 3. Dashboard manager
 

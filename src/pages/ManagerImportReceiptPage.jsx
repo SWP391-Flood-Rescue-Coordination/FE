@@ -129,7 +129,7 @@ function ManagerImportReceiptPage() {
         setErrorMessage('Không thể tải đầy đủ dữ liệu từ hệ thống. Vui lòng thử lại.')
       }
     } catch (error) {
-      console.error('Error fetching data:', error)
+
       setErrorMessage('Không thể tải dữ liệu. Vui lòng thử lại.')
     } finally {
       setIsLoading(false)
@@ -317,7 +317,7 @@ function ManagerImportReceiptPage() {
         navigate('/manager/import-receipts')
       }, 1500)
     } catch (error) {
-      console.error('Error creating import receipt:', error)
+
       if (error?.response?.status === 401) {
         navigate('/login', { replace: true })
         return

@@ -184,7 +184,6 @@ function ManagerDashboardPage() {
       }
 
     } catch (error) {
-      console.error('Error fetching dashboard data:', error)
       setErrorMessage('Không thể tải dữ liệu dashboard. Vui lòng thử lại.')
     } finally {
       setIsLoading(false)

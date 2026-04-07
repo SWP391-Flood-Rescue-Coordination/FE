@@ -141,12 +141,12 @@ function RequestForm({ onClose }) {
 
           setErrorMessage('')
         } catch (error) {
-          console.warn('Reverse geocoding error:', error)
+
           setErrorMessage('Không thể xác định địa chỉ từ vị trí này.')
         }
       })
     } catch (error) {
-      console.error('Map initialization error:', error)
+
     }
 
     return () => {

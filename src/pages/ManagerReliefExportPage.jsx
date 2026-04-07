@@ -334,7 +334,7 @@ function ManagerReliefExportPage() {
           supplyId: toNumericIfPossible(item.id),
           quantity: item.parsedQuantity,
         })),
-        vehicleIds: [1], // TODO: Thêm form chọn phương tiện - test với ID 1 tạm thời
+        vehicleIds: [], // TODO: Implement vehicle selection form and wire up selectedVehicleIds
       })
 
       setSuccessMessage('Tạo phiếu xuất kho thành công.')

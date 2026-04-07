@@ -12,21 +12,27 @@ Phạm vi bao gồm:
 
 ## 1. Các file chính
 
-### Component
+### Pages/Components
 
+**Team Leader Dashboard:**
 - [src/components/RescueTeamDashboard.jsx](./src/components/RescueTeamDashboard.jsx)
 
-### Service
+**Team Member Assignment View:**
+- [src/pages/RescueTeamMemberPage.jsx](./src/pages/RescueTeamMemberPage.jsx)
+
+### Services
 
 - [src/services/rescueTeamService.js](./src/services/rescueTeamService.js)
 
 ### CSS
 
 - [src/components/RescueTeamDashboard.css](./src/components/RescueTeamDashboard.css)
+- [src/pages/RescueTeamMemberPage.css](./src/pages/RescueTeamMemberPage.css)
 
 ## 2. Route rescue team
 
-- `/rescue-team`
+- `/rescue-team` - Dashboard của trưởng đội (RescueTeamDashboard)
+- `/rescue-team/member` - Dashboard của thành viên đội cứu hộ (RescueTeamMemberPage)
 
 ## 3. API chính của rescue team
 
