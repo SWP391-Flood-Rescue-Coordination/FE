@@ -1,19 +1,11 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { HomeIcon, MapPinIcon } from '@heroicons/react/24/outline'
+import React, { useState, useEffect, useRef } from 'react'
 import authService from '../services/authService'
 import rescueRequestService from '../services/rescueRequestService'
 import './RequestForm.css'
 
-/*
-  RequestForm là popup tạo rescue request cho citizen/guest.
-  Flow đầy đủ:
-  Dashboard.jsx -> RequestForm.jsx -> rescueRequestService.createRescueRequest() -> POST /RescueRequest.
-
-  File này chỉ giữ state UI, validate client-side và chọn vị trí trên map.
-  Việc đổi formData sang payload backend được gom về rescueRequestService.
-*/
 const INITIAL_FORM_DATA = {
   requestId: null,
+  accessCode: null,
   contactName: '',
   phone: '',
   location: '',
@@ -34,20 +26,10 @@ const INITIAL_FORM_DATA = {
 
 const sanitizeNumberText = (value) => String(value ?? '').replace(/[^0-9]/g, '')
 const PHONE_ERROR_MESSAGE = 'Số điện thoại không hợp lệ!'
-const PEOPLE_COUNT_MIN_ERROR_MESSAGE = 'Số người tối thiểu phải là 1.'
 const PEOPLE_COUNT_ERROR_MESSAGE = 'Số người phải lớn hơn hoặc bằng tổng số người già và trẻ em.'
 
 function isVietnamesePhoneNumber(number) {
   return /^(\+84|84|0)(3|5|7|8|9|1[2689])[0-9]{8}$/.test(number)
-}
-
-function ReadonlyInfoField({ icon: Icon, value, placeholder }) {
-  return (
-    <div className="request-readonly-display" aria-readonly="true">
-      <Icon className="request-readonly-icon" />
-      <span>{value || placeholder}</span>
-    </div>
-  )
 }
 
 function RequestForm({ onClose }) {
@@ -62,17 +44,15 @@ function RequestForm({ onClose }) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
-  const [mapLat, setMapLat] = useState(null)
-  const [mapLng, setMapLng] = useState(null)
 
   const mapContainerRef = useRef(null)
   const mapRef = useRef(null)
   const markerRef = useRef(null)
+  const [mapLat, setMapLat] = useState(null)
+  const [mapLng, setMapLng] = useState(null)
 
   useEffect(() => {
-    if (!mapContainerRef.current || mapRef.current) {
-      return
-    }
+    if (!mapContainerRef.current || mapRef.current) return
 
     try {
       const hcmBounds = window.L.latLngBounds(
@@ -94,8 +74,6 @@ function RequestForm({ onClose }) {
       mapRef.current = map
 
       map.on('click', async (event) => {
-        // Người dùng chọn điểm trên map, FE reverse geocode để có cả tọa độ lẫn địa chỉ text.
-        // Chỉ cho pick điểm trong TP.HCM để đồng nhất với rule nghiệp vụ hiện tại.
         const { lat, lng } = event.latlng
 
         try {
@@ -120,33 +98,31 @@ function RequestForm({ onClose }) {
               (value.toLowerCase().includes('hồ chí minh') || value.toLowerCase().includes('ho chi minh')),
           )
 
-          if (!isHcm) {
-            setErrorMessage('Chỉ hỗ trợ trong khu vực TP.HCM.')
-            return
-          }
+          if (isHcm) {
+            setMapLat(lat)
+            setMapLng(lng)
+            setFormData((prev) => ({
+              ...prev,
+              location: `${lat},${lng}`,
+              address: data.address?.address || data.display_name || `${lat}, ${lng}`,
+            }))
 
-          setMapLat(lat)
-          setMapLng(lng)
-          setFormData((prev) => ({
-            ...prev,
-            location: `${lat},${lng}`,
-            address: data?.display_name || `${lat}, ${lng}`,
-          }))
-
-          if (markerRef.current) {
-            markerRef.current.setLatLng([lat, lng])
+            if (markerRef.current) {
+              markerRef.current.setLatLng([lat, lng])
+            } else {
+              markerRef.current = window.L.marker([lat, lng]).addTo(map)
+            }
+            setErrorMessage('')
           } else {
-            markerRef.current = window.L.marker([lat, lng]).addTo(map)
+            setErrorMessage('Chỉ hỗ trợ trong khu vực TP.HCM')
           }
-
-          setErrorMessage('')
         } catch (error) {
-
+          console.warn('Reverse geocoding error:', error)
           setErrorMessage('Không thể xác định địa chỉ từ vị trí này.')
         }
       })
     } catch (error) {
-
+      console.error('Map initialization error:', error)
     }
 
     return () => {
@@ -157,29 +133,6 @@ function RequestForm({ onClose }) {
     }
   }, [])
 
-  const getPeopleCountValidationMessage = (nextFormData) => {
-    const totalPeople = Number.parseInt(String(nextFormData.totalPeople ?? '').trim(), 10)
-    const elderlyRaw = Number.parseInt(String(nextFormData.elderly ?? '').trim(), 10)
-    const childrenRaw = Number.parseInt(String(nextFormData.children ?? '').trim(), 10)
-    const elderly = Number.isFinite(elderlyRaw) ? elderlyRaw : 0
-    const children = Number.isFinite(childrenRaw) ? childrenRaw : 0
-
-    if (!Number.isFinite(totalPeople) || totalPeople < 1) {
-      return PEOPLE_COUNT_MIN_ERROR_MESSAGE
-    }
-
-    if (totalPeople < elderly + children) {
-      return PEOPLE_COUNT_ERROR_MESSAGE
-    }
-
-    return ''
-  }
-
-  const clearMessageIfMatches = (messages) => {
-    setErrorMessage((currentMessage) => (messages.includes(currentMessage) ? '' : currentMessage))
-  }
-
-  // Nhóm condition có cặp loại trừ nhau: ngập dưới 1m và ngập trên 1m.
   const handleConditionChange = (condition) => {
     setFormData((prev) => {
       const nextValue = !prev.conditions[condition]
@@ -208,18 +161,34 @@ function RequestForm({ onClose }) {
       return
     }
 
-    onClose?.(null)
+    if (onClose) {
+      onClose(null)
+    }
   }
 
-  const handlePeopleFieldBlur = () => {
-    // Validate ngay khi rời ô thay vì đợi submit toàn form.
-    const validationMessage = getPeopleCountValidationMessage(formData)
-    if (validationMessage) {
-      setErrorMessage(validationMessage)
+  const hasInvalidPeopleCounts = (nextFormData) => {
+    const totalPeople = Number.parseInt(String(nextFormData.totalPeople ?? '').trim(), 10)
+    const elderlyRaw = Number.parseInt(String(nextFormData.elderly ?? '').trim(), 10)
+    const childrenRaw = Number.parseInt(String(nextFormData.children ?? '').trim(), 10)
+    const elderly = Number.isFinite(elderlyRaw) ? elderlyRaw : 0
+    const children = Number.isFinite(childrenRaw) ? childrenRaw : 0
+
+    return Number.isFinite(totalPeople) && totalPeople < elderly + children
+  }
+
+  const handlePeopleGroupBlur = (event) => {
+    if (!(event.target instanceof HTMLElement) || !event.target.closest('.people-group')) {
       return
     }
 
-    clearMessageIfMatches([PEOPLE_COUNT_MIN_ERROR_MESSAGE, PEOPLE_COUNT_ERROR_MESSAGE])
+    if (hasInvalidPeopleCounts(formData)) {
+      setErrorMessage(PEOPLE_COUNT_ERROR_MESSAGE)
+      return
+    }
+
+    setErrorMessage((currentMessage) =>
+      currentMessage === PEOPLE_COUNT_ERROR_MESSAGE ? '' : currentMessage,
+    )
   }
 
   const handlePhoneBlur = () => {
@@ -228,11 +197,11 @@ function RequestForm({ onClose }) {
       return
     }
 
-    clearMessageIfMatches([PHONE_ERROR_MESSAGE])
+    setErrorMessage((currentMessage) =>
+      currentMessage === PHONE_ERROR_MESSAGE ? '' : currentMessage,
+    )
   }
 
-  // Submit chính của luồng citizen/guest tạo yêu cầu cứu hộ.
-  // Nếu thành công, component trả data ngược về Dashboard để dashboard refresh ngay.
   const handleSubmit = async (event) => {
     event.preventDefault()
     setErrorMessage('')
@@ -244,13 +213,7 @@ function RequestForm({ onClose }) {
     }
 
     if (!isVietnamesePhoneNumber(formData.phone)) {
-      setErrorMessage(PHONE_ERROR_MESSAGE)
-      return
-    }
-
-    const peopleValidationMessage = getPeopleCountValidationMessage(formData)
-    if (peopleValidationMessage) {
-      setErrorMessage(peopleValidationMessage)
+      setErrorMessage('Số điện thoại không hợp lệ!')
       return
     }
 
@@ -263,10 +226,6 @@ function RequestForm({ onClose }) {
     setIsSubmitting(true)
 
     try {
-      // Gọi API tạo rescue request: POST /api/RescueRequest
-      // Payload từ form: location, longitude, latitude, description, priority, numPeopleInvolved, phone
-      // BE tạo RescueRequest record mới với status=PENDING, trả về requestId
-      // Thành công xong sẽ trả request vừa tạo về Dashboard để refresh lịch sử và trạng thái nút chính.
       const data = await rescueRequestService.createRescueRequest(formData)
 
       if (!data?.success) {
@@ -281,11 +240,14 @@ function RequestForm({ onClose }) {
         mode: 'create',
         submittedDate: new Date().toISOString(),
         requestId: data?.requestId ?? null,
+        accessCode: data?.accessCode ?? null,
         status: 'Pending',
       }
 
       window.setTimeout(() => {
-        onClose?.(submittedRequest)
+        if (onClose) {
+          onClose(submittedRequest)
+        }
       }, 700)
     } catch (error) {
       setErrorMessage(rescueRequestService.getCreateRequestErrorMessage(error))
@@ -293,61 +255,6 @@ function RequestForm({ onClose }) {
       setIsSubmitting(false)
     }
   }
-
-  const renderPeopleInputs = () => (
-    <>
-      <div className="form-field-inline">
-        <label>Số người</label>
-        <input
-          type="text"
-          inputMode="numeric"
-          pattern="[0-9]*"
-          min="1"
-          value={formData.totalPeople}
-          onChange={(event) => {
-            const numericValue = sanitizeNumberText(event.target.value)
-            setFormData((prev) => ({ ...prev, totalPeople: numericValue }))
-          }}
-          onBlur={handlePeopleFieldBlur}
-          disabled={isSubmitting}
-        />
-      </div>
-
-      <div className="form-field-inline">
-        <label>Người già</label>
-        <input
-          type="text"
-          inputMode="numeric"
-          pattern="[0-9]*"
-          min="0"
-          value={formData.elderly}
-          onChange={(event) => {
-            const numericValue = sanitizeNumberText(event.target.value)
-            setFormData((prev) => ({ ...prev, elderly: numericValue }))
-          }}
-          onBlur={handlePeopleFieldBlur}
-          disabled={isSubmitting}
-        />
-      </div>
-
-      <div className="form-field-inline">
-        <label>Trẻ em</label>
-        <input
-          type="text"
-          inputMode="numeric"
-          pattern="[0-9]*"
-          min="0"
-          value={formData.children}
-          onChange={(event) => {
-            const numericValue = sanitizeNumberText(event.target.value)
-            setFormData((prev) => ({ ...prev, children: numericValue }))
-          }}
-          onBlur={handlePeopleFieldBlur}
-          disabled={isSubmitting}
-        />
-      </div>
-    </>
-  )
 
   return (
     <div className="request-overlay">
@@ -357,7 +264,7 @@ function RequestForm({ onClose }) {
         {errorMessage && <div className="request-feedback request-feedback-error">{errorMessage}</div>}
         {successMessage && <div className="request-feedback request-feedback-success">{successMessage}</div>}
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} onBlurCapture={handlePeopleGroupBlur}>
           <div className="form-row">
             <div className="form-left">
               <div className="form-field">
@@ -370,9 +277,10 @@ function RequestForm({ onClose }) {
                   onChange={(event) => {
                     const numericValue = sanitizeNumberText(event.target.value)
                     setFormData((prev) => ({ ...prev, phone: numericValue }))
-
                     if (isVietnamesePhoneNumber(numericValue)) {
-                      clearMessageIfMatches([PHONE_ERROR_MESSAGE])
+                      setErrorMessage((currentMessage) =>
+                        currentMessage === PHONE_ERROR_MESSAGE ? '' : currentMessage,
+                      )
                     }
                   }}
                   onBlur={handlePhoneBlur}
@@ -383,53 +291,148 @@ function RequestForm({ onClose }) {
 
               <div className="form-field">
                 <label>Vị trí</label>
-                <ReadonlyInfoField
-                  icon={MapPinIcon}
+                <input
+                  type="text"
                   value={formData.location}
-                  placeholder="Chưa chọn vị trí"
+                  placeholder="Ví dụ: 10.762622,106.660172"
+                  disabled
+                  required
+                  style={{ width: '100%', background: '#e0e3e9', color: '#555', cursor: 'not-allowed' }}
                 />
+                <small className="request-input-hint">Chỉ chọn trên bản đồ</small>
               </div>
 
               <div className="form-field">
-                <div className="form-label-row">
-                  <label>Chọn vị trí trên bản đồ</label>
-                  <div className="form-label-meta-group">
-                    <span className="form-label-meta">Chỉ chọn trong khu vực TP.HCM</span>
-                  </div>
-                </div>
+                <label>Chọn vị trí trên bản đồ</label>
                 <div
                   ref={mapContainerRef}
                   id="map"
-                  className="leaflet-container"
                   style={{
                     height: '400px',
                     borderRadius: '8px',
                     border: '1px solid #ddd',
                     marginBottom: '10px',
                   }}
+                  className="leaflet-container"
                 />
+                {mapLat && mapLng && (
+                  <small className="request-input-hint">
+                    Vị trí đã chọn: {mapLat.toFixed(6)}, {mapLng.toFixed(6)}
+                  </small>
+                )}
               </div>
 
               <div className="form-field">
-                <div className="form-label-row">
-                  <label>Địa chỉ</label>
-                  <span className="form-label-meta">Địa chỉ được cập nhật tự động theo điểm đã chọn</span>
-                </div>
-                <ReadonlyInfoField
-                  icon={HomeIcon}
+                <label>Địa chỉ</label>
+                <input
+                  type="text"
                   value={formData.address}
-                  placeholder="Địa chỉ sẽ hiển thị sau khi chọn vị trí"
+                  onChange={(event) => setFormData((prev) => ({ ...prev, address: event.target.value }))}
+                  disabled={isSubmitting}
+                  required
                 />
               </div>
 
               <div className="form-field people-group">
-                {renderPeopleInputs()}
+                <div className="form-field-inline">
+                  <label>Số người</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    min="0"
+                    value={formData.totalPeople}
+                    onChange={(event) => {
+                      const numericValue = sanitizeNumberText(event.target.value)
+                      setFormData((prev) => ({ ...prev, totalPeople: numericValue }))
+                    }}
+                    disabled={isSubmitting}
+                  />
+                </div>
+
+                <div className="form-field-inline">
+                  <label>Người già</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    min="0"
+                    value={formData.elderly}
+                    onChange={(event) => {
+                      const numericValue = sanitizeNumberText(event.target.value)
+                      setFormData((prev) => ({ ...prev, elderly: numericValue }))
+                    }}
+                    disabled={isSubmitting}
+                  />
+                </div>
+
+                <div className="form-field-inline">
+                  <label>Trẻ em</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    min="0"
+                    value={formData.children}
+                    onChange={(event) => {
+                      const numericValue = sanitizeNumberText(event.target.value)
+                      setFormData((prev) => ({ ...prev, children: numericValue }))
+                    }}
+                    disabled={isSubmitting}
+                  />
+                </div>
               </div>
             </div>
 
             <div className="form-right">
               <div className="form-field people-group people-group-right">
-                {renderPeopleInputs()}
+                <div className="form-field-inline">
+                  <label>Số người</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    min="0"
+                    value={formData.totalPeople}
+                    onChange={(event) => {
+                      const numericValue = sanitizeNumberText(event.target.value)
+                      setFormData((prev) => ({ ...prev, totalPeople: numericValue }))
+                    }}
+                    disabled={isSubmitting}
+                  />
+                </div>
+
+                <div className="form-field-inline">
+                  <label>Người già</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    min="0"
+                    value={formData.elderly}
+                    onChange={(event) => {
+                      const numericValue = sanitizeNumberText(event.target.value)
+                      setFormData((prev) => ({ ...prev, elderly: numericValue }))
+                    }}
+                    disabled={isSubmitting}
+                  />
+                </div>
+
+                <div className="form-field-inline">
+                  <label>Trẻ em</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    min="0"
+                    value={formData.children}
+                    onChange={(event) => {
+                      const numericValue = sanitizeNumberText(event.target.value)
+                      setFormData((prev) => ({ ...prev, children: numericValue }))
+                    }}
+                    disabled={isSubmitting}
+                  />
+                </div>
               </div>
 
               <div className="form-field">
@@ -478,7 +481,7 @@ function RequestForm({ onClose }) {
                       onChange={() => handleConditionChange('floodOver1m')}
                       disabled={isSubmitting}
                     />
-                    Ngập trên 1m
+                    Ngập từ 1m trở lên
                   </label>
                 </div>
               </div>

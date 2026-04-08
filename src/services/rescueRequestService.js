@@ -5,7 +5,7 @@ const CONDITION_DESCRIPTION_MAP = {
   houseCollapsed: 'Sập nhà',
   needMedical: 'Cần điều trị y tế',
   floodUnder1m: 'Ngập dưới 1m',
-  floodOver1m: 'Ngập trên 1m',
+  floodOver1m: 'Ngập từ 1m trở lên',
 }
 
 const TERMINAL_STATUSES = new Set(['COMPLETED', 'CANCELLED', 'CANCELED', 'DUPLICATE', 'DUPLICATED'])

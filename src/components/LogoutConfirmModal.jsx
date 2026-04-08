@@ -8,6 +8,8 @@ function LogoutConfirmModal({
   message = 'Bạn có chắc chắn muốn đăng xuất không?',
   confirmLabel = 'Đăng xuất',
   cancelLabel = 'Hủy',
+  confirmDisabled = false,
+  cancelDisabled = false,
 }) {
   if (!open) {
     return null
@@ -20,10 +22,20 @@ function LogoutConfirmModal({
           {title}
         </h2>
         <p className="register-subtitle logout-confirm-message">{message}</p>
-        <button type="button" onClick={onConfirm} className="success-button confirm-action">
+        <button
+          type="button"
+          onClick={onConfirm}
+          className="success-button confirm-action"
+          disabled={confirmDisabled}
+        >
           {confirmLabel}
         </button>
-        <button type="button" onClick={onCancel} className="success-button cancel">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="success-button cancel"
+          disabled={cancelDisabled}
+        >
           {cancelLabel}
         </button>
       </div>

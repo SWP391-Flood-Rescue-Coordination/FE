@@ -12,7 +12,6 @@ import './AdminRescueTeamsPage.css'
 const INITIAL_FORM_STATE = {
   teamName: '',
   leaderUserId: '',
-  leaderPhone: '',
   baseLatitude: null,
   baseLongitude: null,
   address: '',
@@ -20,6 +19,7 @@ const INITIAL_FORM_STATE = {
 }
 
 const memberRoleWhitelist = new Set([
+  'CITIZEN',
   'RESCUE_TEAM_LEADER',
   'RESCUE_TEAM',
   'RESCUE_TEAM_MEMBER',
@@ -29,6 +29,28 @@ const toNumberOrNull = (value) => {
   const numeric = Number(value)
   return Number.isFinite(numeric) ? numeric : null
 }
+
+const normalizeTeamMember = (member) => ({
+  userId: member?.userId ?? member?.UserId ?? member?.id ?? null,
+  fullName: member?.fullName ?? member?.FullName ?? member?.name ?? member?.username ?? 'Chưa rõ',
+  username: member?.username ?? member?.Username ?? '',
+  email: member?.email ?? member?.Email ?? '',
+  phone: member?.phone ?? member?.Phone ?? '',
+  role: normalizeRole(member?.role ?? member?.Role),
+  memberRole: normalizeRole(member?.memberRole ?? member?.MemberRole),
+  isActive: member?.isActive ?? member?.IsActive ?? true,
+  requestId: member?.requestId ?? member?.RequestId ?? null,
+  joinedAt: member?.joinedAt ?? member?.JoinedAt ?? null,
+})
+
+const buildFormStateFromTeam = (team) => ({
+  teamName: team?.name || '',
+  leaderUserId: team?.leaderUserId ? String(team.leaderUserId) : '',
+  baseLatitude: team?.baseLatitude ?? null,
+  baseLongitude: team?.baseLongitude ?? null,
+  address: team?.baseAddress || '',
+  memberIds: team?.memberIds ?? [],
+})
 
 const normalizeTeam = (team) => {
   const id =
@@ -52,6 +74,8 @@ const normalizeTeam = (team) => {
   const baseLongitude = toNumberOrNull(team?.baseLongitude ?? team?.base_longitude ?? team?.longitude ?? null)
 
   const memberCountRaw =
+    team?.totalMembers ??
+    team?.TotalMembers ??
     team?.memberCount ??
     team?.member_count ??
     team?.teamMembers?.length ??
@@ -82,24 +106,27 @@ const normalizeTeam = (team) => {
     team?.locationAddress ??
     ''
 
-  const rawMemberEntries =
-    team?.memberIds ??
-    team?.member_ids ??
-    team?.members ??
-    team?.teamMembers ??
-    []
+  const normalizedLeader = team?.leader ? normalizeTeamMember(team.leader) : null
+  const rawMembers = Array.isArray(team?.members ?? team?.teamMembers) ? team.members ?? team.teamMembers : []
+  const members = rawMembers.map(normalizeTeamMember)
 
-  const memberIds = Array.isArray(rawMemberEntries)
-    ? rawMemberEntries
-        .map((entry) => {
-          if (entry && typeof entry === 'object') {
-            return entry.userId ?? entry.memberId ?? entry.id ?? entry.teamMemberId ?? null
-          }
-          return entry
-        })
-        .map((value) => (value !== null && value !== undefined ? String(value) : null))
-        .filter(Boolean)
-    : []
+  const memberIdsSource =
+    members.length > 0
+      ? members.map((member) => member.userId)
+      : Array.isArray(team?.memberIds ?? team?.member_ids)
+        ? team.memberIds ?? team.member_ids
+        : []
+
+  const memberIds = memberIdsSource
+    .map((entry) => {
+      if (entry && typeof entry === 'object') {
+        return entry.userId ?? entry.memberId ?? entry.id ?? entry.teamMemberId ?? null
+      }
+
+      return entry
+    })
+    .map((value) => (value !== null && value !== undefined ? String(value) : null))
+    .filter(Boolean)
 
   const createdAt = team?.createdAt ?? team?.created_at ?? team?.CreatedAt ?? null
 
@@ -107,14 +134,16 @@ const normalizeTeam = (team) => {
     id,
     name: team?.teamName ?? team?.team_name ?? team?.name ?? `Đội ${id ?? 'chưa rõ'}`,
     leaderUserId,
-    leaderName,
-    leaderPhone,
+    leaderName: normalizedLeader?.fullName || leaderName,
+    leaderPhone: normalizedLeader?.phone || leaderPhone,
     memberIds,
     memberCount,
     baseLatitude,
     baseLongitude,
     baseAddress,
     createdAt,
+    members,
+    leader: normalizedLeader,
   }
 }
 
@@ -132,9 +161,10 @@ function AdminRescueTeamsPage() {
   const [formError, setFormError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
+  const [isFormLoading, setIsFormLoading] = useState(false)
   const [selectedTeam, setSelectedTeam] = useState(null)
-  const [draftTeams, setDraftTeams] = useState([])
-  const [isCreateConfirmOpen, setIsCreateConfirmOpen] = useState(false)
+  const [confirmAction, setConfirmAction] = useState(null)
+  const [isConfirmSubmitting, setIsConfirmSubmitting] = useState(false)
   const [memberSearchTerm, setMemberSearchTerm] = useState('')
 
   const isAuthenticated = authService.isAuthenticated()
@@ -155,49 +185,35 @@ function AdminRescueTeamsPage() {
     [navigate],
   )
 
-  const createDraftTeam = useCallback(() => {
-    return {
-      id: `draft-${Date.now()}`,
-      name: 'Đội cứu hộ mới',
-      leaderName: '',
-      leaderPhone: '',
-      memberIds: [],
-      memberCount: 0,
-      baseLatitude: null,
-      baseLongitude: null,
-      baseAddress: '',
-      createdAt: new Date().toISOString(),
-      isDraft: true,
-    }
-  }, [])
-
-  const handleCreateDraft = () => {
-    setIsCreateConfirmOpen(true)
-  }
-
-  const handleCreateDraftConfirm = () => {
-    setDraftTeams((prev) => [createDraftTeam(), ...prev])
-    setIsCreateConfirmOpen(false)
-  }
-
-  const handleCreateDraftCancel = () => {
-    setIsCreateConfirmOpen(false)
-  }
-
   const loadUserOptions = useCallback(async () => {
     try {
       const users = await adminService.getUsers()
 
       const memberList = users
-        .filter((user) => memberRoleWhitelist.has(normalizeRole(user.role)))
+        .filter(
+          (user) =>
+            (user?.isActive ?? user?.IsActive) !== false &&
+            memberRoleWhitelist.has(normalizeRole(user.role ?? user.Role)),
+        )
         .map((user) => ({
-          value: String(user.userId),
-          label: user.fullName ? `${user.fullName} (${user.username})` : user.username,
-          fullName: user.fullName || user.username || '-',
-          phone: user.phone || '',
+          value: String(user.userId ?? user.UserId),
+          label:
+            user.fullName ?? user.FullName
+              ? `${user.fullName ?? user.FullName} (${user.username ?? user.Username})`
+              : user.username ?? user.Username,
+          fullName: user.fullName ?? user.FullName ?? user.username ?? user.Username ?? '-',
+          phone: user.phone ?? user.Phone ?? '',
+          email: user.email ?? user.Email ?? '',
+          username: user.username ?? user.Username ?? '',
+          teamId: toNumberOrNull(user.teamId ?? user.TeamId ?? null),
           teamName:
-            user.teamName ?? user.team?.name ?? user.team?.teamName ?? user.team?.team_name ?? '-',
-          role: normalizeRole(user.role),
+            user.teamName ??
+            user.TeamName ??
+            user.team?.name ??
+            user.team?.teamName ??
+            user.team?.team_name ??
+            '',
+          role: normalizeRole(user.role ?? user.Role),
         }))
 
       setMemberOptions(memberList)
@@ -218,7 +234,7 @@ function AdminRescueTeamsPage() {
       }
 
       try {
-        const data = await adminService.getRescueTeams()
+        const data = await adminService.getRescueTeamManagementList()
         const normalized = Array.isArray(data) ? data.map(normalizeTeam) : []
         setTeams(normalized)
       } catch (error) {
@@ -254,26 +270,23 @@ function AdminRescueTeamsPage() {
     setFormData(INITIAL_FORM_STATE)
     setFormError('')
     setIsEditMode(false)
+    setIsFormLoading(false)
     setSelectedTeam(null)
     setMemberSearchTerm('')
   }
 
-  const openForm = (mode, team = null, { editMode = false } = {}) => {
+  const openForm = (mode, team = null, { editMode = false, loading = false } = {}) => {
     setFormMode(mode)
-    resetForm()
+    setFormError('')
     setIsEditMode(editMode)
+    setIsFormLoading(loading)
+    setMemberSearchTerm('')
+    setSelectedTeam(team)
 
     if (team) {
-      setSelectedTeam(team)
-      setFormData({
-        teamName: team.name || '',
-        leaderUserId: team.leaderUserId ? String(team.leaderUserId) : '',
-        leaderPhone: team.leaderPhone || '',
-        baseLatitude: team.baseLatitude ?? null,
-        baseLongitude: team.baseLongitude ?? null,
-        address: team.baseAddress || '',
-        memberIds: team.memberIds ?? [],
-      })
+      setFormData(buildFormStateFromTeam(team))
+    } else {
+      setFormData(INITIAL_FORM_STATE)
     }
 
     setIsFormOpen(true)
@@ -284,8 +297,47 @@ function AdminRescueTeamsPage() {
     resetForm()
   }
 
-  const handleRowClick = (team) => {
-    openForm(team?.isDraft ? 'create' : 'edit', team, { editMode: false })
+  const handleCreateDraft = () => {
+    setConfirmAction({
+      type: 'create-team',
+      title: 'Tạo đội cứu hộ',
+      message: 'Biểu mẫu tạo đội cứu hộ sẽ được mở để bạn nhập thông tin đội mới.',
+      confirmLabel: 'Tiếp tục',
+      cancelLabel: 'Hủy',
+    })
+  }
+
+  const applySelectedTeam = useCallback((team, { editMode = false } = {}) => {
+    const normalizedTeam = normalizeTeam(team)
+    setSelectedTeam(normalizedTeam)
+    setFormData(buildFormStateFromTeam(normalizedTeam))
+    setFormError('')
+    setFormMode('edit')
+    setIsEditMode(editMode)
+    setIsFormLoading(false)
+    return normalizedTeam
+  }, [])
+
+  const handleRowClick = async (team) => {
+    if (!team?.id) {
+      return
+    }
+
+    openForm('edit', team, { editMode: false, loading: true })
+
+    try {
+      const detail = await adminService.getRescueTeamDetail(team.id)
+      applySelectedTeam(detail, { editMode: false })
+    } catch (error) {
+      if (handleUnauthorized(error)) {
+        return
+      }
+
+      setIsFormOpen(false)
+      setSelectedTeam(null)
+      setIsFormLoading(false)
+      setErrorMessage(adminService.getErrorMessage(error))
+    }
   }
 
   const handleRowKeyDown = (event, team) => {
@@ -297,12 +349,10 @@ function AdminRescueTeamsPage() {
 
   const handleLeaderChange = (event) => {
     const value = event.target.value
-    const selected = memberOptions.find((item) => item.value === value)
 
     setFormData((prev) => ({
       ...prev,
       leaderUserId: value,
-      leaderPhone: selected?.phone || '',
     }))
   }
 
@@ -330,7 +380,6 @@ function AdminRescueTeamsPage() {
         ...prev,
         memberIds,
         leaderUserId: nextLeaderUserId,
-        leaderPhone: nextLeaderUserId ? prev.leaderPhone : '',
       }
     })
   }
@@ -362,58 +411,129 @@ function AdminRescueTeamsPage() {
     return memberOptions.filter((option) => String(option.phone ?? '').replace(/\D/g, '').includes(normalizedSearch))
   }, [memberOptions, memberSearchTerm])
 
-  useEffect(() => {
-    if (formMode !== 'edit' || !isFormOpen || !selectedTeam) {
+  const detailMembers = useMemo(() => {
+    return Array.isArray(selectedTeam?.members) ? selectedTeam.members : []
+  }, [selectedTeam])
+
+  const closeConfirmModal = () => {
+    if (isConfirmSubmitting) {
       return
     }
 
-    if (formData.memberIds.length > 0) {
+    setConfirmAction(null)
+  }
+
+  const handleBackdropClick = (event) => {
+    if (event.target !== event.currentTarget || isSubmitting || isFormLoading) {
       return
     }
 
-    if (memberOptions.length === 0) {
+    closeForm()
+  }
+
+  const handleDeleteTeamClick = (event, team) => {
+    event.stopPropagation()
+
+    setConfirmAction({
+      type: 'delete-team',
+      teamId: team.id,
+      title: 'Xóa đội cứu hộ',
+      message: `Bạn có chắc muốn xóa đội "${team.name}" không? Chỉ xóa được khi đội chưa liên kết rescue request hoặc rescue operation.`,
+      confirmLabel: 'Xóa đội',
+      cancelLabel: 'Hủy',
+    })
+  }
+
+  const handleRemoveMemberClick = (member) => {
+    if (!selectedTeam?.id) {
       return
     }
 
-    const fallbackMemberIds = memberOptions
-      .slice(0, Math.min(2, memberOptions.length))
-      .map((option) => option.value)
+    setConfirmAction({
+      type: 'remove-member',
+      teamId: selectedTeam.id,
+      userId: member.userId,
+      title: 'Xóa thành viên khỏi đội',
+      message: `Bạn có chắc muốn loại "${member.fullName}" ra khỏi đội không?`,
+      confirmLabel: 'Xóa thành viên',
+      cancelLabel: 'Hủy',
+    })
+  }
 
-    if (fallbackMemberIds.length === 0) {
+  const handleConfirmAction = async () => {
+    if (!confirmAction) {
       return
     }
 
-    const leaderFromTeam =
-      selectedTeam.leaderUserId !== undefined && selectedTeam.leaderUserId !== null
-        ? String(selectedTeam.leaderUserId)
-        : ''
-    const hasTeamLeaderOption = Boolean(
-      leaderFromTeam && memberOptions.some((option) => option.value === leaderFromTeam),
-    )
-    const fallbackLeaderId = hasTeamLeaderOption ? leaderFromTeam : fallbackMemberIds[0]
-    const fallbackLeaderOption = memberOptions.find((option) => option.value === fallbackLeaderId)
+    if (confirmAction.type === 'create-team') {
+      setConfirmAction(null)
+      openForm('create', null, { editMode: true })
+      return
+    }
 
-    setFormData((prev) => ({
-      ...prev,
-      memberIds: fallbackMemberIds,
-      leaderUserId: fallbackLeaderId,
-      leaderPhone: fallbackLeaderOption?.phone || prev.leaderPhone,
-    }))
-  }, [formMode, isFormOpen, selectedTeam, memberOptions, formData.memberIds.length])
+    setIsConfirmSubmitting(true)
 
-  const selectedMemberOptions = useMemo(() => {
-    return memberOptions.filter((option) => formData.memberIds.includes(option.value))
-  }, [memberOptions, formData.memberIds])
+    try {
+      if (confirmAction.type === 'delete-team') {
+        const response = await adminService.deleteRescueTeam(confirmAction.teamId)
 
-  const handleStartEditing = () => {
+        setSuccessMessage(response?.message || response?.Message || 'Đã xóa đội cứu hộ.')
+        setErrorMessage('')
+        setFormError('')
+        if (selectedTeam?.id === confirmAction.teamId) {
+          closeForm()
+        }
+
+        await Promise.all([loadTeams({ silent: true }), loadUserOptions()])
+      }
+
+      if (confirmAction.type === 'remove-member') {
+        const response = await adminService.removeRescueTeamMember(
+          confirmAction.teamId,
+          confirmAction.userId,
+        )
+        const updatedTeam = response?.data ?? response?.Data
+
+        if (updatedTeam) {
+          applySelectedTeam(updatedTeam, { editMode: false })
+        }
+
+        setSuccessMessage(response?.message || response?.Message || 'Đã xóa thành viên khỏi đội.')
+        setErrorMessage('')
+        setFormError('')
+        await Promise.all([loadTeams({ silent: true }), loadUserOptions()])
+      }
+
+      setConfirmAction(null)
+    } catch (error) {
+      if (handleUnauthorized(error)) {
+        return
+      }
+
+      const nextMessage = adminService.getErrorMessage(error)
+      if (confirmAction.type === 'remove-member') {
+        setFormError(nextMessage)
+      } else {
+        setErrorMessage(nextMessage)
+      }
+    } finally {
+      setIsConfirmSubmitting(false)
+    }
+  }
+
+  const handleStartEditing = (event) => {
+    event.preventDefault()
+    event.stopPropagation()
     setFormError('')
-    setIsEditMode(true)
+    window.setTimeout(() => {
+      setIsEditMode(true)
+    }, 0)
   }
 
   const handleSubmit = async (event) => {
     event.preventDefault()
     setFormError('')
-    const shouldCreate = Boolean(selectedTeam?.isDraft) || formMode === 'create'
+    const shouldCreate = formMode === 'create'
 
     if (!formData.teamName.trim()) {
       setFormError('Vui lòng nhập tên đội cứu hộ.')
@@ -436,10 +556,10 @@ function AdminRescueTeamsPage() {
       const payload = {
         teamName: formData.teamName.trim(),
         leaderUserId: Number(formData.leaderUserId),
-        leaderPhone: formData.leaderPhone?.trim() || undefined,
+        address: formData.address?.trim() || undefined,
         baseLatitude: formData.baseLatitude,
         baseLongitude: formData.baseLongitude,
-        MemberUserIds: formData.memberIds.map((id) => Number(id)),
+        memberUserIds: formData.memberIds.map((id) => Number(id)),
       }
 
       const response =
@@ -447,15 +567,13 @@ function AdminRescueTeamsPage() {
           ? await adminService.createRescueTeam(payload)
           : await adminService.updateRescueTeam(selectedTeam?.id, payload)
 
+      setErrorMessage('')
       setSuccessMessage(
         response?.message ||
           (shouldCreate ? 'Đã tạo đội cứu hộ mới.' : 'Thông tin đội cứu hộ đã được cập nhật.'),
       )
 
-      await loadTeams({ silent: true })
-      if (selectedTeam?.isDraft) {
-        setDraftTeams((prev) => prev.filter((team) => team.id !== selectedTeam.id))
-      }
+      await Promise.all([loadTeams({ silent: true }), loadUserOptions()])
       closeForm()
     } catch (error) {
       if (handleUnauthorized(error)) {
@@ -494,24 +612,21 @@ function AdminRescueTeamsPage() {
     })
   }, [teams])
 
-  const visibleTeams = useMemo(() => {
-    const baseList = [...draftTeams, ...sortedTeams]
-    return baseList
-  }, [draftTeams, sortedTeams])
-
   const handleLogout = () => {
     authService.logout()
     navigate('/login', { replace: true })
   }
 
-  const modalTitle = isEditMode
+  const modalTitle = formMode === 'create'
+    ? 'Tạo đội cứu hộ'
+    : isEditMode
     ? selectedTeam?.name
       ? `Chỉnh sửa ${selectedTeam.name}`
       : 'Chỉnh sửa đội cứu hộ'
     : selectedTeam?.name
       ? `Chi tiết ${selectedTeam.name}`
       : 'Chi tiết đội cứu hộ'
-  const submitButtonLabel = selectedTeam?.isDraft ? 'Tạo đội' : selectedTeam ? 'Lưu thay đổi' : 'Tạo đội'
+  const submitButtonLabel = formMode === 'create' ? 'Tạo đội' : 'Lưu thay đổi'
   const locationDisplayText =
     Number.isFinite(Number(formData.baseLatitude)) && Number.isFinite(Number(formData.baseLongitude))
       ? `${Number(formData.baseLatitude).toFixed(6)}, ${Number(formData.baseLongitude).toFixed(6)}`
@@ -563,18 +678,19 @@ function AdminRescueTeamsPage() {
                 <th>Vị trí</th>
                 <th>Địa chỉ</th>
                 <th>Ngày tạo</th>
+                <th>Thao tác</th>
               </tr>
             </thead>
             <tbody>
-              {visibleTeams.length === 0 && (
+              {sortedTeams.length === 0 && (
                 <tr>
-                  <td colSpan="6" className="admin-table-placeholder">
+                  <td colSpan="7" className="admin-table-placeholder">
                     Chưa có đội cứu hộ nào được khai báo.
                   </td>
                 </tr>
               )}
 
-              {visibleTeams.map((team, index) => {
+              {sortedTeams.map((team, index) => {
                 const lat = Number(team.baseLatitude)
                 const lng = Number(team.baseLongitude)
                 const hasCoordinates = Number.isFinite(lat) && Number.isFinite(lng)
@@ -582,7 +698,7 @@ function AdminRescueTeamsPage() {
                 return (
                   <tr
                     key={team.id ?? `${team.name}-${index}`}
-                    className={`clickable-row ${team.isDraft ? 'team-draft-row' : ''}`}
+                    className="clickable-row"
                     onClick={() => handleRowClick(team)}
                     onKeyDown={(event) => handleRowKeyDown(event, team)}
                     role="button"
@@ -602,6 +718,15 @@ function AdminRescueTeamsPage() {
                     </td>
                     <td>{team.baseAddress || '-'}</td>
                     <td>{formatDateTimeVN(team.createdAt)}</td>
+                    <td className="admin-rescue-row-actions">
+                      <button
+                        type="button"
+                        className="admin-table-danger-button"
+                        onClick={(event) => handleDeleteTeamClick(event, team)}
+                      >
+                        Xóa
+                      </button>
+                    </td>
                   </tr>
                 )
               })}
@@ -611,8 +736,8 @@ function AdminRescueTeamsPage() {
       </section>
 
       {isFormOpen && (
-        <div className="admin-modal-backdrop">
-          <div className="admin-modal admin-modal-wide">
+        <div className="admin-modal-backdrop" onClick={handleBackdropClick}>
+          <div className="admin-modal admin-modal-wide" onClick={(event) => event.stopPropagation()}>
             <div className="admin-modal-header">
               <div>
                 <h3>{modalTitle}</h3>
@@ -626,231 +751,271 @@ function AdminRescueTeamsPage() {
               </div>
             )}
 
-            <form className="admin-rescue-form" onSubmit={handleSubmit}>
-              <div className="admin-rescue-form-layout">
-                <div className="admin-rescue-form-column">
-                  <div className="admin-form-block">
-                    <div className="admin-rescue-form-grid">
-                      <label>
-                        <span className="admin-form-section-title">Tên đội cứu hộ</span>
-                        <input
-                          type="text"
-                          value={formData.teamName}
-                          onChange={(event) => setFormData((prev) => ({ ...prev, teamName: event.target.value }))}
-                          placeholder="VD. Đội cứu hộ Quận 1"
-                          readOnly={!isEditMode}
-                          required
-                        />
-                      </label>
-                    </div>
-                  </div>
-
-                  <div className="admin-form-block">
-                    <div className="admin-form-section-header">
-                      <span className="admin-form-section-title">Chọn vị trí đội cứu hộ</span>
-                      <div className="admin-location-summary-wrap">
-                        <MapPinIcon className="admin-section-heading-icon" />
-                        <span className="admin-location-summary">{locationDisplayText}</span>
+            {isFormLoading ? (
+              <div className="admin-team-detail-loading">Đang tải chi tiết đội cứu hộ...</div>
+            ) : (
+              <form className="admin-rescue-form" onSubmit={handleSubmit}>
+                <div className="admin-rescue-form-layout">
+                  <div className="admin-rescue-form-column">
+                    <div className="admin-form-block">
+                      <div className="admin-rescue-form-grid">
+                        <label>
+                          <span className="admin-form-section-title">Tên đội cứu hộ</span>
+                          <input
+                            type="text"
+                            value={formData.teamName}
+                            onChange={(event) => setFormData((prev) => ({ ...prev, teamName: event.target.value }))}
+                            placeholder="VD. Đội cứu hộ Quận 1"
+                            readOnly={!isEditMode}
+                            required
+                          />
+                        </label>
                       </div>
                     </div>
-                    <div className="admin-rescue-form-map">
-                      <MapLocationPicker
-                        latitude={formData.baseLatitude}
-                        longitude={formData.baseLongitude}
-                        address={formData.address}
-                        onLocationChange={handleLocationChange}
-                        disabled={!isEditMode}
-                        showCoordinates={false}
-                      />
-                    </div>
-                  </div>
-                </div>
 
-                <div className="admin-rescue-form-column">
-                  <div className="admin-form-block">
-                    <div className="admin-form-section-header">
-                      <span className="admin-form-section-title">Thành viên đội cứu hộ</span>
-                      {isEditMode ? (
-                        <input
-                          type="text"
-                          value={memberSearchTerm}
-                          onChange={(event) => setMemberSearchTerm(event.target.value)}
-                          className="admin-member-search-input"
-                          placeholder="Tìm theo số điện thoại"
-                        />
-                      ) : null}
-                    </div>
-
-                    {isEditMode ? (
-                      <div className="admin-member-table-card">
-                        <div className="admin-member-table-scroll">
-                          <table className="admin-member-table">
-                            <colgroup>
-                              <col className="admin-member-col-select" />
-                              <col className="admin-member-col-name" />
-                              <col className="admin-member-col-phone" />
-                              <col className="admin-member-col-team" />
-                            </colgroup>
-                            <thead>
-                              <tr>
-                                <th aria-label="Chọn thành viên" />
-                                <th>Họ và tên</th>
-                                <th>Số điện thoại</th>
-                                <th>Đội hiện tại</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {filteredMemberOptions.length === 0 ? (
-                                <tr>
-                                  <td colSpan="4" className="admin-member-table-placeholder">
-                                    Không tìm thấy thành viên phù hợp.
-                                  </td>
-                                </tr>
-                              ) : (
-                                filteredMemberOptions.map((option) => {
-                                  const isSelected = formData.memberIds.includes(option.value)
-                                  const displayName = option.fullName || option.label || 'Chưa rõ'
-                                  const teamLabel = option.teamName || 'Chưa có đội'
-
-                                  return (
-                                    <tr key={option.value}>
-                                      <td className="admin-member-table-checkbox">
-                                        <input
-                                          type="checkbox"
-                                          value={option.value}
-                                          checked={isSelected}
-                                          onChange={() => handleMemberToggle(option.value)}
-                                        />
-                                      </td>
-                                      <td>
-                                        <div className="admin-member-name">
-                                          <strong>{displayName}</strong>
-                                        </div>
-                                      </td>
-                                      <td>{option.phone || '-'}</td>
-                                      <td>{teamLabel}</td>
-                                    </tr>
-                                  )
-                                })
-                              )}
-                            </tbody>
-                          </table>
+                    <div className="admin-form-block">
+                      <div className="admin-form-section-header">
+                        <span className="admin-form-section-title">Chọn vị trí đội cứu hộ</span>
+                        <div className="admin-location-summary-wrap">
+                          <MapPinIcon className="admin-section-heading-icon" />
+                          <span className="admin-location-summary">{locationDisplayText}</span>
                         </div>
                       </div>
-                    ) : (
-                      <div className="admin-member-table-card">
-                        <div className="admin-member-table-scroll">
-                          <table className="admin-member-table admin-member-table-preview">
-                            <colgroup>
-                              <col className="admin-member-col-name" />
-                              <col className="admin-member-col-phone" />
-                              <col className="admin-member-col-team" />
-                            </colgroup>
-                            <thead>
-                              <tr>
-                                <th>Họ và tên</th>
-                                <th>Số điện thoại</th>
-                                <th>Đội hiện tại</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {selectedMemberOptions.length === 0 ? (
-                                <tr>
-                                  <td colSpan="3" className="admin-member-table-placeholder">
-                                    Chưa có thành viên trong đội cứu hộ.
-                                  </td>
-                                </tr>
-                              ) : (
-                                selectedMemberOptions.map((option) => {
-                                  const displayName = option.fullName || option.label || 'Chưa rõ'
-                                  const teamLabel = option.teamName || 'Chưa có đội'
-
-                                  return (
-                                    <tr key={option.value}>
-                                      <td>
-                                        <div className="admin-member-name">
-                                          <strong>{displayName}</strong>
-                                        </div>
-                                      </td>
-                                      <td>{option.phone || '-'}</td>
-                                      <td>{teamLabel}</td>
-                                    </tr>
-                                  )
-                                })
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
+                      <div className="admin-rescue-form-map">
+                        <MapLocationPicker
+                          latitude={formData.baseLatitude}
+                          longitude={formData.baseLongitude}
+                          address={formData.address}
+                          onLocationChange={handleLocationChange}
+                          disabled={!isEditMode}
+                          showCoordinates={false}
+                        />
                       </div>
-                    )}
+                    </div>
                   </div>
 
-                  <div className="admin-form-block">
-                    <div className="admin-form-section-header admin-form-section-header-static">
-                      <span className="admin-form-section-title">Trưởng đội</span>
-                    </div>
+                  <div className="admin-rescue-form-column">
+                    <div className="admin-form-block">
+                      <div className="admin-form-section-header">
+                        <span className="admin-form-section-title">Thành viên đội cứu hộ</span>
+                        {isEditMode ? (
+                          <input
+                            type="text"
+                            value={memberSearchTerm}
+                            onChange={(event) => setMemberSearchTerm(event.target.value)}
+                            className="admin-member-search-input"
+                            placeholder="Tìm theo số điện thoại"
+                          />
+                        ) : null}
+                      </div>
 
-                    <div className="admin-leader-select-group">
                       {isEditMode ? (
-                        <select
-                          value={formData.leaderUserId}
-                          onChange={handleLeaderChange}
-                          disabled={leaderOptions.length === 0}
-                          required
-                          aria-label="Trưởng đội"
-                        >
-                          <option value="">Chọn Trưởng đội</option>
-                          {leaderOptions.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
+                        <div className="admin-member-table-card">
+                          <div className="admin-member-table-scroll">
+                            <table className="admin-member-table">
+                              <colgroup>
+                                <col className="admin-member-col-select" />
+                                <col className="admin-member-col-name" />
+                                <col className="admin-member-col-phone" />
+                                <col className="admin-member-col-team" />
+                              </colgroup>
+                              <thead>
+                                <tr>
+                                  <th aria-label="Chọn thành viên" />
+                                  <th>Họ và tên</th>
+                                  <th>Số điện thoại</th>
+                                  <th>Đội hiện tại</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {filteredMemberOptions.length === 0 ? (
+                                  <tr>
+                                    <td colSpan="4" className="admin-member-table-placeholder">
+                                      Không tìm thấy thành viên phù hợp.
+                                    </td>
+                                  </tr>
+                                ) : (
+                                  filteredMemberOptions.map((option) => {
+                                    const isSelected = formData.memberIds.includes(option.value)
+                                    const displayName = option.fullName || option.label || 'Chưa rõ'
+                                    const hasAssignedTeam = Boolean(option.teamId) || Boolean(option.teamName)
+                                    const teamLabel = option.teamName || 'Chưa có đội'
+
+                                    return (
+                                      <tr key={option.value}>
+                                        <td className="admin-member-table-checkbox">
+                                          {hasAssignedTeam ? (
+                                            <span className="admin-member-checkbox-placeholder">-</span>
+                                          ) : (
+                                            <input
+                                              type="checkbox"
+                                              value={option.value}
+                                              checked={isSelected}
+                                              onChange={() => handleMemberToggle(option.value)}
+                                            />
+                                          )}
+                                        </td>
+                                        <td>
+                                          <div className="admin-member-name">
+                                            <strong>{displayName}</strong>
+                                          </div>
+                                        </td>
+                                        <td>{option.phone || '-'}</td>
+                                        <td>{teamLabel}</td>
+                                      </tr>
+                                    )
+                                  })
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
                       ) : (
-                        <select value={previewLeaderValue} disabled aria-label="Trưởng đội">
-                          {previewLeaderOptions.length === 0 ? (
-                            <option value="">Chưa có Trưởng đội</option>
-                          ) : (
-                            previewLeaderOptions.map((option) => (
+                        <div className="admin-member-table-card">
+                          <div className="admin-member-table-scroll">
+                            <table className="admin-member-table admin-member-table-preview">
+                              <colgroup>
+                                <col className="admin-member-col-name" />
+                                <col className="admin-member-col-phone" />
+                                <col className="admin-member-col-role" />
+                                <col className="admin-member-col-action" />
+                              </colgroup>
+                              <thead>
+                                <tr>
+                                  <th>Họ và tên</th>
+                                  <th>Số điện thoại</th>
+                                  <th>Vai trò</th>
+                                  <th>Thao tác</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {detailMembers.length === 0 ? (
+                                  <tr>
+                                    <td colSpan="4" className="admin-member-table-placeholder">
+                                      Chưa có thành viên trong đội cứu hộ.
+                                    </td>
+                                  </tr>
+                                ) : (
+                                  detailMembers.map((member) => {
+                                    const isLeader = member.memberRole === 'LEADER'
+
+                                    return (
+                                      <tr key={member.userId}>
+                                        <td>
+                                          <div className="admin-member-name">
+                                            <strong>{member.fullName || member.username || 'Chưa rõ'}</strong>
+                                          </div>
+                                        </td>
+                                        <td>{member.phone || '-'}</td>
+                                        <td>{isLeader ? 'Trưởng đội' : 'Thành viên'}</td>
+                                        <td>
+                                          {isLeader ? (
+                                            <span className="admin-member-static-text">Không thể xóa</span>
+                                          ) : (
+                                            <button
+                                              type="button"
+                                              className="admin-table-danger-button"
+                                              onClick={() => handleRemoveMemberClick(member)}
+                                            >
+                                              Xóa
+                                            </button>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    )
+                                  })
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="admin-form-block">
+                      <div className="admin-form-section-header admin-form-section-header-static">
+                        <span className="admin-form-section-title">Trưởng đội</span>
+                      </div>
+
+                      <div className="admin-leader-select-group">
+                        {isEditMode ? (
+                          <select
+                            value={formData.leaderUserId}
+                            onChange={handleLeaderChange}
+                            disabled={leaderOptions.length === 0}
+                            required
+                            aria-label="Trưởng đội"
+                          >
+                            <option value="">Chọn Trưởng đội</option>
+                            {leaderOptions.map((option) => (
                               <option key={option.value} value={option.value}>
                                 {option.label}
                               </option>
-                            ))
-                          )}
-                        </select>
-                      )}
+                            ))}
+                          </select>
+                        ) : (
+                          <select value={previewLeaderValue} disabled aria-label="Trưởng đội">
+                            {previewLeaderOptions.length === 0 ? (
+                              <option value="">Chưa có Trưởng đội</option>
+                            ) : (
+                              previewLeaderOptions.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))
+                            )}
+                          </select>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="admin-modal-actions">
-                {isEditMode ? (
-                  <button type="submit" className="admin-primary-button" disabled={isSubmitting}>
-                    {isSubmitting ? 'Đang lưu...' : submitButtonLabel}
+                <div className="admin-modal-actions">
+                  {isEditMode ? (
+                    <button
+                      key="submit-team-form"
+                      type="submit"
+                      className="admin-primary-button"
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? 'Đang lưu...' : submitButtonLabel}
+                    </button>
+                  ) : (
+                    <button
+                      key="enable-edit-mode"
+                      type="button"
+                      className="admin-primary-button"
+                      onClick={handleStartEditing}
+                    >
+                      Chỉnh sửa
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="admin-secondary-button"
+                    onClick={closeForm}
+                    disabled={isSubmitting}
+                  >
+                    Hủy
                   </button>
-                ) : (
-                  <button type="button" className="admin-primary-button" onClick={handleStartEditing}>
-                    Chỉnh sửa
-                  </button>
-                )}
-                <button type="button" className="admin-secondary-button" onClick={closeForm} disabled={isSubmitting}>
-                  Hủy
-                </button>
-              </div>
-            </form>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}
 
       <LogoutConfirmModal
-        open={isCreateConfirmOpen}
-        title="Tạo đội cứu hộ"
-        message="Một hàng dữ liệu mẫu sẽ được thêm vào bảng. Sau đó bạn bấm đúng hàng đó để chỉnh sửa thông tin đội."
-        confirmLabel="Thêm mới"
-        cancelLabel="Hủy"
-        onConfirm={handleCreateDraftConfirm}
-        onCancel={handleCreateDraftCancel}
+        open={Boolean(confirmAction)}
+        title={confirmAction?.title}
+        message={confirmAction?.message}
+        confirmLabel={isConfirmSubmitting ? 'Đang xử lý...' : confirmAction?.confirmLabel}
+        cancelLabel={confirmAction?.cancelLabel}
+        onConfirm={handleConfirmAction}
+        onCancel={closeConfirmModal}
+        confirmDisabled={isConfirmSubmitting}
+        cancelDisabled={isConfirmSubmitting}
       />
     </AdminLayout>
   )

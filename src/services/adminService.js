@@ -123,49 +123,43 @@ const normalizeVehicle = (vehicle) => ({
   updatedAt: vehicle?.updatedAt ?? vehicle?.UpdatedAt ?? null,
 })
 
-const TEAM_MANAGEMENT_BASE = '/rescue-team'
-
-const normalizeTeamStatusKey = (value) =>
-  String(value ?? '')
-    .trim()
-    .toUpperCase()
-    .replace(/[\s-]+/g, '_')
+const TEAM_MANAGEMENT_BASE = '/admin/rescue-teams'
 
 const buildRescueTeamPayload = (teamData) => {
   const payload = {}
   const nameValue = toNullableText(teamData?.teamName ?? teamData?.name)
   if (nameValue) {
-    payload.TeamName = nameValue
-  }
-
-  const statusValue = toNullableText(teamData?.status)
-  if (statusValue) {
-    payload.Status = normalizeTeamStatusKey(statusValue)
-  }
-
-  const leaderName = toNullableText(teamData?.leaderName)
-  if (leaderName) {
-    payload.LeaderName = leaderName
-  }
-
-  const leaderPhone = toNullableText(teamData?.leaderPhone)
-  if (leaderPhone) {
-    payload.LeaderPhone = leaderPhone
+    payload.teamName = nameValue
   }
 
   const leaderUserIdValue = toNullableNumber(teamData?.leaderUserId ?? teamData?.leaderId)
   if (leaderUserIdValue !== null) {
-    payload.LeaderUserId = leaderUserIdValue
+    payload.leaderUserId = leaderUserIdValue
+  }
+
+  const addressValue = toNullableText(teamData?.address ?? teamData?.baseAddress)
+  if (addressValue) {
+    payload.address = addressValue
   }
 
   const baseLatitude = toNullableNumber(teamData?.baseLatitude ?? teamData?.base_latitude)
   if (baseLatitude !== null) {
-    payload.BaseLatitude = baseLatitude
+    payload.baseLatitude = baseLatitude
   }
 
   const baseLongitude = toNullableNumber(teamData?.baseLongitude ?? teamData?.base_longitude)
   if (baseLongitude !== null) {
-    payload.BaseLongitude = baseLongitude
+    payload.baseLongitude = baseLongitude
+  }
+
+  if (Array.isArray(teamData?.memberUserIds)) {
+    payload.memberUserIds = teamData.memberUserIds
+      .map((value) => toNullableNumber(value))
+      .filter((value) => value !== null)
+  } else if (Array.isArray(teamData?.memberIds)) {
+    payload.memberUserIds = teamData.memberIds
+      .map((value) => toNullableNumber(value))
+      .filter((value) => value !== null)
   }
 
   return payload
@@ -296,6 +290,16 @@ const adminService = {
     return normalizeArray(unwrapApiData(response))
   },
 
+  getRescueTeamManagementList: async () => {
+    const response = await api.get(TEAM_MANAGEMENT_BASE)
+    return normalizeArray(unwrapApiData(response))
+  },
+
+  getRescueTeamDetail: async (teamId) => {
+    const response = await api.get(`${TEAM_MANAGEMENT_BASE}/${teamId}`)
+    return unwrapApiData(response)
+  },
+
   createRescueTeam: async (teamData) => {
     // Táº¡o Ä‘á»™i cá»©u há»™ má»›i
     // Input: teamData - { teamName, status, leaderName, leaderPhone, baseLocation, notes }
@@ -319,6 +323,11 @@ const adminService = {
     // Input: teamId
     // Output: Response success
     const response = await api.delete(`${TEAM_MANAGEMENT_BASE}/${teamId}`)
+    return response?.data ?? {}
+  },
+
+  removeRescueTeamMember: async (teamId, userId) => {
+    const response = await api.delete(`${TEAM_MANAGEMENT_BASE}/${teamId}/members/${userId}`)
     return response?.data ?? {}
   },
 

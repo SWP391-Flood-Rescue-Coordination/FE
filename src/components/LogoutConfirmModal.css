@@ -61,3 +61,8 @@
 .success-button.cancel:hover {
   background: #aaa;
 }
+
+.success-button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
