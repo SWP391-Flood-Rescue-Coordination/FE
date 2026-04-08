@@ -12,8 +12,16 @@ import {
   formatPriority,
   normalizeRole,
   normalizeStatus,
-  normalizeText,
 } from './adminShared'
+
+const REQUEST_PHONE_SEARCH_DEBOUNCE_MS = 350
+const PHONE_SEARCH_MAX_LENGTH = 11
+
+const normalizePhoneSearchKeyword = (value) =>
+  String(value ?? '')
+    .replace(/\D/g, '')
+    .slice(0, PHONE_SEARCH_MAX_LENGTH)
+    .trim()
 
 /*
   AdminRequestsPage là màn quản trị rescue request của admin.
@@ -23,9 +31,11 @@ import {
 function AdminRequestsPage() {
   const navigate = useNavigate()
   const hasLoadedOnceRef = useRef(false)
+  const requestSearchRequestIdRef = useRef(0)
   const [currentUser] = useState(() => authService.getUserInfo())
   const [requests, setRequests] = useState([])
   const [requestSearchTerm, setRequestSearchTerm] = useState('')
+  const [debouncedRequestSearchTerm, setDebouncedRequestSearchTerm] = useState('')
   const [requestStatusFilter, setRequestStatusFilter] = useState('')
   const [isPageLoading, setIsPageLoading] = useState(true)
   const [isTableLoading, setIsTableLoading] = useState(false)
@@ -37,6 +47,10 @@ function AdminRequestsPage() {
   const roleKey = normalizeRole(currentUser?.role)
   const hasAdminAccess = isAuthenticated && roleKey === 'ADMIN'
   const fallbackHomeRoute = HOME_ROUTE_BY_ROLE[roleKey] || '/'
+  const normalizedRequestSearchTerm = useMemo(
+    () => normalizePhoneSearchKeyword(requestSearchTerm),
+    [requestSearchTerm],
+  )
 
   const handleUnauthorized = useCallback(
     (error) => {
@@ -57,6 +71,9 @@ function AdminRequestsPage() {
   // Xử lý: Set loading state, call service, catch error + handle 401
   const loadRequests = useCallback(
     async ({ fullPage = false } = {}) => {
+      const requestId = requestSearchRequestIdRef.current + 1
+      requestSearchRequestIdRef.current = requestId
+
       if (fullPage) {
         setIsPageLoading(true)
       } else {
@@ -71,25 +88,38 @@ function AdminRequestsPage() {
         // Gọi API lấy danh sách yêu cầu cứu hộ: GET /api/RescueRequest
         // Filter theo status nếu có (PENDING, VERIFIED, ASSIGNED, etc.)
         // FE dùng danh sách để render bảng, search, và các action
-        const requestItems = await adminService.getRequests(requestStatusFilter)
+        const requestItems = await adminService.getRequests({
+          status: requestStatusFilter,
+          searchBy: debouncedRequestSearchTerm ? 'phone' : '',
+          keyword: debouncedRequestSearchTerm,
+        })
+        if (requestId !== requestSearchRequestIdRef.current) {
+          return
+        }
         setRequests(requestItems)
       } catch (error) {
         if (handleUnauthorized(error)) {
           return
         }
 
+        if (requestId !== requestSearchRequestIdRef.current) {
+          return
+        }
+
         setErrorMessage(adminService.getErrorMessage(error))
       } finally {
-        if (fullPage) {
-          setIsPageLoading(false)
-        } else {
-          setIsTableLoading(false)
+        if (requestId === requestSearchRequestIdRef.current) {
+          if (fullPage) {
+            setIsPageLoading(false)
+          } else {
+            setIsTableLoading(false)
+          }
         }
 
         hasLoadedOnceRef.current = true
       }
     },
-    [handleUnauthorized, requestStatusFilter],
+    [debouncedRequestSearchTerm, handleUnauthorized, requestStatusFilter],
   )
 
   useEffect(() => {
@@ -119,26 +149,43 @@ function AdminRequestsPage() {
     }
   }, [successMessage])
 
-  const displayedRequests = useMemo(() => {
-    const keyword = normalizeText(requestSearchTerm)
-    if (!keyword) {
-      return requests
+  useEffect(() => {
+    const timeoutId = window.setTimeout(
+      () => {
+        setDebouncedRequestSearchTerm(normalizedRequestSearchTerm)
+      },
+      normalizedRequestSearchTerm ? REQUEST_PHONE_SEARCH_DEBOUNCE_MS : 0,
+    )
+
+    return () => {
+      window.clearTimeout(timeoutId)
     }
+  }, [normalizedRequestSearchTerm])
 
-    return requests.filter((request) => {
-      const haystack = [
-        request.requestId,
-        request.citizenName,
-        request.citizenPhone,
-        request.title,
-        request.description,
-        request.address,
-        request.status,
-      ].join(' ')
+  const displayedRequests = useMemo(() => {
+    const sortedRequests = [...requests]
 
-      return normalizeText(haystack).includes(keyword)
+    sortedRequests.sort((firstRequest, secondRequest) => {
+      const firstRequestId = Number(firstRequest?.requestId)
+      const secondRequestId = Number(secondRequest?.requestId)
+      const hasFirstRequestId = Number.isFinite(firstRequestId)
+      const hasSecondRequestId = Number.isFinite(secondRequestId)
+
+      if (hasFirstRequestId && hasSecondRequestId && firstRequestId !== secondRequestId) {
+        return firstRequestId - secondRequestId
+      }
+
+      if (hasFirstRequestId !== hasSecondRequestId) {
+        return hasFirstRequestId ? -1 : 1
+      }
+
+      const firstCreatedAt = new Date(firstRequest?.createdAt ?? 0).getTime()
+      const secondCreatedAt = new Date(secondRequest?.createdAt ?? 0).getTime()
+      return firstCreatedAt - secondCreatedAt
     })
-  }, [requestSearchTerm, requests])
+
+    return sortedRequests
+  }, [requests])
 
   const handleLogout = () => {
     authService.logout()
@@ -223,8 +270,10 @@ function AdminRequestsPage() {
                 id="admin-request-search"
                 type="text"
                 value={requestSearchTerm}
-                onChange={(event) => setRequestSearchTerm(event.target.value)}
-                placeholder="Tìm theo mã yêu cầu, người gửi, số điện thoại, địa chỉ..."
+                onChange={(event) => setRequestSearchTerm(normalizePhoneSearchKeyword(event.target.value))}
+                {...{ placeholder: 'Tìm theo số điện thoại' }}
+                placeholder="Tìm theo số điện thoại"
+                inputMode="numeric"
               />
             </label>
 

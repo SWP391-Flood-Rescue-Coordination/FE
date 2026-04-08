@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeftIcon,
@@ -18,8 +18,13 @@ import './ManagerReliefExportPage.css'
 
 
 const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value, key)
+const SUPPLY_ITEM_SEARCH_DEBOUNCE_MS = 350
 
 const normalizeTextId = (value, fallback = '') => String(value ?? fallback).trim()
+const normalizeSupplySearchKeyword = (value) =>
+  String(value ?? '')
+    .replace(/[^\p{L}\s]/gu, '')
+    .replace(/\s{2,}/g, ' ')
 
 const toNumericIfPossible = (value) => {
   const numeric = Number(value)
@@ -101,13 +106,70 @@ function ManagerReliefExportPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [recipientOptions, setRecipientOptions] = useState([])
   const [supplies, setSupplies] = useState([])
+  const [supplyLookup, setSupplyLookup] = useState({})
   const [selectedRecipientId, setSelectedRecipientId] = useState('')
   const [supplyQuantities, setSupplyQuantities] = useState({})
   const [errorMessage, setErrorMessage] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
   const [note, setNote] = useState('')
   const [supplySearchTerm, setSupplySearchTerm] = useState('')
+  const [debouncedSupplySearchTerm, setDebouncedSupplySearchTerm] = useState('')
   const [showScrollTop, setShowScrollTop] = useState(false)
+  const hasLoadedInitialDataRef = useRef(false)
+  const supplySearchRequestIdRef = useRef(0)
+
+  const syncSupplyLookup = useCallback((items) => {
+    setSupplyLookup((previousLookup) => {
+      const nextLookup = { ...previousLookup }
+
+      items.forEach((item) => {
+        if (item?.id) {
+          nextLookup[String(item.id)] = item
+        }
+      })
+
+      return nextLookup
+    })
+  }, [])
+
+  const loadSupplies = useCallback(
+    async (keyword = '') => {
+      const requestId = supplySearchRequestIdRef.current + 1
+      supplySearchRequestIdRef.current = requestId
+
+      try {
+        const supplyResult = await managerService.getSupplies(
+          keyword
+            ? {
+                searchBy: 'itemName',
+                keyword,
+              }
+            : undefined,
+        )
+        const normalizedSupplies = supplyResult.map(normalizeSupply).filter((item) => item.id && item.name)
+
+        if (requestId !== supplySearchRequestIdRef.current) {
+          return
+        }
+
+        setSupplies(normalizedSupplies)
+        syncSupplyLookup(normalizedSupplies)
+      } catch (error) {
+        if (requestId !== supplySearchRequestIdRef.current) {
+          return
+        }
+
+        if (error?.response?.status === 401) {
+          navigate('/login', { replace: true })
+          return
+        }
+
+        setSupplies([])
+        setErrorMessage('Khong the tai danh sach vat tu tu he thong. Vui long thu lai.')
+      }
+    },
+    [navigate, syncSupplyLookup],
+  )
 
   const fetchPageData = useCallback(async () => {
     setIsLoading(true)
@@ -139,6 +201,7 @@ function ManagerReliefExportPage() {
           .map(normalizeSupply)
           .filter((item) => item.id && item.name)
         setSupplies(normalizedSupplies)
+        syncSupplyLookup(normalizedSupplies)
       } catch (error) {
         if (error?.response?.status === 401) {
           navigate('/login', { replace: true })
@@ -148,9 +211,10 @@ function ManagerReliefExportPage() {
         setErrorMessage('Không thể tải danh sách vật tư từ hệ thống. Vui lòng thử lại.')
       }
     } finally {
+      hasLoadedInitialDataRef.current = true
       setIsLoading(false)
     }
-  }, [navigate])
+  }, [navigate, syncSupplyLookup])
 
   useEffect(() => {
     if (!authService.isAuthenticated()) {
@@ -169,6 +233,28 @@ function ManagerReliefExportPage() {
   }, [fetchPageData, navigate])
 
   useEffect(() => {
+    const normalizedKeyword = normalizeSupplySearchKeyword(supplySearchTerm).trim()
+    const timeoutId = window.setTimeout(
+      () => {
+        setDebouncedSupplySearchTerm(normalizedKeyword)
+      },
+      normalizedKeyword ? SUPPLY_ITEM_SEARCH_DEBOUNCE_MS : 0,
+    )
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [supplySearchTerm])
+
+  useEffect(() => {
+    if (!hasLoadedInitialDataRef.current) {
+      return
+    }
+
+    loadSupplies(debouncedSupplySearchTerm)
+  }, [debouncedSupplySearchTerm, loadSupplies])
+
+  useEffect(() => {
     const handleScroll = () => {
       setShowScrollTop(window.scrollY > 420)
     }
@@ -185,27 +271,26 @@ function ManagerReliefExportPage() {
 
   const selectedSupplyItems = useMemo(
     () =>
-      supplies
-        .filter((supply) => hasOwn(supplyQuantities, String(supply.id)))
-        .map((supply) => ({
+      Object.keys(supplyQuantities)
+        .map((supplyId) => {
+          const supply = supplyLookup[String(supplyId)]
+          if (!supply) {
+            return null
+          }
+
+          return ({
           ...supply,
           rawQuantity: supplyQuantities[String(supply.id)],
           parsedQuantity: Number(supplyQuantities[String(supply.id)]),
-        })),
-    [supplies, supplyQuantities],
+          })
+        })
+        .filter(Boolean),
+    [supplyLookup, supplyQuantities],
   )
 
   const filteredSupplies = useMemo(() => {
-    const keyword = String(supplySearchTerm ?? '').trim().toLowerCase()
-    if (!keyword) {
-      return supplies
-    }
-
-    return supplies.filter((supply) => {
-      const haystack = [supply.name, supply.type, supply.unit].join(' ').toLowerCase()
-      return haystack.includes(keyword)
-    })
-  }, [supplies, supplySearchTerm])
+    return supplies
+  }, [supplies])
 
   const supplyValidationMap = useMemo(() => {
     const next = {}
@@ -457,8 +542,8 @@ function ManagerReliefExportPage() {
                     id="manager-export-supply-search"
                     type="text"
                     value={supplySearchTerm}
-                    onChange={(event) => setSupplySearchTerm(event.target.value)}
-                    placeholder="Tìm vật tư..."
+                    onChange={(event) => setSupplySearchTerm(normalizeSupplySearchKeyword(event.target.value))}
+                    placeholder="Tìm theo tên vật tư"
                   />
                 </label>
               </div>

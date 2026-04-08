@@ -754,7 +754,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
                       onChange={() => handleConditionChange('floodUnder1m')}
                       disabled={!isEditing}
                     />
-                    Ngập &lt; 1m
+                    Ngập dưới 1m
                   </label>
                   <label className="checkbox-label">
                     <input
@@ -763,7 +763,7 @@ function ViewRequest({ onClose, requestData, requestId }) {
                       onChange={() => handleConditionChange('floodOver1m')}
                       disabled={!isEditing}
                     />
-                    Ngập &gt; 1m
+                    Ngập từ 1m trở lên
                   </label>
                 </div>
               </div>

@@ -1,5 +1,5 @@
 import { formatDateTimeVN } from './adminShared';
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeftIcon,
@@ -19,6 +19,22 @@ import authService from '../services/authService'
 import managerService from '../services/managerService'
 import './ManagerImportReceiptsListPage.css'
 
+const RECEIPT_ID_SEARCH_DEBOUNCE_MS = 350
+
+const normalizeReceiptIdSearch = (value) =>
+  String(value ?? '')
+    .replace(/[^\d]/g, '')
+    .trim()
+
+const extractReceiptIdText = (receipt) =>
+  String(
+    receipt?.receiptId ??
+      receipt?.id ??
+      receipt?.stockHistoryId ??
+      receipt?.stock_history_id ??
+      '',
+  ).trim()
+
 function ManagerImportReceiptsListPage() {
   const navigate = useNavigate()
 
@@ -28,10 +44,12 @@ function ManagerImportReceiptsListPage() {
   const [receipts, setReceipts] = useState([])
   const [filteredReceipts, setFilteredReceipts] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const [selectedReceipt, setSelectedReceipt] = useState(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showScrollTop, setShowScrollTop] = useState(false)
+  const receiptListRequestIdRef = useRef(0)
   
   // Filter states
   const [startDate, setStartDate] = useState('')
@@ -40,18 +58,21 @@ function ManagerImportReceiptsListPage() {
 
   // Fetch danh sách phiếu nhập/xuất kho
   const fetchReceipts = useCallback(async () => {
+    const requestId = receiptListRequestIdRef.current + 1
+    receiptListRequestIdRef.current = requestId
     setIsLoading(true)
     setErrorMessage('')
-    setSearchTerm('')
 
     try {
       let data = []
+      const receiptIdKeyword = normalizeReceiptIdSearch(debouncedSearchTerm)
+      const searchOptions = receiptIdKeyword ? { receiptId: receiptIdKeyword } : undefined
 
       if (activeTab === 'all') {
         // Fetch both import and export receipts from API
         const [importResult, exportResult] = await Promise.allSettled([
-          managerService.getImportReceipts(),
-          managerService.getExportReceipts(),
+          managerService.getImportReceipts(searchOptions),
+          managerService.getExportReceipts(searchOptions),
         ])
 
         const markedImport = 
@@ -73,23 +94,37 @@ function ManagerImportReceiptsListPage() {
           setErrorMessage('Không thể tải đầy đủ dữ liệu từ hệ thống.')
         }
       } else if (activeTab === 'import') {
-        const result = await managerService.getImportReceipts()
+        const result = await managerService.getImportReceipts(searchOptions)
         data = Array.isArray(result) ? result.map(r => ({ ...r, type: 'import' })) : []
       } else {
-        const result = await managerService.getExportReceipts()
+        const result = await managerService.getExportReceipts(searchOptions)
         data = Array.isArray(result) ? result.map(r => ({ ...r, type: 'export' })) : []
       }
-      
+
+      if (receiptIdKeyword) {
+        data = data.filter((entry) => extractReceiptIdText(entry).includes(receiptIdKeyword))
+      }
+
+      if (requestId !== receiptListRequestIdRef.current) {
+        return
+      }
+
       setReceipts(data)
       setFilteredReceipts(data)
     } catch (error) {
+      if (requestId !== receiptListRequestIdRef.current) {
+        return
+      }
+
 
       const errorMsg = managerService.getErrorMessage(error)
       setErrorMessage(errorMsg)
     } finally {
-      setIsLoading(false)
+      if (requestId === receiptListRequestIdRef.current) {
+        setIsLoading(false)
+      }
     }
-  }, [activeTab])
+  }, [activeTab, debouncedSearchTerm])
 
   useEffect(() => {
     const user = authService.getUserInfo()
@@ -100,6 +135,19 @@ function ManagerImportReceiptsListPage() {
     
     fetchReceipts()
   }, [navigate, fetchReceipts])
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(
+      () => {
+        setDebouncedSearchTerm(normalizeReceiptIdSearch(searchTerm))
+      },
+      searchTerm ? RECEIPT_ID_SEARCH_DEBOUNCE_MS : 0,
+    )
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [searchTerm])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -114,26 +162,6 @@ function ManagerImportReceiptsListPage() {
   // Handle search and filters
   useEffect(() => {
     let filtered = [...receipts]
-
-    // Filter by search term
-    if (searchTerm.trim()) {
-      const lowerSearch = searchTerm.toLowerCase()
-      filtered = filtered.filter(receipt => {
-        const type = receipt.type || (receipt.source ? 'import' : 'export')
-        
-        if (type === 'import') {
-          return (
-            receipt.source?.toLowerCase().includes(lowerSearch) ||
-            receipt.receiveAddress?.toLowerCase().includes(lowerSearch)
-          )
-        } else {
-          return (
-            receipt.destination?.toLowerCase().includes(lowerSearch) ||
-            receipt.recipientAddress?.toLowerCase().includes(lowerSearch)
-          )
-        }
-      })
-    }
 
     // Filter by date range
     if (startDate) {
@@ -151,7 +179,7 @@ function ManagerImportReceiptsListPage() {
     }
 
     setFilteredReceipts(filtered)
-  }, [searchTerm, receipts, startDate, endDate])
+  }, [receipts, startDate, endDate])
 
   // Reset filters
   const handleResetFilters = () => {
@@ -250,6 +278,7 @@ function ManagerImportReceiptsListPage() {
               }
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              {...{ placeholder: 'Tìm theo mã phiếu' }}
             />
           </div>
 

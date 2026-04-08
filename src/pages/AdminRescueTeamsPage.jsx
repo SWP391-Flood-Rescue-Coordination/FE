@@ -1,5 +1,6 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CheckCircleIcon, ExclamationTriangleIcon, MapPinIcon } from '@heroicons/react/24/outline'
+import { useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AdminLayout from '../components/AdminLayout'
 import LogoutConfirmModal from '../components/LogoutConfirmModal'
@@ -25,11 +26,27 @@ const memberRoleWhitelist = new Set([
   'RESCUE_TEAM_MEMBER',
 ])
 
+const MEMBER_PHONE_SEARCH_DEBOUNCE_MS = 350
+const PHONE_SEARCH_MAX_LENGTH = 11
+const TEAM_NAME_ALLOWED_PATTERN = /^[\p{L}\p{N}\s]+$/u
+
 const toNumberOrNull = (value) => {
   const numeric = Number(value)
   return Number.isFinite(numeric) ? numeric : null
 }
 
+const normalizePhoneSearchKeyword = (value) =>
+  String(value ?? '')
+    .replace(/\D/g, '')
+    .slice(0, PHONE_SEARCH_MAX_LENGTH)
+    .trim()
+
+const normalizeTeamNameInput = (value) =>
+  String(value ?? '')
+    .replace(/[^\p{L}\p{N}\s]/gu, '')
+    .replace(/\s{2,}/g, ' ')
+
+// Chuẩn hóa member trả về từ nhiều endpoint để bảng list/detail/form dùng cùng một shape.
 const normalizeTeamMember = (member) => ({
   userId: member?.userId ?? member?.UserId ?? member?.id ?? null,
   fullName: member?.fullName ?? member?.FullName ?? member?.name ?? member?.username ?? 'Chưa rõ',
@@ -43,6 +60,7 @@ const normalizeTeamMember = (member) => ({
   joinedAt: member?.joinedAt ?? member?.JoinedAt ?? null,
 })
 
+// Form create/edit luôn dựng từ cùng một source để tránh lệch dữ liệu giữa detail và edit mode.
 const buildFormStateFromTeam = (team) => ({
   teamName: team?.name || '',
   leaderUserId: team?.leaderUserId ? String(team.leaderUserId) : '',
@@ -52,6 +70,8 @@ const buildFormStateFromTeam = (team) => ({
   memberIds: team?.memberIds ?? [],
 })
 
+// Bảng list và modal detail có thể nhận shape khác nhau từ API list/detail.
+// Hàm này đưa toàn bộ dữ liệu team về một cấu trúc thống nhất trước khi render.
 const normalizeTeam = (team) => {
   const id =
     team?.teamId ??
@@ -129,6 +149,27 @@ const normalizeTeam = (team) => {
     .filter(Boolean)
 
   const createdAt = team?.createdAt ?? team?.created_at ?? team?.CreatedAt ?? null
+  const linkedOperationCountRaw =
+    team?.operationCount ??
+    team?.operationsCount ??
+    team?.linkedOperationCount ??
+    team?.activeOperationCount ??
+    team?.totalOperations ??
+    0
+  const linkedRequestCountRaw =
+    team?.requestCount ??
+    team?.requestsCount ??
+    team?.linkedRequestCount ??
+    team?.activeRequestCount ??
+    team?.totalRequests ??
+    0
+  const linkedOperationCount = Number.isFinite(Number(linkedOperationCountRaw))
+    ? Number(linkedOperationCountRaw)
+    : 0
+  const linkedRequestCount = Number.isFinite(Number(linkedRequestCountRaw))
+    ? Number(linkedRequestCountRaw)
+    : 0
+  const canDeleteFlag = team?.canDelete ?? team?.canBeDeleted ?? team?.isDeletable ?? team?.CanDelete ?? null
 
   return {
     id,
@@ -142,9 +183,28 @@ const normalizeTeam = (team) => {
     baseLongitude,
     baseAddress,
     createdAt,
+    operationId: team?.operationId ?? team?.OperationId ?? null,
+    requestId: team?.requestId ?? team?.RequestId ?? null,
+    linkedOperationCount,
+    linkedRequestCount,
+    canDeleteFlag,
     members,
     leader: normalizedLeader,
   }
+}
+
+const canDeleteTeam = (team) => {
+  if (!team) {
+    return false
+  }
+
+  if (typeof team.canDeleteFlag === 'boolean') {
+    return team.canDeleteFlag
+  }
+
+  const hasLinkedOperation = Boolean(team.operationId) || Number(team.linkedOperationCount) > 0
+  const hasLinkedRequest = Boolean(team.requestId) || Number(team.linkedRequestCount) > 0
+  return !hasLinkedOperation && !hasLinkedRequest
 }
 
 function AdminRescueTeamsPage() {
@@ -166,6 +226,11 @@ function AdminRescueTeamsPage() {
   const [confirmAction, setConfirmAction] = useState(null)
   const [isConfirmSubmitting, setIsConfirmSubmitting] = useState(false)
   const [memberSearchTerm, setMemberSearchTerm] = useState('')
+  const memberSearchRequestIdRef = useRef(0)
+  const normalizedMemberSearchTerm = useMemo(
+    () => normalizePhoneSearchKeyword(memberSearchTerm),
+    [memberSearchTerm],
+  )
 
   const isAuthenticated = authService.isAuthenticated()
   const roleKey = normalizeRole(currentUser?.role)
@@ -185,9 +250,21 @@ function AdminRescueTeamsPage() {
     [navigate],
   )
 
-  const loadUserOptions = useCallback(async () => {
+  // Bảng chọn thành viên chỉ lấy user có role phù hợp.
+  // Khi có số điện thoại, FE query thẳng backend bằng searchBy=phone để bám đúng README.
+  const loadUserOptions = useCallback(async (phoneKeyword = '') => {
+    const requestId = memberSearchRequestIdRef.current + 1
+    memberSearchRequestIdRef.current = requestId
+
     try {
-      const users = await adminService.getUsers()
+      const users = await adminService.getUsers(
+        phoneKeyword
+          ? {
+              searchBy: 'phone',
+              keyword: phoneKeyword,
+            }
+          : undefined,
+      )
 
       const memberList = users
         .filter(
@@ -216,9 +293,17 @@ function AdminRescueTeamsPage() {
           role: normalizeRole(user.role ?? user.Role),
         }))
 
+      if (requestId !== memberSearchRequestIdRef.current) {
+        return
+      }
+
       setMemberOptions(memberList)
     } catch (error) {
       if (handleUnauthorized(error)) {
+        return
+      }
+
+      if (requestId !== memberSearchRequestIdRef.current) {
         return
       }
 
@@ -262,9 +347,25 @@ function AdminRescueTeamsPage() {
       return
     }
 
-    loadUserOptions()
     loadTeams()
-  }, [hasAdminAccess, isAuthenticated, loadUserOptions, loadTeams, navigate])
+  }, [hasAdminAccess, isAuthenticated, loadTeams, navigate])
+
+  useEffect(() => {
+    if (!hasAdminAccess) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(
+      () => {
+        loadUserOptions(normalizedMemberSearchTerm)
+      },
+      normalizedMemberSearchTerm ? MEMBER_PHONE_SEARCH_DEBOUNCE_MS : 0,
+    )
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [hasAdminAccess, loadUserOptions, normalizedMemberSearchTerm])
 
   const resetForm = () => {
     setFormData(INITIAL_FORM_STATE)
@@ -275,6 +376,8 @@ function AdminRescueTeamsPage() {
     setMemberSearchTerm('')
   }
 
+  // Modal này dùng chung cho create, detail và edit.
+  // editMode tách riêng để người dùng có thể mở xem chi tiết trước rồi mới chuyển sang sửa.
   const openForm = (mode, team = null, { editMode = false, loading = false } = {}) => {
     setFormMode(mode)
     setFormError('')
@@ -298,15 +401,10 @@ function AdminRescueTeamsPage() {
   }
 
   const handleCreateDraft = () => {
-    setConfirmAction({
-      type: 'create-team',
-      title: 'Tạo đội cứu hộ',
-      message: 'Biểu mẫu tạo đội cứu hộ sẽ được mở để bạn nhập thông tin đội mới.',
-      confirmLabel: 'Tiếp tục',
-      cancelLabel: 'Hủy',
-    })
+    openForm('create', null, { editMode: true })
   }
 
+  // Sau khi lấy detail từ API hoặc sau khi remove member, luôn đổ lại team qua cùng một nhánh này.
   const applySelectedTeam = useCallback((team, { editMode = false } = {}) => {
     const normalizedTeam = normalizeTeam(team)
     setSelectedTeam(normalizedTeam)
@@ -318,6 +416,7 @@ function AdminRescueTeamsPage() {
     return normalizedTeam
   }, [])
 
+  // Click vào từng dòng chỉ mở modal nhanh trước, rồi call detail API để lấy dữ liệu mới nhất.
   const handleRowClick = async (team) => {
     if (!team?.id) {
       return
@@ -400,16 +499,14 @@ function AdminRescueTeamsPage() {
   }, [memberOptions, formData.leaderUserId, formData.memberIds])
 
   const filteredMemberOptions = useMemo(() => {
-    const normalizedSearch = String(memberSearchTerm ?? '')
-      .replace(/\D/g, '')
-      .trim()
-
-    if (!normalizedSearch) {
+    if (!normalizedMemberSearchTerm) {
       return memberOptions
     }
 
-    return memberOptions.filter((option) => String(option.phone ?? '').replace(/\D/g, '').includes(normalizedSearch))
-  }, [memberOptions, memberSearchTerm])
+    return memberOptions.filter((option) =>
+      String(option.phone ?? '').replace(/\D/g, '').includes(normalizedMemberSearchTerm),
+    )
+  }, [memberOptions, normalizedMemberSearchTerm])
 
   const detailMembers = useMemo(() => {
     return Array.isArray(selectedTeam?.members) ? selectedTeam.members : []
@@ -433,6 +530,9 @@ function AdminRescueTeamsPage() {
 
   const handleDeleteTeamClick = (event, team) => {
     event.stopPropagation()
+    if (!team?.id) {
+      return
+    }
 
     setConfirmAction({
       type: 'delete-team',
@@ -460,14 +560,9 @@ function AdminRescueTeamsPage() {
     })
   }
 
+  // Popup confirm gom các action tạo form, xóa đội và loại member để modal xác nhận dùng một nơi xử lý.
   const handleConfirmAction = async () => {
     if (!confirmAction) {
-      return
-    }
-
-    if (confirmAction.type === 'create-team') {
-      setConfirmAction(null)
-      openForm('create', null, { editMode: true })
       return
     }
 
@@ -484,7 +579,7 @@ function AdminRescueTeamsPage() {
           closeForm()
         }
 
-        await Promise.all([loadTeams({ silent: true }), loadUserOptions()])
+        await Promise.all([loadTeams({ silent: true }), loadUserOptions(normalizedMemberSearchTerm)])
       }
 
       if (confirmAction.type === 'remove-member') {
@@ -501,7 +596,7 @@ function AdminRescueTeamsPage() {
         setSuccessMessage(response?.message || response?.Message || 'Đã xóa thành viên khỏi đội.')
         setErrorMessage('')
         setFormError('')
-        await Promise.all([loadTeams({ silent: true }), loadUserOptions()])
+        await Promise.all([loadTeams({ silent: true }), loadUserOptions(normalizedMemberSearchTerm)])
       }
 
       setConfirmAction(null)
@@ -530,13 +625,21 @@ function AdminRescueTeamsPage() {
     }, 0)
   }
 
+  // Submit dùng chung cho create và update để giữ rule validate/payload ở cùng một chỗ.
   const handleSubmit = async (event) => {
     event.preventDefault()
     setFormError('')
     const shouldCreate = formMode === 'create'
 
-    if (!formData.teamName.trim()) {
+    const normalizedTeamName = formData.teamName.trim()
+
+    if (!normalizedTeamName) {
       setFormError('Vui lòng nhập tên đội cứu hộ.')
+      return
+    }
+
+    if (!TEAM_NAME_ALLOWED_PATTERN.test(normalizedTeamName)) {
+      setFormError('Tên đội chỉ được chứa chữ, số và khoảng trắng.')
       return
     }
 
@@ -554,7 +657,7 @@ function AdminRescueTeamsPage() {
 
     try {
       const payload = {
-        teamName: formData.teamName.trim(),
+        teamName: normalizedTeamName,
         leaderUserId: Number(formData.leaderUserId),
         address: formData.address?.trim() || undefined,
         baseLatitude: formData.baseLatitude,
@@ -573,7 +676,7 @@ function AdminRescueTeamsPage() {
           (shouldCreate ? 'Đã tạo đội cứu hộ mới.' : 'Thông tin đội cứu hộ đã được cập nhật.'),
       )
 
-      await Promise.all([loadTeams({ silent: true }), loadUserOptions()])
+      await Promise.all([loadTeams({ silent: true }), loadUserOptions(normalizedMemberSearchTerm)])
       closeForm()
     } catch (error) {
       if (handleUnauthorized(error)) {
@@ -627,6 +730,7 @@ function AdminRescueTeamsPage() {
       ? `Chi tiết ${selectedTeam.name}`
       : 'Chi tiết đội cứu hộ'
   const submitButtonLabel = formMode === 'create' ? 'Tạo đội' : 'Lưu thay đổi'
+  const allowDeleteSelectedTeam = canDeleteTeam(selectedTeam)
   const locationDisplayText =
     Number.isFinite(Number(formData.baseLatitude)) && Number.isFinite(Number(formData.baseLongitude))
       ? `${Number(formData.baseLatitude).toFixed(6)}, ${Number(formData.baseLongitude).toFixed(6)}`
@@ -678,13 +782,12 @@ function AdminRescueTeamsPage() {
                 <th>Vị trí</th>
                 <th>Địa chỉ</th>
                 <th>Ngày tạo</th>
-                <th>Thao tác</th>
               </tr>
             </thead>
             <tbody>
               {sortedTeams.length === 0 && (
                 <tr>
-                  <td colSpan="7" className="admin-table-placeholder">
+                  <td colSpan="6" className="admin-table-placeholder">
                     Chưa có đội cứu hộ nào được khai báo.
                   </td>
                 </tr>
@@ -718,15 +821,6 @@ function AdminRescueTeamsPage() {
                     </td>
                     <td>{team.baseAddress || '-'}</td>
                     <td>{formatDateTimeVN(team.createdAt)}</td>
-                    <td className="admin-rescue-row-actions">
-                      <button
-                        type="button"
-                        className="admin-table-danger-button"
-                        onClick={(event) => handleDeleteTeamClick(event, team)}
-                      >
-                        Xóa
-                      </button>
-                    </td>
                   </tr>
                 )
               })}
@@ -764,7 +858,11 @@ function AdminRescueTeamsPage() {
                           <input
                             type="text"
                             value={formData.teamName}
-                            onChange={(event) => setFormData((prev) => ({ ...prev, teamName: event.target.value }))}
+                            onChange={(event) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                teamName: normalizeTeamNameInput(event.target.value),
+                              }))}
                             placeholder="VD. Đội cứu hộ Quận 1"
                             readOnly={!isEditMode}
                             required
@@ -802,9 +900,10 @@ function AdminRescueTeamsPage() {
                           <input
                             type="text"
                             value={memberSearchTerm}
-                            onChange={(event) => setMemberSearchTerm(event.target.value)}
+                            onChange={(event) => setMemberSearchTerm(normalizePhoneSearchKeyword(event.target.value))}
                             className="admin-member-search-input"
                             placeholder="Tìm theo số điện thoại"
+                            inputMode="numeric"
                           />
                         ) : null}
                       </div>
@@ -824,7 +923,7 @@ function AdminRescueTeamsPage() {
                                   <th aria-label="Chọn thành viên" />
                                   <th>Họ và tên</th>
                                   <th>Số điện thoại</th>
-                                  <th>Đội hiện tại</th>
+                                  <th className="admin-member-team-cell">Đội hiện tại</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -861,7 +960,7 @@ function AdminRescueTeamsPage() {
                                           </div>
                                         </td>
                                         <td>{option.phone || '-'}</td>
-                                        <td>{teamLabel}</td>
+                                        <td className="admin-member-team-cell">{teamLabel}</td>
                                       </tr>
                                     )
                                   })
@@ -914,7 +1013,7 @@ function AdminRescueTeamsPage() {
                                           ) : (
                                             <button
                                               type="button"
-                                              className="admin-table-danger-button"
+                                              className="admin-danger-plain-button"
                                               onClick={() => handleRemoveMemberClick(member)}
                                             >
                                               Xóa
@@ -972,6 +1071,21 @@ function AdminRescueTeamsPage() {
                 </div>
 
                 <div className="admin-modal-actions">
+                  {formMode === 'edit' && !isEditMode && (
+                    <button
+                      type="button"
+                      className="admin-danger-plain-button"
+                      onClick={(event) => handleDeleteTeamClick(event, selectedTeam)}
+                      disabled={!allowDeleteSelectedTeam || isSubmitting || isFormLoading}
+                      title={
+                        allowDeleteSelectedTeam
+                          ? 'Xóa đội'
+                          : 'Chỉ xóa được khi đội chưa liên kết rescue request hoặc rescue operation'
+                      }
+                    >
+                      Xóa đội
+                    </button>
+                  )}
                   {isEditMode ? (
                     <button
                       key="submit-team-form"

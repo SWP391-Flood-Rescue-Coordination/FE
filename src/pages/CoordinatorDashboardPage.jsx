@@ -8,6 +8,7 @@ import {
   ClipboardDocumentCheckIcon,
   ClockIcon,
   DocumentDuplicateIcon,
+  MagnifyingGlassIcon,
   TruckIcon,
   UserCircleIcon,
   UserGroupIcon,
@@ -118,6 +119,13 @@ const ROLE_LABEL_MAP = {
 
 const REQUEST_CHART_VALUE_ROW_HEIGHT = 40
 const REQUEST_CHART_STAGE_MIN_HEIGHT = 220
+const PHONE_SEARCH_MAX_LENGTH = 11
+
+const normalizePhoneSearchKeyword = (value) =>
+  String(value ?? '')
+    .replace(/\D/g, '')
+    .slice(0, PHONE_SEARCH_MAX_LENGTH)
+    .trim()
 const REQUEST_CHART_LABEL_ROW_HEIGHT = 78
 const REQUEST_CHART_ROW_GAP = 10
 
@@ -229,6 +237,7 @@ function CoordinatorDashboardPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const [requestsStatusFilter, setRequestsStatusFilter] = useState('')
+  const [requestPhoneSearch, setRequestPhoneSearch] = useState('')
   const [requestItems, setRequestItems] = useState([])
   const [requestStatusSummary, setRequestStatusSummary] = useState(createInitialStatusSummary())
   const [teamSummary, setTeamSummary] = useState({ total: 0, inProgress: 0, available: 0 })
@@ -432,6 +441,17 @@ function CoordinatorDashboardPage() {
       <header className="coordinator-home-header">
         <h1>Hệ Thống Quản Lí Cứu Hộ Cứu Trợ Lũ Lụt</h1>
         <div className="coordinator-home-actions">
+          <label className="coordinator-home-search-box" htmlFor="coordinator-dashboard-request-phone-search">
+            <MagnifyingGlassIcon className="coordinator-home-search-icon" />
+            <input
+              id="coordinator-dashboard-request-phone-search"
+              type="text"
+              value={requestPhoneSearch}
+              onChange={(event) => setRequestPhoneSearch(normalizePhoneSearchKeyword(event.target.value))}
+              placeholder="Tìm theo số điện thoại"
+              inputMode="numeric"
+            />
+          </label>
           <div className="coordinator-home-user-group" ref={userMenuRef}>
             <button
               type="button"
@@ -579,7 +599,11 @@ function CoordinatorDashboardPage() {
         </section>
 
         <section id="coordinator-request-table" className="coordinator-request-embed-wrap">
-          <CoordinatorRequestsPage embedded externalStatusFilter={requestsStatusFilter} />
+          <CoordinatorRequestsPage
+            embedded
+            externalStatusFilter={requestsStatusFilter}
+            externalPhoneSearch={requestPhoneSearch}
+          />
         </section>
       </main>
       <LogoutConfirmModal open={showLogoutConfirm} onConfirm={handleLogoutConfirm} onCancel={handleLogoutCancel} />

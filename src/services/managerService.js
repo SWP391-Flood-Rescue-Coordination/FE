@@ -709,14 +709,29 @@ const managerService = {
     }
   },
 
-  getAllVehicles: async (status = '') => {
+  getAllVehicles: async (options = '') => {
     // Lấy danh sách phương tiện với lọc theo trạng thái
     // Input: status (optional) - AVAILABLE/INUSE/MAINTENANCE
     // Output: Mảng vehicle chuẩn hóa
     // Lỗi: 401 (hết phiên), 500 (lỗi server)
     try {
+      const normalizedOptions =
+        options !== null && typeof options === 'object' && !Array.isArray(options) ? options : { status: options }
+      const { status = '', searchBy = '', keyword = '' } = normalizedOptions
       const normalizedStatus = toVehicleApiStatusValue(status)
-      const params = normalizedStatus ? { status: normalizedStatus } : undefined
+      const normalizedSearchBy = String(searchBy ?? '').trim()
+      const normalizedKeyword = String(keyword ?? '').trim()
+      const params = {}
+
+      if (normalizedStatus) {
+        params.status = normalizedStatus
+      }
+
+      if (normalizedSearchBy && normalizedKeyword) {
+        params.searchBy = normalizedSearchBy
+        params.keyword = normalizedKeyword
+      }
+
       const response = await api.get('/Vehicle', { params })
       return normalizeArray(unwrapApiData(response)).map(normalizeVehicle)
     } catch (error) {
@@ -773,12 +788,24 @@ const managerService = {
 
   getVehicleTypeOptions: () => VEHICLE_TYPE_OPTIONS.map((item) => ({ ...item })),
 
-  getSupplies: async () => {
+  getSupplies: async (options = {}) => {
     // Lấy danh sách vật tư cứu trợ (lương thực, nước, y tế, quần áo, nơi ở)
     // Output: Mảng supply chuẩn hóa với id, name, type, quantity, unit, minQuantity
     // Lỗi: 401 (hết phiên), 500 (lỗi server)
     try {
-      const response = await api.get('/ReliefItem')
+      const normalizedOptions =
+        options !== null && typeof options === 'object' && !Array.isArray(options) ? options : { keyword: options }
+      const { searchBy = '', keyword = '' } = normalizedOptions
+      const normalizedSearchBy = String(searchBy ?? '').trim()
+      const normalizedKeyword = String(keyword ?? '').trim()
+      const params = {}
+
+      if (normalizedSearchBy && normalizedKeyword) {
+        params.searchBy = normalizedSearchBy
+        params.keyword = normalizedKeyword
+      }
+
+      const response = await api.get('/ReliefItem', { params })
       const payload = response?.data
       const items = payload?.items ?? payload?.Items ?? unwrapApiData(response)
       return normalizeArray(items).map(normalizeSupply)
@@ -1147,13 +1174,23 @@ const managerService = {
     }
   },
 
-  getImportReceipts: async () => {
+  getImportReceipts: async (options = {}) => {
     // Lấy danh sách phiếu nhập kho đã tạo
     // Output: Mảng import receipt chuẩn hóa { receiptId, type, source, items, createdAt }
     // Lỗi: 401 (hết phiên), 500 (lỗi server) - trả về [] nếu lỗi
     try {
+      const normalizedOptions =
+        options !== null && typeof options === 'object' && !Array.isArray(options) ? options : { receiptId: options }
+      const receiptIdKeyword = String(normalizedOptions?.receiptId ?? '').trim()
+      const params = { type: 'IN' }
+
+      if (receiptIdKeyword) {
+        params.searchBy = 'id'
+        params.keyword = receiptIdKeyword
+      }
+
       const [response, supplies, stockUnits] = await Promise.all([
-        api.get('/StockHistory', { params: { type: 'IN' } }),
+        api.get('/StockHistory', { params }),
         managerService.getSupplies().catch(() => []),
         managerService.getImportOptions().catch(() => []),
       ])
@@ -1166,13 +1203,23 @@ const managerService = {
     }
   },
 
-  getExportReceipts: async () => {
+  getExportReceipts: async (options = {}) => {
     // Lấy danh sách phiếu xuất kho đã tạo
     // Output: Mảng export receipt chuẩn hóa { receiptId, type, destination, items, createdAt }
     // Lỗi: 401 (hết phiên), 500 (lỗi server) - trả về [] nếu lỗi
     try {
+      const normalizedOptions =
+        options !== null && typeof options === 'object' && !Array.isArray(options) ? options : { receiptId: options }
+      const receiptIdKeyword = String(normalizedOptions?.receiptId ?? '').trim()
+      const params = { type: 'OUT' }
+
+      if (receiptIdKeyword) {
+        params.searchBy = 'id'
+        params.keyword = receiptIdKeyword
+      }
+
       const [response, supplies, stockUnits] = await Promise.all([
-        api.get('/StockHistory', { params: { type: 'OUT' } }),
+        api.get('/StockHistory', { params }),
         managerService.getSupplies().catch(() => []),
         managerService.getExportOptions().catch(() => []),
       ])

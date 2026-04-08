@@ -257,7 +257,7 @@ const inferConditionsFromDescription = (description) => {
     houseCollapsed: normalized.includes('sap nha') || normalized.includes('suc do') || normalized.includes('ngoi nha bi hu'),
     needMedical: normalized.includes('y te') || normalized.includes('can cuu thuong') || normalized.includes('can dieu tri'),
     floodUnder1m: normalized.includes('duoi 1m') || normalized.includes('< 1m'),
-    floodOver1m: normalized.includes('tren 1m') || normalized.includes('> 1m') || normalized.includes('ngap sau'),
+    floodOver1m: normalized.includes('1m tro len') || normalized.includes('> 1m') || normalized.includes('ngap sau'),
   }
 }
 

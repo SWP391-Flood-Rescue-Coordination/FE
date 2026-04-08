@@ -1,5 +1,5 @@
 import { formatDateTimeVN } from './adminShared'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeftIcon,
@@ -29,9 +29,14 @@ const FILTER_BUTTONS = [
   { key: 'INUSE', label: 'Đang sử dụng' },
   { key: 'MAINTENANCE', label: 'Bảo trì' },
 ]
+const VEHICLE_NAME_SEARCH_DEBOUNCE_MS = 350
 
 const normalizeVehicleStatus = (status) => String(status ?? '').trim().toUpperCase().replace(/[\s-]+/g, '')
 const normalizeVehicleTypeKey = (value) => String(value ?? '').trim().toUpperCase().replace(/[\s-]+/g, '')
+const normalizeVehicleSearchKeyword = (value) =>
+  String(value ?? '')
+    .replace(/[^\p{L}\s-]/gu, '')
+    .replace(/\s{2,}/g, ' ')
 const formatCoordinates = (latitude, longitude) => {
   if (latitude === null || latitude === undefined || longitude === null || longitude === undefined) {
     return '-'
@@ -47,9 +52,12 @@ const formatDateTimeWithSecondsVN = (value) => {
 function ManagerVehiclesPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
+  const vehicleSearchRequestIdRef = useRef(0)
+  const hasLoadedVehiclesRef = useRef(false)
   const [isLoading, setIsLoading] = useState(true)
   const [vehicles, setVehicles] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState(() => normalizeVehicleStatus(searchParams.get('status') || ''))
   const [errorMessage, setErrorMessage] = useState('')
   const [toast, setToast] = useState(null)
@@ -67,6 +75,7 @@ function ManagerVehiclesPage() {
       ),
     [vehicleTypeOptions],
   )
+  const normalizedSearchTerm = useMemo(() => normalizeVehicleSearchKeyword(searchTerm), [searchTerm])
 
   const showToast = useCallback((type, message) => {
     setToast({ type, message })
@@ -94,59 +103,93 @@ function ManagerVehiclesPage() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  const fetchVehicles = useCallback(async () => {
-    setIsLoading(true)
-    setErrorMessage('')
+  const fetchVehicles = useCallback(
+    async (keyword = '', { fullPage = true } = {}) => {
+      const requestId = vehicleSearchRequestIdRef.current + 1
+      vehicleSearchRequestIdRef.current = requestId
 
-    try {
-      const data = await managerService.getAllVehicles('')
-      setVehicles(Array.isArray(data) ? data : [])
-    } catch (error) {
-
-      setErrorMessage(managerService.getErrorMessage(error))
-
-      if (error?.response?.status === 401) {
-        navigate('/login', { replace: true })
+      if (fullPage) {
+        setIsLoading(true)
       }
-    } finally {
-      setIsLoading(false)
-    }
-  }, [navigate])
+      setErrorMessage('')
+
+      try {
+        const data = await managerService.getAllVehicles(
+          keyword
+            ? {
+                searchBy: 'vehicleName',
+                keyword,
+              }
+            : '',
+        )
+
+        if (requestId !== vehicleSearchRequestIdRef.current) {
+          return
+        }
+
+        setVehicles(Array.isArray(data) ? data : [])
+      } catch (error) {
+        if (requestId !== vehicleSearchRequestIdRef.current) {
+          return
+        }
+
+        setErrorMessage(managerService.getErrorMessage(error))
+
+        if (error?.response?.status === 401) {
+          navigate('/login', { replace: true })
+        }
+      } finally {
+        if (fullPage && requestId === vehicleSearchRequestIdRef.current) {
+          hasLoadedVehiclesRef.current = true
+          setIsLoading(false)
+        }
+      }
+    },
+    [navigate],
+  )
 
   useEffect(() => {
     if (!authService.isAuthenticated()) {
       navigate('/login', { replace: true })
       return
     }
-
-    fetchVehicles()
-  }, [navigate, fetchVehicles])
+  }, [navigate])
 
   useEffect(() => {
     setStatusFilter(normalizeVehicleStatus(searchParams.get('status') || ''))
   }, [searchParams])
 
+  useEffect(() => {
+    const normalizedKeyword = normalizedSearchTerm.trim()
+    const timeoutId = window.setTimeout(
+      () => {
+        setDebouncedSearchTerm(normalizedKeyword)
+      },
+      normalizedKeyword ? VEHICLE_NAME_SEARCH_DEBOUNCE_MS : 0,
+    )
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [normalizedSearchTerm])
+
+  useEffect(() => {
+    if (!authService.isAuthenticated()) {
+      return
+    }
+
+    fetchVehicles(debouncedSearchTerm, { fullPage: !hasLoadedVehiclesRef.current })
+  }, [debouncedSearchTerm, fetchVehicles])
+
   const filteredVehicles = useMemo(() => {
     let filtered = [...vehicles]
-
-    if (searchTerm.trim()) {
-      const term = searchTerm.toLowerCase()
-      filtered = filtered.filter(
-        (vehicle) =>
-          vehicle.vehicleName?.toLowerCase().includes(term)
-          || vehicle.vehicleTypeName?.toLowerCase().includes(term)
-          || vehicle.licensePlate?.toLowerCase().includes(term)
-          || vehicle.vehicleCode?.toLowerCase().includes(term)
-          || vehicle.currentLocation?.toLowerCase().includes(term),
-      )
-    }
 
     if (statusFilter) {
       filtered = filtered.filter((vehicle) => normalizeVehicleStatus(vehicle.status) === statusFilter)
     }
 
     return filtered
-  }, [searchTerm, statusFilter, vehicles])
+  }, [statusFilter, vehicles])
 
   const handleBack = () => {
     navigate('/manager')
@@ -235,7 +278,7 @@ function ManagerVehiclesPage() {
       // BE xóa Vehicle record + tất cả dữ liệu liên quan (history, etc.)
       // Return: Success message
       const response = await managerService.deleteVehicle(vehicle.vehicleId)
-      await fetchVehicles()
+      await fetchVehicles(debouncedSearchTerm, { fullPage: false })
       showToast('success', response?.message || response?.Message || 'Xóa phương tiện thành công.')
     } catch (error) {
       showToast('error', managerService.getErrorMessage(error))
@@ -263,7 +306,7 @@ function ManagerVehiclesPage() {
           selectedVehicle?.status,
         )
 
-      await fetchVehicles()
+      await fetchVehicles(debouncedSearchTerm, { fullPage: false })
       setModalMode(null)
       setSelectedVehicle(null)
       showToast(
@@ -341,9 +384,9 @@ function ManagerVehiclesPage() {
               <MagnifyingGlassIcon className="icon" />
               <input
                 type="text"
-                placeholder="Tìm kiếm theo tên, loại, biển số, mã phương tiện..."
+                placeholder="Tìm theo tên phương tiện"
                 value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
+                onChange={(event) => setSearchTerm(normalizeVehicleSearchKeyword(event.target.value))}
               />
             </div>
           </div>

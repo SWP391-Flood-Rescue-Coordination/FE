@@ -439,16 +439,27 @@ const adminService = {
   },
 
   // Nhóm 3: request moderation cho AdminDashboardPage và AdminRequestsPage.
-  getRequests: async (status = '') => {
+  getRequests: async (options = '') => {
     // Lấy danh sách rescue request với lọc theo trạng thái
     // Input: status (optional) - Pending/Verified/Assigned/Confirmed/Completed/Cancelled/Duplicate
     // Output: Mảng request với id, title, status, address, phone, priority
     // Lỗi: 401 (hết phiên), 500 (lỗi server)
+    const normalizedOptions =
+      options !== null && typeof options === 'object' && !Array.isArray(options) ? options : { status: options }
+    const { status = '', searchBy = '', keyword = '' } = normalizedOptions
+
     const params = {}
     const normalizedStatus = toApiRequestStatusValue(status)
+    const normalizedSearchBy = String(searchBy ?? '').trim()
+    const normalizedKeyword = String(keyword ?? '').trim()
 
     if (normalizedStatus) {
       params.status = normalizedStatus
+    }
+
+    if (normalizedSearchBy && normalizedKeyword) {
+      params.searchBy = normalizedSearchBy
+      params.keyword = normalizedKeyword
     }
 
     const response = await api.get('/RescueRequest', { params })

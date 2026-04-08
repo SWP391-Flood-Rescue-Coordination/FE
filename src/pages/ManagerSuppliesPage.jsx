@@ -1,5 +1,5 @@
 import { formatDateTimeVN } from './adminShared'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
   ArrowLeftIcon,
@@ -12,14 +12,24 @@ import authService from '../services/authService'
 import managerService from '../services/managerService'
 import './ManagerSuppliesPage.css'
 
+const SUPPLY_ITEM_SEARCH_DEBOUNCE_MS = 350
+
+const normalizeSupplySearchKeyword = (value) =>
+  String(value ?? '')
+    .replace(/[^\p{L}\s]/gu, '')
+    .replace(/\s{2,}/g, ' ')
+
 function ManagerSuppliesPage() {
   const navigate = useNavigate()
   const location = useLocation()
+  const supplySearchRequestIdRef = useRef(0)
+  const hasLoadedSuppliesRef = useRef(false)
 
   const [isLoading, setIsLoading] = useState(true)
   const [supplies, setSupplies] = useState([])
   const [filteredSupplies, setFilteredSupplies] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
   const [filterMode, setFilterMode] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const [showAddModal, setShowAddModal] = useState(false)
@@ -36,29 +46,55 @@ function ManagerSuppliesPage() {
     minQuantity: '',
   })
   const [minValue, setMinValue] = useState('')
+  const normalizedSearchTerm = useMemo(() => normalizeSupplySearchKeyword(searchTerm), [searchTerm])
 
-  const fetchSupplies = useCallback(async () => {
-    setIsLoading(true)
-    setErrorMessage('')
+  const fetchSupplies = useCallback(
+    async (keyword = '', { fullPage = true } = {}) => {
+      const requestId = supplySearchRequestIdRef.current + 1
+      supplySearchRequestIdRef.current = requestId
 
-    try {
-      // Gọi API lấy danh sách vật tư: GET /api/ReliefItem?category={category} hoặc GET /api/ReliefItem
-      // Return: Danh sách supply với field supplyId, name, category, quantity, unit, minQuantity, etc.
-      // FE dùng để render bảng, filter, search, cảnh báo low stock
-      const data = await managerService.getSupplies()
-      setSupplies(data)
-      setFilteredSupplies(data)
-    } catch (error) {
-
-      setErrorMessage(managerService.getErrorMessage(error))
-
-      if (error?.response?.status === 401) {
-        navigate('/login', { replace: true })
+      if (fullPage) {
+        setIsLoading(true)
       }
-    } finally {
-      setIsLoading(false)
-    }
-  }, [navigate])
+      setErrorMessage('')
+
+      try {
+        // Search danh sách vật tư theo itemName khi có keyword,
+        // còn lại vẫn dùng endpoint ReliefItem chuẩn để lấy toàn bộ bảng.
+        const data = await managerService.getSupplies(
+          keyword
+            ? {
+                searchBy: 'itemName',
+                keyword,
+              }
+            : undefined,
+        )
+
+        if (requestId !== supplySearchRequestIdRef.current) {
+          return
+        }
+
+        setSupplies(data)
+        setFilteredSupplies(data)
+      } catch (error) {
+        if (requestId !== supplySearchRequestIdRef.current) {
+          return
+        }
+
+        setErrorMessage(managerService.getErrorMessage(error))
+
+        if (error?.response?.status === 401) {
+          navigate('/login', { replace: true })
+        }
+      } finally {
+        if (fullPage && requestId === supplySearchRequestIdRef.current) {
+          hasLoadedSuppliesRef.current = true
+          setIsLoading(false)
+        }
+      }
+    },
+    [navigate],
+  )
 
   useEffect(() => {
     if (!authService.isAuthenticated()) {
@@ -74,9 +110,7 @@ function ManagerSuppliesPage() {
     } else {
       setFilterMode('')
     }
-
-    fetchSupplies()
-  }, [fetchSupplies, location.search, navigate])
+  }, [location.search, navigate])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -89,6 +123,28 @@ function ManagerSuppliesPage() {
   }, [])
 
   useEffect(() => {
+    const normalizedKeyword = normalizedSearchTerm.trim()
+    const timeoutId = window.setTimeout(
+      () => {
+        setDebouncedSearchTerm(normalizedKeyword)
+      },
+      normalizedKeyword ? SUPPLY_ITEM_SEARCH_DEBOUNCE_MS : 0,
+    )
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [normalizedSearchTerm])
+
+  useEffect(() => {
+    if (!authService.isAuthenticated()) {
+      return
+    }
+
+    fetchSupplies(debouncedSearchTerm, { fullPage: !hasLoadedSuppliesRef.current })
+  }, [debouncedSearchTerm, fetchSupplies])
+
+  useEffect(() => {
     let filtered = supplies
 
     if (filterMode === 'lowStock') {
@@ -97,17 +153,8 @@ function ManagerSuppliesPage() {
       filtered = filtered.filter((supply) => supply.quantity > supply.minQuantity)
     }
 
-    if (searchTerm.trim()) {
-      const term = searchTerm.toLowerCase()
-      filtered = filtered.filter(
-        (supply) =>
-          supply.name?.toLowerCase().includes(term)
-          || supply.type?.toLowerCase().includes(term),
-      )
-    }
-
     setFilteredSupplies(filtered)
-  }, [filterMode, searchTerm, supplies])
+  }, [filterMode, supplies])
 
   const handleBack = () => {
     navigate('/manager')
@@ -166,7 +213,7 @@ function ManagerSuppliesPage() {
       })
       alert('Cập nhật mức tối thiểu thành công!')
       setShowSetMinModal(false)
-      fetchSupplies()
+      fetchSupplies(debouncedSearchTerm, { fullPage: false })
     } catch (error) {
       alert(`Lỗi: ${managerService.getErrorMessage(error)}`)
     }
@@ -184,7 +231,7 @@ function ManagerSuppliesPage() {
       // Return: Success message
       await managerService.deleteSupply(supplyId)
       alert('Xóa vật tư thành công!')
-      fetchSupplies()
+      fetchSupplies(debouncedSearchTerm, { fullPage: false })
     } catch (error) {
       alert(`Lỗi: ${managerService.getErrorMessage(error)}`)
     }
@@ -205,7 +252,7 @@ function ManagerSuppliesPage() {
       })
       alert('Thêm vật tư thành công!')
       setShowAddModal(false)
-      fetchSupplies()
+      fetchSupplies(debouncedSearchTerm, { fullPage: false })
     } catch (error) {
       alert(`Lỗi: ${managerService.getErrorMessage(error)}`)
     }
@@ -226,7 +273,7 @@ function ManagerSuppliesPage() {
       })
       alert('Cập nhật vật tư thành công!')
       setShowEditModal(false)
-      fetchSupplies()
+      fetchSupplies(debouncedSearchTerm, { fullPage: false })
     } catch (error) {
       alert(`Lỗi: ${managerService.getErrorMessage(error)}`)
     }
@@ -278,9 +325,9 @@ function ManagerSuppliesPage() {
             <MagnifyingGlassIcon className="icon" />
             <input
               type="text"
-              placeholder="Tìm kiếm theo tên, loại vật tư..."
+              placeholder="Tìm theo tên vật tư"
               value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
+              onChange={(event) => setSearchTerm(normalizeSupplySearchKeyword(event.target.value))}
             />
           </div>
 

@@ -1,10 +1,19 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import { useNavigate } from 'react-router-dom'
 import AdminLayout from '../components/AdminLayout'
 import authService from '../services/authService'
 import adminService from '../services/adminService'
-import { HOME_ROUTE_BY_ROLE, ROLE_ORDER, formatDateTimeVN, normalizeRole, normalizeText } from './adminShared'
+import { HOME_ROUTE_BY_ROLE, ROLE_ORDER, formatDateTimeVN, normalizeRole } from './adminShared'
+
+const USER_PHONE_SEARCH_DEBOUNCE_MS = 350
+const PHONE_SEARCH_MAX_LENGTH = 11
+
+const normalizePhoneSearchKeyword = (value) =>
+  String(value ?? '')
+    .replace(/\D/g, '')
+    .slice(0, PHONE_SEARCH_MAX_LENGTH)
+    .trim()
 
 /*
   AdminUsersPage là màn quản lý người dùng của admin.
@@ -14,11 +23,14 @@ import { HOME_ROUTE_BY_ROLE, ROLE_ORDER, formatDateTimeVN, normalizeRole, normal
 // Page admin user management: tải user + role, cho đổi role và khóa/mở khóa ngay trên bảng.
 function AdminUsersPage() {
   const navigate = useNavigate()
+  const hasLoadedOnceRef = useRef(false)
+  const userSearchRequestIdRef = useRef(0)
   const [currentUser] = useState(() => authService.getUserInfo())
   const [users, setUsers] = useState([])
   const [roles, setRoles] = useState([])
   const [draftRoles, setDraftRoles] = useState({})
   const [userSearchTerm, setUserSearchTerm] = useState('')
+  const [debouncedUserSearchTerm, setDebouncedUserSearchTerm] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [updatingRoleUserId, setUpdatingRoleUserId] = useState(null)
   const [updatingStatusUserId, setUpdatingStatusUserId] = useState(null)
@@ -30,6 +42,10 @@ function AdminUsersPage() {
   const hasAdminAccess = isAuthenticated && roleKey === 'ADMIN'
   const currentUserId = Number(currentUser?.userId)
   const fallbackHomeRoute = HOME_ROUTE_BY_ROLE[roleKey] || '/'
+  const normalizedUserSearchTerm = useMemo(
+    () => normalizePhoneSearchKeyword(userSearchTerm),
+    [userSearchTerm],
+  )
 
   const handleUnauthorized = useCallback(
     (error) => {
@@ -46,15 +62,28 @@ function AdminUsersPage() {
 
   // Tải đồng thời danh sách user và danh sách role để dropdown role render đúng ngay lần đầu.
   const loadUsers = useCallback(
-    async ({ silent = false } = {}) => {
+    async ({ silent = false, phoneKeyword = '' } = {}) => {
+      const requestId = userSearchRequestIdRef.current + 1
+      userSearchRequestIdRef.current = requestId
+
       if (!silent) {
         setIsLoading(true)
-        setErrorMessage('')
       }
+      setErrorMessage('')
 
       try {
         // Cần cả danh sách user lẫn role để dropdown role render đúng ngay lần đầu.
-        const [userItems, roleItems] = await Promise.all([adminService.getUsers(), adminService.getRoles()])
+        const [userItems, roleItems] = await Promise.all([
+          adminService.getUsers(
+            phoneKeyword
+              ? {
+                  searchBy: 'phone',
+                  keyword: phoneKeyword,
+                }
+              : undefined,
+          ),
+          adminService.getRoles(),
+        ])
         const availableRoles =
           roleItems.length > 0
             ? roleItems
@@ -62,6 +91,10 @@ function AdminUsersPage() {
                 value: role,
                 label: adminService.getRoleLabel(role),
               }))
+
+        if (requestId !== userSearchRequestIdRef.current) {
+          return
+        }
 
         setUsers(userItems)
         setRoles(availableRoles)
@@ -76,11 +109,17 @@ function AdminUsersPage() {
           return
         }
 
+        if (requestId !== userSearchRequestIdRef.current) {
+          return
+        }
+
         setErrorMessage(adminService.getErrorMessage(error))
       } finally {
-        if (!silent) {
+        if (!silent && requestId === userSearchRequestIdRef.current) {
           setIsLoading(false)
         }
+
+        hasLoadedOnceRef.current = true
       }
     },
     [handleUnauthorized],
@@ -96,8 +135,24 @@ function AdminUsersPage() {
       return
     }
 
-    loadUsers()
-  }, [hasAdminAccess, isAuthenticated, loadUsers, navigate])
+    const timeoutId = window.setTimeout(
+      () => {
+        loadUsers({
+          silent: hasLoadedOnceRef.current,
+          phoneKeyword: debouncedUserSearchTerm,
+        })
+      },
+      debouncedUserSearchTerm ? USER_PHONE_SEARCH_DEBOUNCE_MS : 0,
+    )
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [debouncedUserSearchTerm, hasAdminAccess, isAuthenticated, loadUsers, navigate])
+
+  useEffect(() => {
+    setDebouncedUserSearchTerm(normalizedUserSearchTerm)
+  }, [normalizedUserSearchTerm])
 
   useEffect(() => {
     if (!successMessage) {
@@ -114,25 +169,8 @@ function AdminUsersPage() {
   }, [successMessage])
 
   const displayedUsers = useMemo(() => {
-    const keyword = normalizeText(userSearchTerm)
-    if (!keyword) {
-      return users
-    }
-
-    return users.filter((user) => {
-      const haystack = [
-        user.userId,
-        user.username,
-        user.fullName,
-        user.phone,
-        user.email,
-        user.role,
-        adminService.getRoleLabel(user.role),
-      ].join(' ')
-
-      return normalizeText(haystack).includes(keyword)
-    })
-  }, [userSearchTerm, users])
+    return users
+  }, [users])
 
   const handleLogout = () => {
     authService.logout()
@@ -165,7 +203,7 @@ function AdminUsersPage() {
       // Lưu ý: Không cho thay đổi role của admin khác, không cho tự sửa role bản thân
       const result = await adminService.updateUserRole(user.userId, nextRole)
       setSuccessMessage(result?.message || `Đã cập nhật vai trò cho ${user.username}.`)
-      await loadUsers({ silent: true })
+      await loadUsers({ silent: true, phoneKeyword: normalizedUserSearchTerm })
     } catch (error) {
       if (handleUnauthorized(error)) {
         return
@@ -200,7 +238,7 @@ function AdminUsersPage() {
       // User không được login nếu account bị vô hiệu hóa
       const result = await adminService.updateUserStatus(user.userId, nextIsActive)
       setSuccessMessage(result?.message || 'Đã cập nhật trạng thái tài khoản.')
-      await loadUsers({ silent: true })
+      await loadUsers({ silent: true, phoneKeyword: normalizedUserSearchTerm })
     } catch (error) {
       if (handleUnauthorized(error)) {
         return
@@ -262,8 +300,10 @@ function AdminUsersPage() {
               id="admin-user-search"
               type="text"
               value={userSearchTerm}
-              onChange={(event) => setUserSearchTerm(event.target.value)}
-              placeholder="Tìm theo mã, tài khoản, họ tên, email, số điện thoại..."
+              onChange={(event) => setUserSearchTerm(normalizePhoneSearchKeyword(event.target.value))}
+              {...{ placeholder: 'Tìm theo số điện thoại' }}
+              placeholder="Tìm theo số điện thoại"
+              inputMode="numeric"
             />
           </label>
         </div>

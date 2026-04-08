@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeftIcon,
@@ -17,11 +17,24 @@ import api from '../services/api'
 import './ManagerImportReceiptPage.css'
 
 const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value, key)
+const SUPPLY_ITEM_SEARCH_DEBOUNCE_MS = 350
 
 const toFiniteNumber = (value) => {
   const numeric = Number(value)
   return Number.isFinite(numeric) ? numeric : null
 }
+
+const normalizeSupplySearchKeyword = (value) =>
+  String(value ?? '')
+    .replace(/[^\p{L}\s]/gu, '')
+    .replace(/\s{2,}/g, ' ')
+
+const normalizeSupplyOption = (item) => ({
+  id: item?.supplyId ?? item?.id,
+  name: String(item?.name ?? '').trim() || 'Khong ro ten',
+  type: String(item?.type ?? item?.categoryName ?? '').trim() || '-',
+  unit: String(item?.unit ?? '').trim() || 'cai',
+})
 
 const resolveRecipientGridColumns = (count) => {
   const total = Math.max(1, Number(count) || 0)
@@ -58,10 +71,14 @@ function ManagerImportReceiptPage() {
   
   // Data from API
   const [supplies, setSupplies] = useState([])
+  const [supplyLookup, setSupplyLookup] = useState({})
   const [categories, setCategories] = useState([])
   const [sourceOptions, setSourceOptions] = useState([])
   const [supplySearchTerm, setSupplySearchTerm] = useState('')
+  const [debouncedSupplySearchTerm, setDebouncedSupplySearchTerm] = useState('')
   const [showScrollTop, setShowScrollTop] = useState(false)
+  const hasLoadedInitialDataRef = useRef(false)
+  const supplySearchRequestIdRef = useRef(0)
   
   // Form data
   const [selectedSourceId, setSelectedSourceId] = useState('')
@@ -69,6 +86,60 @@ function ManagerImportReceiptPage() {
   
   // Validation
   const [supplyValidationMap, setSupplyValidationMap] = useState({})
+
+  const syncSupplyLookup = useCallback((items) => {
+    setSupplyLookup((previousLookup) => {
+      const nextLookup = { ...previousLookup }
+
+      items.forEach((item) => {
+        if (item?.id !== null && item?.id !== undefined && item?.id !== '') {
+          nextLookup[String(item.id)] = item
+        }
+      })
+
+      return nextLookup
+    })
+  }, [])
+
+  const loadSupplies = useCallback(
+    async (keyword = '') => {
+      const requestId = supplySearchRequestIdRef.current + 1
+      supplySearchRequestIdRef.current = requestId
+
+      try {
+        const supplyItems = await managerService.getSupplies(
+          keyword
+            ? {
+                searchBy: 'itemName',
+                keyword,
+              }
+            : undefined,
+        )
+        const normalizedSupplies = supplyItems
+          .map(normalizeSupplyOption)
+          .filter((item) => item.id)
+
+        if (requestId !== supplySearchRequestIdRef.current) {
+          return
+        }
+
+        setSupplies(normalizedSupplies)
+        syncSupplyLookup(normalizedSupplies)
+      } catch (error) {
+        if (requestId !== supplySearchRequestIdRef.current) {
+          return
+        }
+
+        if (error?.response?.status === 401) {
+          navigate('/login', { replace: true })
+          return
+        }
+
+        setErrorMessage('Khong the tai danh sach vat tu tu he thong. Vui long thu lai.')
+      }
+    },
+    [navigate, syncSupplyLookup],
+  )
 
   // Fetch danh sách vật tư và categories
   const fetchPageData = useCallback(async () => {
@@ -94,6 +165,7 @@ function ManagerImportReceiptPage() {
           .filter((item) => item.id)
       }
       setSupplies(normalizedSupplies)
+      syncSupplyLookup(normalizedSupplies)
 
       // Categories
       if (categoriesResult.status === 'fulfilled' && Array.isArray(categoriesResult.value)) {
@@ -132,9 +204,10 @@ function ManagerImportReceiptPage() {
 
       setErrorMessage('Không thể tải dữ liệu. Vui lòng thử lại.')
     } finally {
+      hasLoadedInitialDataRef.current = true
       setIsLoading(false)
     }
-  }, [])
+  }, [syncSupplyLookup])
 
   useEffect(() => {
     if (!authService.isAuthenticated()) {
@@ -153,6 +226,28 @@ function ManagerImportReceiptPage() {
   }, [fetchPageData, navigate])
 
   useEffect(() => {
+    const normalizedKeyword = normalizeSupplySearchKeyword(supplySearchTerm).trim()
+    const timeoutId = window.setTimeout(
+      () => {
+        setDebouncedSupplySearchTerm(normalizedKeyword)
+      },
+      normalizedKeyword ? SUPPLY_ITEM_SEARCH_DEBOUNCE_MS : 0,
+    )
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [supplySearchTerm])
+
+  useEffect(() => {
+    if (!hasLoadedInitialDataRef.current) {
+      return
+    }
+
+    loadSupplies(debouncedSupplySearchTerm)
+  }, [debouncedSupplySearchTerm, loadSupplies])
+
+  useEffect(() => {
     const handleScroll = () => {
       setShowScrollTop(window.scrollY > 420)
     }
@@ -165,27 +260,26 @@ function ManagerImportReceiptPage() {
   // Selected supply items with quantity
   const selectedSupplyItems = useMemo(
     () =>
-      supplies
-        .filter((supply) => hasOwn(supplyQuantities, String(supply.id)))
-        .map((supply) => ({
-          ...supply,
-          rawQuantity: supplyQuantities[String(supply.id)],
-          parsedQuantity: toFiniteNumber(supplyQuantities[String(supply.id)]),
-        })),
-    [supplies, supplyQuantities],
+      Object.keys(supplyQuantities)
+        .map((supplyId) => {
+          const supply = supplyLookup[String(supplyId)]
+          if (!supply) {
+            return null
+          }
+
+          return {
+            ...supply,
+            rawQuantity: supplyQuantities[String(supply.id)],
+            parsedQuantity: toFiniteNumber(supplyQuantities[String(supply.id)]),
+          }
+        })
+        .filter(Boolean),
+    [supplyLookup, supplyQuantities],
   )
 
   const filteredSupplies = useMemo(() => {
-    const keyword = String(supplySearchTerm ?? '').trim().toLowerCase()
-    if (!keyword) {
-      return supplies
-    }
-
-    return supplies.filter((supply) => {
-      const haystack = [supply.name, supply.type, supply.unit].join(' ').toLowerCase()
-      return haystack.includes(keyword)
-    })
-  }, [supplies, supplySearchTerm])
+    return supplies
+  }, [supplies])
 
   // Total quantity
   const totalQuantity = useMemo(() => {
@@ -438,8 +532,8 @@ function ManagerImportReceiptPage() {
                     id="manager-import-supply-search"
                     type="text"
                     value={supplySearchTerm}
-                    onChange={(event) => setSupplySearchTerm(event.target.value)}
-                    placeholder="Tìm vật tư..."
+                    onChange={(event) => setSupplySearchTerm(normalizeSupplySearchKeyword(event.target.value))}
+                    placeholder="Tìm theo tên vật tư"
                   />
                 </label>
               </div>

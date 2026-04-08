@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeftOnRectangleIcon,
+  MagnifyingGlassIcon,
   UserCircleIcon,
 } from '@heroicons/react/24/outline'
 import { BsIncognito } from 'react-icons/bs'
@@ -54,12 +55,21 @@ const ROLE_LABEL_MAP = {
   CITIZEN: 'Công dân',
 }
 
+const REQUEST_PHONE_SEARCH_DEBOUNCE_MS = 350
+const PHONE_SEARCH_MAX_LENGTH = 11
+
 const normalizeIdText = (value) => {
   if (value === null || value === undefined || value === '') {
     return ''
   }
   return String(value).trim()
 }
+
+const normalizePhoneSearchKeyword = (value) =>
+  String(value ?? '')
+    .replace(/\D/g, '')
+    .slice(0, PHONE_SEARCH_MAX_LENGTH)
+    .trim()
 
 const normalizeVehicleIdList = (value) => {
   if (Array.isArray(value)) {
@@ -302,7 +312,7 @@ const buildApiMessage = (error) => {
   return data?.message || data?.error || data?.title || 'Có lỗi xảy ra, vui lòng thử lại.'
 }
 
-function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }) {
+function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '', externalPhoneSearch = '' }) {
   const navigate = useNavigate()
   const normalizedExternalStatus = useMemo(() => {
     const raw = String(externalStatusFilter ?? '')
@@ -317,6 +327,8 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
   const [vehicles, setVehicles] = useState([])
 
   const [statusFilter, setStatusFilter] = useState(normalizedExternalStatus)
+  const [requestPhoneSearch, setRequestPhoneSearch] = useState('')
+  const [debouncedRequestPhoneSearch, setDebouncedRequestPhoneSearch] = useState('')
   const [isListLoading, setIsListLoading] = useState(false)
   const [actionLoadingMap, setActionLoadingMap] = useState({})
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false)
@@ -334,6 +346,10 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
   const userMenuRef = useRef(null)
   const tableScrollRef = useRef(null)
   const roleLabel = ROLE_LABEL_MAP[String(currentUser?.role ?? '').toUpperCase()] || currentUser?.role || '-'
+  const normalizedRequestPhoneSearch = useMemo(
+    () => normalizePhoneSearchKeyword(embedded ? externalPhoneSearch : requestPhoneSearch),
+    [embedded, externalPhoneSearch, requestPhoneSearch],
+  )
 
   const setActionLoading = (requestId, actionName, value) => {
     const key = `${requestId}:${actionName}`
@@ -385,7 +401,11 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
     setIsListLoading(true)
     setErrorMessage('')
     try {
-      const data = await coordinatorService.getRescueRequests('')
+      const data = await coordinatorService.getRescueRequests({
+        status: statusFilter,
+        searchBy: debouncedRequestPhoneSearch ? 'phone' : '',
+        keyword: debouncedRequestPhoneSearch,
+      })
       // Chuẩn hóa response tại đây để table và modal chỉ dùng một shape dữ liệu thống nhất.
       const normalizedRequests = data.map(normalizeRequest)
       setRequests(normalizedRequests)
@@ -405,7 +425,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
     } finally {
       setIsListLoading(false)
     }
-  }, [handleApiError])
+  }, [debouncedRequestPhoneSearch, handleApiError, statusFilter])
 
   // Tải danh sách đội và xe để modal assign có sẵn option.
   const fetchOptionData = useCallback(async () => {
@@ -461,6 +481,27 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
   }, [normalizedExternalStatus, statusFilter])
 
   useEffect(() => {
+    if (!embedded) {
+      return
+    }
+
+    setRequestPhoneSearch(normalizePhoneSearchKeyword(externalPhoneSearch))
+  }, [embedded, externalPhoneSearch])
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(
+      () => {
+        setDebouncedRequestPhoneSearch(normalizedRequestPhoneSearch)
+      },
+      normalizedRequestPhoneSearch ? REQUEST_PHONE_SEARCH_DEBOUNCE_MS : 0,
+    )
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [normalizedRequestPhoneSearch])
+
+  useEffect(() => {
     const handleOutsideClick = (event) => {
       const clickedUserMenu = userMenuRef.current?.contains(event.target)
 
@@ -490,6 +531,19 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
 
     const sorted = [...filtered]
     sorted.sort((a, b) => {
+      const requestIdA = Number(a.request_id)
+      const requestIdB = Number(b.request_id)
+      const hasRequestIdA = Number.isFinite(requestIdA)
+      const hasRequestIdB = Number.isFinite(requestIdB)
+
+      if (hasRequestIdA && hasRequestIdB && requestIdA !== requestIdB) {
+        return requestIdB - requestIdA
+      }
+
+      if (hasRequestIdA !== hasRequestIdB) {
+        return hasRequestIdA ? -1 : 1
+      }
+
       const dateA = new Date(a.created_at).getTime()
       const dateB = new Date(b.created_at).getTime()
       return dateB - dateA
@@ -855,6 +909,25 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '' }
 
   const requestTableSection = (
     <section className="coordinator-table-container">
+      {!embedded && (
+        <div className="coordinator-toolbar">
+          <label className="coordinator-search-box" htmlFor="coordinator-request-phone-search">
+            <span className="coordinator-search-label">Tìm theo số điện thoại</span>
+            <div className="coordinator-search-input-wrap">
+              <MagnifyingGlassIcon className="coordinator-search-icon" />
+              <input
+                id="coordinator-request-phone-search"
+                type="text"
+                value={requestPhoneSearch}
+                onChange={(event) => setRequestPhoneSearch(normalizePhoneSearchKeyword(event.target.value))}
+                placeholder="Nhập số điện thoại người gửi"
+                inputMode="numeric"
+              />
+            </div>
+          </label>
+        </div>
+      )}
+
       <div ref={tableScrollRef} className="coordinator-table-scroll">
         <table className="coordinator-table">
           <thead>
