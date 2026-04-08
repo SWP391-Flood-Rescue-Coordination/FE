@@ -125,6 +125,7 @@ const normalizeVehicle = (vehicle) => ({
 
 const TEAM_MANAGEMENT_BASE = '/admin/rescue-teams'
 
+// Chuẩn hóa payload rescue team để form create/edit chỉ cần truyền raw form state.
 const buildRescueTeamPayload = (teamData) => {
   const payload = {}
   const nameValue = toNullableText(teamData?.teamName ?? teamData?.name)
@@ -242,12 +243,29 @@ const buildVehiclePayload = (vehicleData, { isCreate = false, originalStatus = '
 
 const adminService = {
   // Nhóm 1: user/role management cho AdminUsersPage.
-  getUsers: async (userId = null) => {
+  getUsers: async (options = {}) => {
+    // Hỗ trợ load toàn bộ user hoặc search đúng 1 field theo README_ADMIN_API.
+    // Có thể gọi theo kiểu cũ getUsers(userId) hoặc kiểu mới bằng object query.
     // Lấy danh sách người dùng hoặc người dùng cụ thể theo ID
     // Input: userId (optional) - ID người dùng cần tìm
     // Output: Mảng user với thông tin id, name, email, role, status
     // Lỗi: 401 (hết phiên), 403 (không quyền), 500 (lỗi server)
-    const params = userId ? { userId: Number(userId) } : undefined
+    const normalizedOptions =
+      options !== null && typeof options === 'object' && !Array.isArray(options) ? options : { userId: options }
+    const { userId = null, searchBy = '', keyword = '' } = normalizedOptions
+
+    const params = {}
+    const numericUserId = toNullableNumber(userId)
+    const normalizedSearchBy = String(searchBy ?? '').trim()
+    const normalizedKeyword = String(keyword ?? '').trim()
+
+    if (numericUserId !== null) {
+      params.searchBy = 'userId'
+      params.keyword = String(numericUserId)
+    } else if (normalizedSearchBy && normalizedKeyword) {
+      params.searchBy = normalizedSearchBy
+      params.keyword = normalizedKeyword
+    }
     const response = await api.get(`${ADMIN_BASE}`, { params })
     return normalizeArray(unwrapApiData(response))
   },
@@ -290,17 +308,21 @@ const adminService = {
     return normalizeArray(unwrapApiData(response))
   },
 
+  // Nhóm rescue team management dùng cho trang /admin/rescue-teams.
+  // API list trả dữ liệu gọn để render bảng tổng quan.
   getRescueTeamManagementList: async () => {
     const response = await api.get(TEAM_MANAGEMENT_BASE)
     return normalizeArray(unwrapApiData(response))
   },
 
+  // Detail trả full member/leader/location để modal xem chi tiết và chỉnh sửa dùng chung.
   getRescueTeamDetail: async (teamId) => {
     const response = await api.get(`${TEAM_MANAGEMENT_BASE}/${teamId}`)
     return unwrapApiData(response)
   },
 
   createRescueTeam: async (teamData) => {
+    // Tạo đội mới từ form admin với leader, location và danh sách member đã chọn.
     // Táº¡o Ä‘á»™i cá»©u há»™ má»›i
     // Input: teamData - { teamName, status, leaderName, leaderPhone, baseLocation, notes }
     // Output: Response vÃ  data chá»©a Ä‘á»™i
@@ -310,6 +332,7 @@ const adminService = {
   },
 
   updateRescueTeam: async (teamId, teamData) => {
+    // Update dùng chung cho sửa tên đội, trưởng đội, vị trí trụ sở và thành viên.
     // Cáº­p nháº­t thÃ´ng tin Ä‘á»™i cá»©u há»™
     // Input: teamId, teamData - trÃ¡nh gá»­i dá»¯ liá»‡u rá»“ng
     // Output: Response cáº­p nháº­t
@@ -319,6 +342,7 @@ const adminService = {
   },
 
   deleteRescueTeam: async (teamId) => {
+    // Chỉ xóa được đội chưa tham gia request/operation theo rule backend.
     // XÃ³a Ä‘á»™i cá»©u há»™
     // Input: teamId
     // Output: Response success
@@ -327,6 +351,7 @@ const adminService = {
   },
 
   removeRescueTeamMember: async (teamId, userId) => {
+    // Loại 1 member khỏi đội mà không ảnh hưởng các member còn lại.
     const response = await api.delete(`${TEAM_MANAGEMENT_BASE}/${teamId}/members/${userId}`)
     return response?.data ?? {}
   },

@@ -85,14 +85,26 @@ const toVehicleApiStatusValue = (status) => {
 
 const coordinatorService = {
   // Nhóm 1: tải dữ liệu nền cho dashboard và bảng request.
-  getRescueRequests: async (status = '', priorityLevelId = null) => {
+  getRescueRequests: async (statusOrOptions = '', priorityLevelId = null) => {
+    const options =
+      statusOrOptions !== null && typeof statusOrOptions === 'object' && !Array.isArray(statusOrOptions)
+        ? statusOrOptions
+        : { status: statusOrOptions, priorityLevelId }
+    const { status = '', priorityLevelId: nextPriorityLevelId = null, searchBy = '', keyword = '' } = options
     const params = {}
     const normalizedStatus = toApiStatusValue(status)
     if (normalizedStatus) {
       params.status = normalizedStatus
     }
-    if (priorityLevelId !== null && priorityLevelId !== undefined && priorityLevelId !== '') {
-      params.priorityLevelId = Number(priorityLevelId)
+    if (nextPriorityLevelId !== null && nextPriorityLevelId !== undefined && nextPriorityLevelId !== '') {
+      // README mới ghi priorityId, nhưng FE cũ từng dùng priorityLevelId.
+      // Gửi cả hai để không làm gãy màn hiện tại nếu BE đang bind theo tên cũ.
+      params.priorityId = Number(nextPriorityLevelId)
+      params.priorityLevelId = Number(nextPriorityLevelId)
+    }
+    if (String(searchBy ?? '').trim() && String(keyword ?? '').trim()) {
+      params.searchBy = String(searchBy).trim()
+      params.keyword = String(keyword).trim()
     }
     const response = await api.get(`${REQUEST_BASE}`, { params })
     return normalizeArray(unwrapApiData(response))
