@@ -74,6 +74,7 @@ function RescueTeamDashboard() {
   const [selectedMembers, setSelectedMembers] = useState([]);
   const [selectedVehicles, setSelectedVehicles] = useState([]);
   const [availableVehicles, setAvailableVehicles] = useState([]);
+  const [vehicleLoadError, setVehicleLoadError] = useState(null);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [memberLoading, setMemberLoading] = useState(false);
   const [requests, setRequests] = useState([]);
@@ -246,9 +247,16 @@ function RescueTeamDashboard() {
         try {
           const vehicles = await coordinatorService.getAvailableVehicles();
           setAvailableVehicles(vehicles);
+          setVehicleLoadError(null);
         } catch (err) {
           console.warn('⚠️ Failed to fetch vehicles:', err?.message);
           setAvailableVehicles([]);
+          // Check if it's a 403 Forbidden error
+          if (err?.response?.status === 403 || err?.message?.includes('403')) {
+            setVehicleLoadError('Không thể tải danh sách phương tiện (quyền hạn người dùng không đủ)');
+          } else {
+            setVehicleLoadError('Không thể tải danh sách phương tiện');
+          }
         }
       })();
     }
@@ -320,6 +328,7 @@ function RescueTeamDashboard() {
     setSelectedMembers([]);
     setSelectedVehicles([]);
     setAvailableVehicles([]);
+    setVehicleLoadError(null);
   };
 
   const handleToggleMemberSelection = (memberId) => {
@@ -919,7 +928,11 @@ function RescueTeamDashboard() {
               <label style={{display: 'block', marginBottom: '8px', fontSize: '12px', fontWeight: '600'}}>
                 Phương tiện (tùy chọn):
               </label>
-              {availableVehicles.length === 0 ? (
+              {vehicleLoadError ? (
+                <p style={{fontSize: '12px', color: '#d97706', marginBottom: '8px'}}>
+                  ⚠️ {vehicleLoadError}
+                </p>
+              ) : availableVehicles.length === 0 ? (
                 <p style={{fontSize: '12px', color: '#999'}}>Không có phương tiện khả dụng</p>
               ) : (
                 <div style={{display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '150px', overflowY: 'auto'}}>
