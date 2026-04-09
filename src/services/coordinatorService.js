@@ -136,9 +136,14 @@ const coordinatorService = {
   },
 
   // Nhóm 2: action nghiệp vụ trên từng request trong CoordinatorRequestsPage.
+  getNearestTeams: async (requestId) => {
+    const response = await api.get(`/RescueOperation/requests/${requestId}/nearest-teams`)
+    return normalizeArray(unwrapApiData(response))
+  },
+
   verifyRequest: async (requestId, teamId = null) => {
     let url = `${REQUEST_BASE}/${requestId}/verify`
-    if (teamId) {
+    if (teamId !== null && teamId !== undefined && teamId !== '') {
       url += `?team_id=${teamId}`
     }
     const response = await api.put(url)

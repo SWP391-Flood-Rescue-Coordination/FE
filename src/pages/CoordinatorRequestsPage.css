@@ -490,6 +490,11 @@
   color: #92400e;
 }
 
+.coordinator-status-waitting {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
 .coordinator-status-confirmed {
   background: #dbeafe;
   color: #1e40af;
@@ -731,6 +736,15 @@
 
 .assign-vehicle-table tbody tr:nth-child(even) {
   background: #f8fafc;
+}
+
+.assign-vehicle-table tbody tr {
+  cursor: pointer;
+}
+
+.assign-vehicle-table tbody tr.assign-selected-row,
+.assign-vehicle-table tbody tr.assign-selected-row:nth-child(even) {
+  background: #dbeafe;
 }
 
 .assign-empty {

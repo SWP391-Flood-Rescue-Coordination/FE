@@ -31,6 +31,7 @@ const STATUS_OPTIONS = [
   { value: 'PENDING', label: 'Mới tạo' },
   { value: 'VERIFIED', label: 'Đã xác minh' },
   { value: 'ASSIGNED', label: 'Đã phân công' },
+  { value: 'WAITTING', label: 'Chờ xác nhận' },
   { value: 'COMPLETED', label: 'Hoàn tất' },
   { value: 'CANCELLED', label: 'Hủy' },
   { value: 'DUPLICATE', label: 'Trùng lặp' },
@@ -40,12 +41,12 @@ const STATUS_LABEL_MAP = {
   PENDING: 'Mới tạo',
   VERIFIED: 'Đã xác minh',
   ASSIGNED: 'Đã phân công',
+  WAITTING: 'Chờ xác nhận',
   COMPLETED: 'Hoàn tất',
   CANCELLED: 'Hủy',
   DUPLICATE: 'Trùng lặp',
 }
 
-const ASSIGN_MAX_VEHICLES = 100
 const ASSIGNMENT_CACHE_KEY = 'coordinatorRequestAssignments'
 const ROLE_LABEL_MAP = {
   COORDINATOR: 'Điều phối viên',
@@ -169,10 +170,62 @@ const normalizeRequestStatusKey = (status) => {
   if (status === 'DUPLICATED') {
     return 'DUPLICATE'
   }
+  if (status === 'WAITING') {
+    return 'WAITTING'
+  }
   if (status === 'CONFIRMED') {
     return 'ASSIGNED'
   }
   return status
+}
+
+const extractOperationStatus = (item) => {
+  const directStatus =
+    item.operation_status ??
+    item.operationStatus ??
+    item.rescue_operation_status ??
+    item.rescueOperationStatus ??
+    item.current_operation_status ??
+    item.currentOperationStatus ??
+    item.latest_operation_status ??
+    item.latestOperationStatus ??
+    item.operation?.status ??
+    item.operation?.Status ??
+    item.Operation?.status ??
+    item.Operation?.Status ??
+    item.rescueOperation?.status ??
+    item.rescueOperation?.Status ??
+    item.latestOperation?.status ??
+    item.latestOperation?.Status ??
+    item.currentOperation?.status ??
+    item.currentOperation?.Status ??
+    null
+
+  if (directStatus !== null && directStatus !== undefined && directStatus !== '') {
+    return directStatus
+  }
+
+  const operationCollection = Array.isArray(item.operations)
+    ? item.operations
+    : Array.isArray(item.rescueOperations)
+      ? item.rescueOperations
+      : Array.isArray(item.RescueOperations)
+        ? item.RescueOperations
+        : []
+
+  const latestOperation = operationCollection[0]
+  return latestOperation?.status ?? latestOperation?.Status ?? null
+}
+
+const getDerivedRequestStatus = (request) => {
+  const requestStatus = normalizeRequestStatusKey(getStatusText(request?.status))
+  const operationStatus = normalizeRequestStatusKey(getStatusText(request?.operation_status))
+
+  if (requestStatus === 'ASSIGNED' && operationStatus === 'WAITTING') {
+    return 'WAITTING'
+  }
+
+  return requestStatus
 }
 
 const getPriorityInfo = (priorityLevelId, priorityRaw) => {
@@ -221,11 +274,6 @@ const formatLocation = (latitude, longitude) => {
     return `${latitude}`
   }
   return `${longitude}`
-}
-
-const toNumberIfPossible = (value) => {
-  const numeric = Number(value)
-  return Number.isNaN(numeric) ? value : numeric
 }
 
 const toNullableNumber = (value) => {
@@ -277,6 +325,7 @@ const normalizeRequest = (item) => {
     priority_key: priorityInfo.key,
     priority_label: priorityInfo.label,
     status: normalizeRequestStatusKey(getStatusText(item.status)),
+    operation_status: normalizeRequestStatusKey(getStatusText(extractOperationStatus(item))),
     created_at: item.created_at ?? item.createdAt ?? null,
     updated_at: item.updated_at ?? item.updatedAt ?? null,
     updated_by: item.updated_by ?? item.updatedBy ?? null,
@@ -285,27 +334,28 @@ const normalizeRequest = (item) => {
 }
 
 const normalizeTeam = (item) => ({
-  id: item.rescue_team_id ?? item.rescueTeamId ?? item.team_id ?? item.teamId ?? item.id ?? null,
-  teamId: item.teamId ?? item.team_id ?? item.rescueTeamId ?? item.rescue_team_id ?? item.id ?? null,
-  name: item.team_name ?? item.teamName ?? item.name ?? `Team ${item.id ?? ''}`.trim(),
-  status: getStatusText(item.status),
-  createdAt: item.created_at ?? item.createdAt ?? null,
-})
-
-const normalizeVehicle = (item) => ({
-  id: item.vehicle_id ?? item.vehicleId ?? item.id ?? null,
-  vehicleId: item.vehicleId ?? item.vehicle_id ?? item.id ?? null,
-  name: item.vehicle_name ?? item.vehicleName ?? item.vehicleName ?? item.name ?? '',
-  vehicleCode: item.vehicle_code ?? item.vehicleCode ?? '',
-  vehicleTypeName: item.vehicle_type_name ?? item.vehicleTypeName ?? '',
-  licensePlate: item.plate_number ?? item.licensePlate ?? item.plateNumber ?? '',
-  capacity: item.capacity ?? null,
-  currentLocation: item.current_location ?? item.currentLocation ?? '',
-  updatedAt: item.updated_at ?? item.updatedAt ?? null,
-  status: getStatusText(item.status),
+  id: item.team_id ?? item.teamId ?? item.rescue_team_id ?? item.rescueTeamId ?? item.id ?? null,
+  teamId: item.team_id ?? item.teamId ?? item.rescue_team_id ?? item.rescueTeamId ?? item.id ?? null,
+  name: item.teamName ?? item.team_name ?? item.name ?? `Team ${item.id ?? ''}`.trim(),
+  distanceKm: item.distanceKm ?? item.distance_km ?? item.distance ?? null,
+  freeMemberCount: item.freeMemberCount ?? item.free_member_count ?? item.availableMemberCount ?? item.available_member_count ?? null,
+  distanceNote: item.distanceNote ?? item.distance_note ?? item.note ?? item.notes ?? '',
 })
 
 const getStatusLabel = (status) => STATUS_LABEL_MAP[normalizeRequestStatusKey(status)] || status || '-'
+
+const formatDistanceKm = (value) => {
+  if (value === null || value === undefined || value === '') {
+    return '-'
+  }
+
+  const numericValue = Number(value)
+  if (!Number.isFinite(numericValue)) {
+    return String(value)
+  }
+
+  return `${numericValue.toFixed(2)} km`
+}
 
 const buildApiMessage = (error) => {
   const data = error?.response?.data
@@ -324,7 +374,6 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '', 
 
   const [requests, setRequests] = useState([])
   const [teams, setTeams] = useState([])
-  const [vehicles, setVehicles] = useState([])
 
   const [statusFilter, setStatusFilter] = useState(normalizedExternalStatus)
   const [requestPhoneSearch, setRequestPhoneSearch] = useState('')
@@ -334,8 +383,6 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '', 
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false)
   const [assignTargetRequest, setAssignTargetRequest] = useState(null)
   const [assignTeamId, setAssignTeamId] = useState('')
-  const [assignVehicleIds, setAssignVehicleIds] = useState([])
-  const [assignEstimatedTime, setAssignEstimatedTime] = useState(90)
   const [assignModalError, setAssignModalError] = useState('')
   const [assignmentByRequestId, setAssignmentByRequestId] = useState(() => loadAssignmentCache())
 
@@ -402,7 +449,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '', 
     setErrorMessage('')
     try {
       const data = await coordinatorService.getRescueRequests({
-        status: statusFilter,
+        status: statusFilter === 'WAITTING' ? 'ASSIGNED' : statusFilter,
         searchBy: debouncedRequestPhoneSearch ? 'phone' : '',
         keyword: debouncedRequestPhoneSearch,
       })
@@ -427,52 +474,13 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '', 
     }
   }, [debouncedRequestPhoneSearch, handleApiError, statusFilter])
 
-  // Tải danh sách đội và xe để modal assign có sẵn option.
-  const fetchOptionData = useCallback(async () => {
-    setErrorMessage('')
-    const [teamResult, vehicleResult] = await Promise.allSettled([
-      coordinatorService.getAvailableRescueTeams('AVAILABLE'),
-      coordinatorService.getAvailableVehicles(),
-    ])
-
-    if (teamResult.status === 'fulfilled') {
-      const teamSource = Array.isArray(teamResult.value) ? teamResult.value : []
-      setTeams(
-        teamSource
-          .map(normalizeTeam)
-          .filter((item) => item.id !== null)
-          .filter((item) => !item.status || item.status === 'AVAILABLE'),
-      )
-    } else {
-      handleApiError(teamResult.reason, '', { silent: true })
-      setTeams([])
-    }
-
-    if (vehicleResult.status === 'fulfilled') {
-      const vehicleSource = Array.isArray(vehicleResult.value) ? vehicleResult.value : []
-      setVehicles(
-        vehicleSource
-          .map(normalizeVehicle)
-          .filter((item) => item.id !== null)
-          .filter((item) => !item.status || item.status === 'AVAILABLE'),
-      )
-    } else {
-      handleApiError(vehicleResult.reason, '', { silent: true })
-      setVehicles([])
-    }
-  }, [handleApiError])
-
   const reloadAll = useCallback(async () => {
-    await Promise.all([fetchRequestList(), fetchOptionData()])
-  }, [fetchOptionData, fetchRequestList])
+    await fetchRequestList()
+  }, [fetchRequestList])
 
   useEffect(() => {
     fetchRequestList()
   }, [fetchRequestList])
-
-  useEffect(() => {
-    fetchOptionData()
-  }, [fetchOptionData])
 
   useEffect(() => {
     if (normalizedExternalStatus !== statusFilter) {
@@ -526,7 +534,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '', 
 
   const displayedRequests = useMemo(() => {
     const filtered = statusFilter
-      ? requests.filter((item) => normalizeRequestStatusKey(item.status) === statusFilter)
+      ? requests.filter((item) => getDerivedRequestStatus(item) === statusFilter)
       : requests
 
     const sorted = [...filtered]
@@ -550,36 +558,6 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '', 
     })
     return sorted
   }, [requests, statusFilter])
-
-  // Bước 1 của coordinator: xác thực request vừa gửi lên để chuyển sang trạng thái verified.
-  const handleVerify = async (request) => {
-    const requestId = request.request_id
-    const isPending = request.status === 'PENDING'
-
-    if (!isPending) {
-      return
-    }
-
-    setErrorMessage('')
-    setSuccessMessage('')
-    setActionLoading(requestId, 'verify', true)
-
-    try {
-      // Gọi API xác thực request: PUT /api/RescueRequest/{requestId}/verify
-      // Payload: { status: 'VERIFIED' }
-      // Flow: PENDING → VERIFIED, sau đó coordinator có thể phân công đội
-      await coordinatorService.verifyRequest(requestId)
-      setSuccessMessage(`Xác thực yêu cầu #${requestId} thành công.`)
-      await reloadAll()
-    } catch (error) {
-      const result = handleApiError(error, 'Yêu cầu đã được xử lý bởi người khác.')
-      if (result.shouldReload) {
-        await reloadAll()
-      }
-    } finally {
-      setActionLoading(requestId, 'verify', false)
-    }
-  }
 
   // Đánh dấu request trùng để loại bỏ các yêu cầu lặp khỏi luồng phân công.
   const handleMarkDuplicate = async (request) => {
@@ -611,47 +589,50 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '', 
     }
   }
 
-  // Chỉ request đã verified mới đi tiếp vào modal phân công đội và phương tiện.
-  const openAssignModal = (request) => {
-    if (!request?.request_id || request.status !== 'VERIFIED') {
+  // Pending request sẽ mở popup danh sách đội gần nhất để chọn 1 đội rồi verify kèm team_id.
+  const openAssignModal = async (request) => {
+    const requestId = request?.request_id
+    const isPending = getDerivedRequestStatus(request) === 'PENDING'
+
+    if (!requestId || !isPending) {
       return
     }
 
     setErrorMessage('')
     setSuccessMessage('')
-    setAssignTargetRequest(request)
-    setAssignTeamId('')
-    setAssignVehicleIds([])
-    setAssignEstimatedTime(90)
     setAssignModalError('')
-    setIsAssignModalOpen(true)
+
+    setActionLoading(requestId, 'assign-options', true)
+
+    try {
+      const teamSource = await coordinatorService.getNearestTeams(requestId)
+      setTeams(
+        teamSource
+          .map(normalizeTeam)
+          .filter((item) => item.id !== null),
+      )
+      setAssignTargetRequest(request)
+      setAssignTeamId('')
+      setIsAssignModalOpen(true)
+    } catch (error) {
+      const result = handleApiError(error, 'Không thể tải danh sách đội gần nhất.')
+      if (result.shouldReload) {
+        await reloadAll()
+      }
+    } finally {
+      setActionLoading(requestId, 'assign-options', false)
+    }
   }
 
   const closeAssignModal = () => {
     setIsAssignModalOpen(false)
     setAssignTargetRequest(null)
+    setTeams([])
     setAssignTeamId('')
-    setAssignVehicleIds([])
-    setAssignEstimatedTime(90)
     setAssignModalError('')
   }
 
-  const handleToggleAssignVehicle = (vehicleId) => {
-    const normalizedVehicleId = String(vehicleId)
-    const alreadySelected = assignVehicleIds.includes(normalizedVehicleId)
-
-    if (!alreadySelected && assignVehicleIds.length >= ASSIGN_MAX_VEHICLES) {
-      setAssignModalError('Chỉ có thể chọn tối đa 100 phương tiện cho mỗi yêu cầu.')
-      return
-    }
-
-    setAssignVehicleIds((prev) =>
-      alreadySelected ? prev.filter((item) => item !== normalizedVehicleId) : [...prev, normalizedVehicleId],
-    )
-    setAssignModalError('')
-  }
-
-  // Bước cuối của coordinator: gửi requestId + teamId + vehicleIds lên API assign.
+  // Submit chỉ gọi verify(team_id), không đổi contract API hiện tại.
   const handleAssign = async () => {
     const requestId = assignTargetRequest?.request_id
 
@@ -664,39 +645,20 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '', 
       return
     }
 
-    if (assignVehicleIds.length === 0) {
-      setAssignModalError('Vui lòng chọn ít nhất một phương tiện.')
-      return
-    }
-
-    const parsedEstimatedTime = Number(assignEstimatedTime)
-    if (!Number.isFinite(parsedEstimatedTime) || parsedEstimatedTime <= 0 || !Number.isInteger(parsedEstimatedTime)) {
-      setAssignModalError('Vui lòng nhập thời gian dự kiến hợp lệ.')
-      return
-    }
-
     setAssignModalError('')
     setErrorMessage('')
     setSuccessMessage('')
     setActionLoading(requestId, 'assign', true)
 
     try {
-      // STEP 1: Verify request with team_id (set request.TeamId)
-      console.log('⏳ Verifying request with team...')
       await coordinatorService.verifyRequest(requestId, assignTeamId)
-      console.log('✅ Request verified and assigned to team')
-      
       const selectedTeam = teams.find((team) => String(team.id) === String(assignTeamId))
-      const selectedVehicles = vehicles.filter((vehicle) => assignVehicleIds.includes(String(vehicle.id)))
 
       const assignment = {
         teamId: normalizeIdText(assignTeamId),
         teamName: selectedTeam?.name || '',
-        vehicleIds: normalizeVehicleIdList(assignVehicleIds),
-        vehicleLabels:
-          selectedVehicles
-            .map((vehicle) => vehicle.name || vehicle.vehicleCode || vehicle.licensePlate || '')
-            .filter(Boolean) || [],
+        vehicleIds: [],
+        vehicleLabels: [],
       }
 
       setAssignmentByRequestId((prev) => ({
@@ -706,7 +668,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '', 
 
       setRequests((prev) =>
         prev.map((requestItem) =>
-          requestItem.request_id === requestId ? { ...requestItem, status: 'ASSIGNED', assignment } : requestItem,
+          requestItem.request_id === requestId ? { ...requestItem, status: 'VERIFIED', assignment } : requestItem,
         ),
       )
 
@@ -781,7 +743,6 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '', 
 
   const assignModalRequestId = assignTargetRequest?.request_id ?? null
   const isAssignModalSubmitting = assignModalRequestId ? isActionLoading(assignModalRequestId, 'assign') : false
-  const selectedAssignVehicleIdSet = new Set(assignVehicleIds)
 
   const assignModal = isAssignModalOpen ? (
     <div className="assign-modal-overlay" onClick={closeAssignModal}>
@@ -793,49 +754,9 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '', 
           </button>
         </div>
 
-        <div className="assign-modal-top-grid">
-          <div className="assign-modal-field">
-            <label htmlFor="assign-team">Đội cứu hộ sẵn sàng</label>
-            <select
-              id="assign-team"
-              value={assignTeamId}
-              onChange={(event) => {
-                setAssignTeamId(event.target.value)
-                setAssignModalError('')
-              }}
-              disabled={isAssignModalSubmitting}
-            >
-              <option value="">Chọn đội</option>
-              {teams.map((team) => (
-                <option key={team.id} value={toNumberIfPossible(team.id)}>
-                  {team.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="assign-modal-field">
-            <label htmlFor="assign-estimated-time">Thời gian dự kiến (phút)</label>
-            <input
-              id="assign-estimated-time"
-              type="number"
-              min="1"
-              step="1"
-              value={assignEstimatedTime}
-              onChange={(event) => {
-                setAssignEstimatedTime(event.target.value)
-                setAssignModalError('')
-              }}
-              disabled={isAssignModalSubmitting}
-            />
-          </div>
-        </div>
-
         <div className="assign-vehicle-toolbar">
-          <strong>Danh sách xe sẵn sàng (tối đa {ASSIGN_MAX_VEHICLES})</strong>
-          <span>
-            Đã chọn: {assignVehicleIds.length}/{ASSIGN_MAX_VEHICLES}
-          </span>
+          <strong>Danh sách đội gần nhất</strong>
+          <span>Chỉ được chọn 1 đội</span>
         </div>
 
         <div className="assign-vehicle-table-wrap">
@@ -843,44 +764,54 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '', 
             <thead>
               <tr>
                 <th>Chọn</th>
-                <th>Mã xe</th>
-                <th>Tên xe</th>
-                <th>Biển số</th>
-                <th>Loại xe</th>
-                <th>Sức chứa</th>
-                <th>Trạng thái</th>
+                <th>Tên đội</th>
+                <th>Khoảng cách</th>
+                <th>Số thành viên rảnh</th>
+                <th>Ghi chú</th>
               </tr>
             </thead>
             <tbody>
-              {vehicles.length === 0 && (
+              {teams.length === 0 && (
                 <tr>
-                  <td colSpan="7" className="assign-empty">
-                    Không có xe sẵn sàng để phân công.
+                  <td colSpan="5" className="assign-empty">
+                    Không có đội phù hợp để phân công.
                   </td>
                 </tr>
               )}
 
-              {vehicles.map((vehicle) => {
-                const vehicleIdText = String(vehicle.id)
-                const isChecked = selectedAssignVehicleIdSet.has(vehicleIdText)
-                const disableCheckbox = !isChecked && assignVehicleIds.length >= ASSIGN_MAX_VEHICLES
+              {teams.map((team) => {
+                const teamIdText = String(team.id)
+                const isChecked = String(assignTeamId) === teamIdText
 
                 return (
-                  <tr key={vehicle.id}>
+                  <tr
+                    key={team.id}
+                    className={isChecked ? 'assign-selected-row' : ''}
+                    onClick={() => {
+                      if (isAssignModalSubmitting) {
+                        return
+                      }
+
+                      setAssignTeamId(teamIdText)
+                      setAssignModalError('')
+                    }}
+                  >
                     <td>
                       <input
-                        type="checkbox"
+                        type="radio"
+                        name="assign-nearest-team"
                         checked={isChecked}
-                        onChange={() => handleToggleAssignVehicle(vehicle.id)}
-                        disabled={disableCheckbox || isAssignModalSubmitting}
+                        onChange={() => {
+                          setAssignTeamId(teamIdText)
+                          setAssignModalError('')
+                        }}
+                        disabled={isAssignModalSubmitting}
                       />
                     </td>
-                    <td>{vehicle.vehicleCode || '-'}</td>
-                    <td>{vehicle.name || '-'}</td>
-                    <td>{vehicle.licensePlate || '-'}</td>
-                    <td>{vehicle.vehicleTypeName || '-'}</td>
-                    <td>{vehicle.capacity ?? '-'}</td>
-                    <td>{vehicle.status || '-'}</td>
+                    <td>{team.name || '-'}</td>
+                    <td>{formatDistanceKm(team.distanceKm)}</td>
+                    <td>{team.freeMemberCount ?? '-'}</td>
+                    <td>{team.distanceNote || '-'}</td>
                   </tr>
                 )
               })}
@@ -973,12 +904,11 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '', 
                 const requestId = request.request_id
                 const requestKey = requestId ?? `row-${rowIndex}`
                 const hasValidRequestId = requestId !== null && requestId !== undefined && requestId !== ''
-                const isPending = request.status === 'PENDING'
-                const isVerified = request.status === 'VERIFIED'
+                const displayStatus = getDerivedRequestStatus(request)
+                const isPending = displayStatus === 'PENDING'
                 const isCompletable = request.status === 'ASSIGNED' || request.status === 'IN_PROGRESS'
 
-                const verifyLoading = hasValidRequestId ? isActionLoading(requestId, 'verify') : false
-                const duplicateLoading = hasValidRequestId ? isActionLoading(requestId, 'duplicate') : false
+                const assignOptionsLoading = hasValidRequestId ? isActionLoading(requestId, 'assign-options') : false
                 const assignLoading = hasValidRequestId ? isActionLoading(requestId, 'assign') : false
                 const completeLoading = hasValidRequestId ? isActionLoading(requestId, 'complete') : false
                 const assignmentFromCache = assignmentByRequestId[String(requestId)]
@@ -1025,8 +955,8 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '', 
                       </span>
                     </td>
                     <td>
-                      <span className={`coordinator-status-badge coordinator-status-${request.status.toLowerCase()}`}>
-                        {getStatusLabel(request.status)}
+                      <span className={`coordinator-status-badge coordinator-status-${displayStatus.toLowerCase()}`}>
+                        {getStatusLabel(displayStatus)}
                       </span>
                     </td>
                     <td>{formatDateTimeVN(request.created_at)}</td>
@@ -1050,31 +980,17 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '', 
                       <div className="action-button-stack">
                         <button
                           type="button"
-                          className="action-button verify-button"
-                          onClick={() => handleVerify(request)}
-                          disabled={
-                            !hasValidRequestId ||
-                            !isPending ||
-                            verifyLoading ||
-                            assignLoading ||
-                            completeLoading
-                          }
-                        >
-                          {verifyLoading ? 'Đang xác thực...' : 'Xác thực'}
-                        </button>
-                        <button
-                          type="button"
                           className="action-button assign-button"
                           onClick={() => openAssignModal(request)}
                           disabled={
                             !hasValidRequestId ||
-                            !isVerified ||
+                            !isPending ||
+                            assignOptionsLoading ||
                             assignLoading ||
-                            verifyLoading ||
                             completeLoading
                           }
                         >
-                          {assignLoading ? 'Đang phân công...' : 'Phân công'}
+                          {assignOptionsLoading ? 'Đang tải đội...' : assignLoading ? 'Đang phân công...' : 'Phân công'}
                         </button>
                         <button
                           type="button"
@@ -1084,7 +1000,7 @@ function CoordinatorRequestsPage({ embedded = false, externalStatusFilter = '', 
                             !hasValidRequestId ||
                             !isCompletable ||
                             completeLoading ||
-                            verifyLoading ||
+                            assignOptionsLoading ||
                             assignLoading
                           }
                         >

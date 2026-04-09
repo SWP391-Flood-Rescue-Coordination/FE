@@ -56,6 +56,14 @@ const REQUEST_STATUS_ITEMS = [
     shades: { base: '#fef3c7', high: '#d97706', medium: '#f59e0b', low: '#fcd34d' },
   },
   {
+    key: 'WAITTING',
+    label: 'Chờ xác nhận',
+    icon: ArrowPathIcon,
+    iconClass: 'waitting',
+    barClass: 'waitting',
+    shades: { base: '#dbeafe', high: '#2563eb', medium: '#60a5fa', low: '#93c5fd' },
+  },
+  {
     key: 'COMPLETED',
     label: 'Hoàn tất',
     icon: CheckCircleIcon,
@@ -102,11 +110,64 @@ const normalizeRequestStatusKey = (status) => {
     return 'DUPLICATE'
   }
 
+  if (status === 'WAITING') {
+    return 'WAITTING'
+  }
+
   if (status === 'CONFIRMED') {
     return 'ASSIGNED'
   }
 
   return status
+}
+
+const getOperationStatusKey = (item) => {
+  const directStatus =
+    item.operation_status ??
+    item.operationStatus ??
+    item.rescue_operation_status ??
+    item.rescueOperationStatus ??
+    item.current_operation_status ??
+    item.currentOperationStatus ??
+    item.latest_operation_status ??
+    item.latestOperationStatus ??
+    item.operation?.status ??
+    item.operation?.Status ??
+    item.Operation?.status ??
+    item.Operation?.Status ??
+    item.rescueOperation?.status ??
+    item.rescueOperation?.Status ??
+    item.latestOperation?.status ??
+    item.latestOperation?.Status ??
+    item.currentOperation?.status ??
+    item.currentOperation?.Status ??
+    null
+
+  if (directStatus !== null && directStatus !== undefined && directStatus !== '') {
+    return normalizeRequestStatusKey(normalizeStatus(directStatus))
+  }
+
+  const operationCollection = Array.isArray(item.operations)
+    ? item.operations
+    : Array.isArray(item.rescueOperations)
+      ? item.rescueOperations
+      : Array.isArray(item.RescueOperations)
+        ? item.RescueOperations
+        : []
+
+  const latestOperation = operationCollection[0]
+  return normalizeRequestStatusKey(normalizeStatus(latestOperation?.status ?? latestOperation?.Status ?? ''))
+}
+
+const getDashboardStatusKey = (item) => {
+  const requestStatus = normalizeRequestStatusKey(normalizeStatus(item.status))
+  const operationStatus = getOperationStatusKey(item)
+
+  if (requestStatus === 'ASSIGNED' && operationStatus === 'WAITTING') {
+    return 'WAITTING'
+  }
+
+  return requestStatus
 }
 
 const ROLE_LABEL_MAP = {
@@ -141,7 +202,7 @@ const createInitialStatusSummary = () =>
 const buildRequestStatusSummary = (requestItems) => {
   const summary = createInitialStatusSummary()
   requestItems.forEach((item) => {
-    const status = normalizeRequestStatusKey(normalizeStatus(item.status))
+    const status = getDashboardStatusKey(item)
     if (summary[status] !== undefined) {
       summary[status] += 1
     }
