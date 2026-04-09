@@ -238,14 +238,35 @@ const rescueTeamService = {
     }
   },
 
+  confirmMyTask: async () => {
+    // Member xác nhận hoàn tất nhiệm vụ được giao
+    // PUT /rescue-team/my-assignment/confirm không cần params (lấy UserId từ Token)
+    try {
+      const response = await api.put(`/rescue-team/my-assignment/confirm`)
+      return response.data
+    } catch (error) {
+      throw error
+    }
+  },
+
+  setOperationToWaiting: async (operationId) => {
+    // Member chuyển operation sang trạng thái "Waiting" (cần hỗ trợ)
+    // PUT /rescue-team/operations/{operationId}/waiting (member/leader của team có thể gọi)
+    try {
+      const response = await api.put(`/rescue-team/operations/${operationId}/waiting`)
+      return response.data
+    } catch (error) {
+      throw error
+    }
+  },
+
   updateOperationStatus: async (operationId, newStatus) => {
-    // Cập nhật trạng thái của một nhiệm vụ (Assigned -> Completed hoặc Cancelled)
-    // Input: operationId - ID nhiệm vụ, newStatus - trạng thái mới
-    // Output: Response success
-    // Lỗi: 400 (status không hợp lệ), 401 (hết phiên), 403 (không quyền), 404 (không tìm), 409 (conflict - thay đổi bởi người khác), 500 (lỗi)
+    // CÓ LỖI: Endpoint này chỉ cho Leader (xem RescueTeamController.cs line 43-84)
+    // Member phải dùng confirmMyTask() hoặc setOperationToWaiting()
+    // DO NOT USE THIS FROM MEMBER PAGE
     try {
       const response = await api.put(`/rescue-team/operations/${operationId}/status`, {
-        status: newStatus,
+        newStatus: newStatus,
       })
 
       return response.data

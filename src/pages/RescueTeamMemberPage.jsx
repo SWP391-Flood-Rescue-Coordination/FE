@@ -179,6 +179,10 @@ function RescueTeamMemberPage() {
   }
 
   const handleLogout = () => {
+    setShowLogoutConfirm(true)
+  }
+
+  const handleConfirmLogout = () => {
     authService.logout()
     window.location.href = '/login'
   }
@@ -234,18 +238,17 @@ function RescueTeamMemberPage() {
     }
   }
 
-  const handleRequestSupport = async () => {
+  const handleRequestSupport = async (operationId) => {
     setConfirming(true)
     try {
-      await rescueTeamService.requestSupport()
+      // Member chuyển operation sang "Waiting" status khi cần hỗ trợ
+      await rescueTeamService.setOperationToWaiting(operationId)
       setError(null)
-      alert('\u0110\u00e3 \u0067\u1eedi \u0079\u00ea\u0075 \u0063\u1ea7\u0075 \u0068\u1ed7 \u0074\u0072\u1ee3 \u0074\u0068\u00e0\u006e\u0068 \u0063\u00f4\u006e\u0067\u002e')
+      alert('Đã chuyển nhiệm vụ sang trạng thái chờ.')
+      await fetchMyAssignment()
     } catch (err) {
-      const errorMessage =
-        err?.response?.data?.message ||
-        err?.response?.data?.Message ||
-        '\u004b\u0068\u00f4\u006e\u0067 \u0074\u0068\u1ec3 \u0067\u1eedi \u0079\u00ea\u0075 \u0063\u1ea7\u0075 \u0068\u1ed7 \u0074\u0072\u1ee3\u002e \u0056\u0075\u0069 \u006c\u00f2\u006e\u0067 \u0074\u0068\u1eed \u006c\u1ea1\u0069\u002e'
-      setError(`\u004c\u1ed7\u0069: ${errorMessage}`)
+      const errorMessage = rescueTeamService.getUpdateStatusErrorMessage(err)
+      setError(`Lỗi: ${errorMessage}`)
     } finally {
       setConfirming(false)
     }
@@ -274,19 +277,35 @@ function RescueTeamMemberPage() {
     }
   }
 
-  const handleStartTask = (task) => {
-    if (!task) return
-    // Note: Currently no API to mark task as "IN_PROGRESS"
-    // In future, could add an API call here if needed
-    setSelectedTask(task)
-  }
+  const handleFinishTask = async (task, reason) => {
+    if (!task?.operationId) {
+      setError('Không tìm thấy operation để hoàn tất.')
+      return
+    }
 
-  const handleFinishTask = (task, reason) => {
-    // After member confirms task, it will be removed from active tasks
-    // This handler can be adapted if we need intermediate status updates
-    setSelectedTask(null)
-    setShowFinishModal(false)
-    setFinishReason('COMPLETED')
+    setConfirming(true)
+    try {
+      // Member chỉ có thể xác nhận hoàn tất task (không phải update status trực tiếp)
+      // Endpoint: PUT /rescue-team/my-assignment/confirm (không cần operationId)
+      if (reason === 'COMPLETED') {
+        await rescueTeamService.confirmMyTask()
+        setError(null)
+        alert('Hoàn tất nhiệm vụ thành công!')
+        setShowFinishModal(false)
+        setFinishReason('COMPLETED')
+        await fetchMyAssignment()
+        setSelectedTask(null)
+      } else if (reason === 'FAILED') {
+        // TODO: BE chưa có endpoint cho member báo thất bại
+        // Hiện tại chỉ hỗ trợ COMPLETED
+        setError('Tính năng báo thất bại đang được phát triển. Vui lòng liên hệ Đội trưởng.')
+      }
+    } catch (err) {
+      const errorMessage = rescueTeamService.getUpdateStatusErrorMessage(err)
+      setError(`Lỗi: ${errorMessage}`)
+    } finally {
+      setConfirming(false)
+    }
   }
 
   const getStatusInfo = (status) => TASK_STATUS_MAP[normalizeTaskStatus(status)] || TASK_STATUS_MAP['ASSIGNED']
@@ -611,14 +630,24 @@ function RescueTeamMemberPage() {
                               </div>
                             )}
 
-                            {normalizeTaskStatus(task) === 'IN_PROGRESS' && (
+                            {(normalizeTaskStatus(task) === 'IN_PROGRESS' || normalizeTaskStatus(task) === 'WAITING') && (
                               <div className="rtmp-card-actions">
+                                {/* Show WAITING status badge and message */}
+                                {normalizeTaskStatus(task) === 'WAITING' && (
+                                  <div className="rtmp-waiting-notice">
+                                    <ExclamationCircleIcon className="notice-icon" />
+                                    <span>Đang chờ xác nhận từ Trưởng đội cứu hộ</span>
+                                  </div>
+                                )}
+
                                 <button
                                   className="rtmp-btn rtmp-btn-complete"
                                   onClick={() => {
                                     setFinishReason('COMPLETED')
                                     setShowFinishModal(true)
                                   }}
+                                  disabled={normalizeTaskStatus(task) === 'WAITING' || confirming}
+                                  title={normalizeTaskStatus(task) === 'WAITING' ? 'Tính năng này tạm thời không khả dụng khi chờ xác nhận' : ''}
                                 >
                                   <CheckIcon />
                                   Đã Hoàn Tất
@@ -629,9 +658,20 @@ function RescueTeamMemberPage() {
                                     setFinishReason('FAILED')
                                     setShowFinishModal(true)
                                   }}
+                                  disabled={normalizeTaskStatus(task) === 'WAITING' || confirming}
+                                  title={normalizeTaskStatus(task) === 'WAITING' ? 'Tính năng này tạm thời không khả dụng khi chờ xác nhận' : ''}
                                 >
                                   <XMarkIcon />
                                   Thất Bại / Hủy
+                                </button>
+
+                                {/* Support button available during WAITING or IN_PROGRESS */}
+                                <button
+                                  className="rtmp-btn rtmp-btn-support"
+                                  onClick={() => handleRequestSupport()}
+                                  disabled={confirming}
+                                >
+                                  🆘 Yêu Cầu Hỗ Trợ
                                 </button>
                               </div>
                             )}
@@ -750,6 +790,90 @@ function RescueTeamMemberPage() {
                 </div>
               </div>
             </div>
+
+            {/* Action Buttons Footer */}
+            <div className="rtmp-modal-footer">
+              {(['ASSIGNED', 'IN_PROGRESS', 'WAITING'].includes(String(modalTask?.rawStatus ?? '').toUpperCase())) && (
+                <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
+                  {String(modalTask?.rawStatus ?? '').toUpperCase() === 'WAITING' && (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '12px',
+                      background: '#fef3c7',
+                      border: '1px solid #fcd34d',
+                      borderRadius: '6px',
+                      color: '#92400e',
+                      fontSize: '13px',
+                      fontWeight: '600'
+                    }}>
+                      <ExclamationCircleIcon style={{width: '16px', height: '16px', flexShrink: 0}} />
+                      <span>Đang chờ xác nhận từ Trưởng đội cứu hộ</span>
+                    </div>
+                  )}
+
+                  <div style={{display: 'flex', gap: '8px'}}>
+                    <button
+                      className="rtmp-btn rtmp-btn-complete"
+                      onClick={() => {
+                        setSelectedTask(modalTask)
+                        setFinishReason('COMPLETED')
+                        setShowFinishModal(true)
+                        setShowTaskModal(false)
+                      }}
+                      disabled={String(modalTask?.rawStatus ?? '').toUpperCase() === 'WAITING' || confirming}
+                      title={String(modalTask?.rawStatus ?? '').toUpperCase() === 'WAITING' ? 'Tính năng này tạm thời không khả dụng khi chờ xác nhận' : ''}
+                      style={{flex: 1}}
+                    >
+                      <CheckIcon style={{width: '16px', height: '16px'}} />
+                      Đã Hoàn Tất
+                    </button>
+
+                    <button
+                      className="rtmp-btn rtmp-btn-failed"
+                      onClick={() => {
+                        setSelectedTask(modalTask)
+                        setFinishReason('FAILED')
+                        setShowFinishModal(true)
+                        setShowTaskModal(false)
+                      }}
+                      disabled={String(modalTask?.rawStatus ?? '').toUpperCase() === 'WAITING' || confirming}
+                      title={String(modalTask?.rawStatus ?? '').toUpperCase() === 'WAITING' ? 'Tính năng này tạm thời không khả dụng khi chờ xác nhận' : ''}
+                      style={{flex: 1}}
+                    >
+                      <XMarkIcon style={{width: '16px', height: '16px'}} />
+                      Thất Bại / Hủy
+                    </button>
+                  </div>
+
+                  <button
+                    className="rtmp-btn rtmp-btn-support"
+                    onClick={() => {
+                      handleRequestSupport(modalTask?.operationId)
+                      setShowTaskModal(false)
+                    }}
+                    disabled={confirming}
+                    style={{width: '100%'}}
+                  >
+                    🆘 Yêu Cầu Hỗ Trợ
+                  </button>
+                </div>
+              )}
+
+              {!(['ASSIGNED', 'IN_PROGRESS', 'WAITING'].includes(String(modalTask?.rawStatus ?? '').toUpperCase())) && (
+                <div style={{
+                  padding: '12px',
+                  background: '#f3f4f6',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  color: '#6b7280',
+                  textAlign: 'center'
+                }}>
+                  <strong>Trạng thái:</strong> {modalTask?.status} (Không có hành động khả dụng)
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -802,12 +926,11 @@ function RescueTeamMemberPage() {
       )}
 
       {/* Logout Modal */}
-      {showLogoutConfirm && (
-        <LogoutConfirmModal
-          onConfirm={handleLogout}
-          onCancel={() => setShowLogoutConfirm(false)}
-        />
-      )}
+      <LogoutConfirmModal
+        open={showLogoutConfirm}
+        onConfirm={handleConfirmLogout}
+        onCancel={() => setShowLogoutConfirm(false)}
+      />
       </div>
     </div>
   )

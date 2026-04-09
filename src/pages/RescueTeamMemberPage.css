@@ -708,6 +708,48 @@
   background: #e5e7eb;
 }
 
+.rtmp-btn-support {
+  background: #f59e0b;
+  color: #ffffff;
+}
+
+.rtmp-btn-support:hover {
+  background: #d97706;
+}
+
+.rtmp-btn:disabled {
+  background: #d1d5db;
+  color: #9ca3af;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.rtmp-btn:disabled:hover {
+  background: #d1d5db;
+}
+
+/* Waiting Notice */
+.rtmp-waiting-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: 6px;
+  color: #92400e;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  width: 100%;
+}
+
+.rtmp-waiting-notice .notice-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
 /* ===== MODAL ===== */
 .rtmp-modal-overlay {
   position: fixed;
@@ -854,6 +896,19 @@
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+}
+
+.rtmp-modal-footer {
+  padding: 16px;
+  border-top: 1px solid #e5e7eb;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rtmp-modal-footer .rtmp-btn {
+  margin: 0;
 }
 
 .rtmp-modal-content {
