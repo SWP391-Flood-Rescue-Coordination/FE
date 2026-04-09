@@ -427,6 +427,7 @@ const buildCreatePayload = (formData) => {
     AdultCount: adultCount,
     ElderlyCount: elderlyCount,
     ChildrenCount: childrenCount,
+    NumberOfAffectedPeople: totalPeople,
   }
 }
 
@@ -708,7 +709,7 @@ const rescueRequestService = {
       phone: String(phone ?? '').trim(),
     }
     // Guest báo an toàn bằng PUT /RescueRequest/guest/{requestId}/confirm-rescued.
-    // Phải gửi køm số điện thoại để xác nhận là chủ nhân request.
+    // Phải gửi kèm số điện thoại để xác nhận là chủ nhân request.
     // Nếu thành công, FE tự đổi trạng thái cache sang 'Completed'.
     const response = await api.put(`/RescueRequest/guest/${requestId}/confirm-rescued`, payload)
     const result = response?.data ?? {}

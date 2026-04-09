@@ -84,6 +84,45 @@ function RescueTeamDashboard() {
   const userMenuRef = React.useRef(null);
   const roleLabel = ROLE_LABEL_MAP[String(currentUser?.role ?? '').toUpperCase()] || currentUser?.role || '-';
 
+  const handleCompleteWaitingRequest = async (request) => {
+    if (!request?.operationId) {
+      alert('Không tìm thấy operation để hoàn thành.');
+      return;
+    }
+
+    if (normalizeOperationStatus(request.operationRawStatus) !== 'WAITING') {
+      return;
+    }
+
+    if (!window.confirm(`Xác nhận hoàn thành nhiệm vụ #${request.requestId}?`)) {
+      return;
+    }
+
+    const actionKey = `complete-waiting-${request.id}`;
+    setUpdating(true);
+    setUpdatingAction(actionKey);
+
+    try {
+      await rescueTeamService.updateOperationStatus(request.operationId, 'COMPLETED');
+      setError(null);
+      setRequests((prev) =>
+        prev.map((item) =>
+          item.id === request.id
+            ? { ...item, status: 'COMPLETED', operationRawStatus: 'COMPLETED' }
+            : item
+        )
+      );
+      fetchTeamAssignedRequests();
+      alert('Đã hoàn thành nhiệm vụ thành công.');
+    } catch (err) {
+      const errorMessage = rescueTeamService.getUpdateStatusErrorMessage(err);
+      setError(`Lỗi: ${errorMessage}`);
+    } finally {
+      setUpdating(false);
+      setUpdatingAction('');
+    }
+  };
+
   // ============================================
   // Role-based access control
   // ============================================
@@ -180,6 +219,7 @@ function RescueTeamDashboard() {
     
     // Auto-refresh mỗi 30 giây
     const interval = setInterval(() => {
+      fetchTeamMembers();
       fetchTeamAssignedRequests();
     }, 30000);
     
@@ -494,6 +534,7 @@ function RescueTeamDashboard() {
   const REQUEST_STATUS_MAP = {
     PENDING: { label: 'Chờ Chấp Nhận', className: 'status-pending', color: '#f59e0b' },
     ACCEPTED: { label: 'Đã Chấp Nhận', className: 'status-accepted', color: '#10b981' },
+    WAITING: { label: '\u0043h\u1edd \u0058\u00e1c \u004eh\u1eadn', className: 'status-in-progress', color: '#3b82f6' },
     REJECTED: { label: 'Bị Từ Chối', className: 'status-rejected', color: '#ef4444' },
     IN_PROGRESS: { label: 'Đang Thực Hiện', className: 'status-in-progress', color: '#3b82f6' },
     COMPLETED: { label: 'Hoàn Tất', className: 'status-completed', color: '#059669' },
@@ -531,6 +572,18 @@ function RescueTeamDashboard() {
       .map((id) => teamMembers.find((m) => m.id === id)?.name)
       .filter(Boolean)
       .join(', ');
+  };
+
+  const getSupportInfo = (request) => {
+    const memberSupportAt = teamMembers
+      .filter((member) => member.requestId === request.requestId && member.lastSupportRequestedAt)
+      .map((member) => member.lastSupportRequestedAt)
+      .sort((left, right) => new Date(right) - new Date(left))[0];
+
+    return {
+      hasSupport: Boolean(request.hasSupportRequest || memberSupportAt),
+      lastSupportRequestedAt: request.lastSupportRequestedAt || memberSupportAt || null,
+    };
   };
 
   return (
@@ -656,6 +709,7 @@ function RescueTeamDashboard() {
                 <option value="ALL">Tất Cả</option>
                 <option value="PENDING">Chờ Chấp Nhận</option>
                 <option value="ACCEPTED">Đã Chấp Nhận</option>
+                <option value="WAITING">{'\u0043h\u1edd \u0058\u00e1c \u004eh\u1eadn'}</option>
                 <option value="REJECTED">Bị Từ Chối</option>
               </select>
             </div>
@@ -682,6 +736,8 @@ function RescueTeamDashboard() {
               sortedRequests.map((request) => {
                   const statusInfo = getStatusInfo(request.status);
                   const priorityInfo = getPriorityInfo(request.priority);
+                  const operationStatusKey = normalizeOperationStatus(request.operationRawStatus);
+                  const supportInfo = getSupportInfo(request);
                   const isExpanded = expandedRequestId === request.id;
 
                   return (
@@ -721,6 +777,11 @@ function RescueTeamDashboard() {
                         <span style={{fontWeight: '600', textAlign: 'center'}}>#{request.requestId}</span>
                         <span style={{overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#374151'}}>
                           {request.address}
+                          {supportInfo.hasSupport && (
+                            <span style={{marginLeft: '8px', color: '#dc2626', fontWeight: '700'}}>
+                              Hỗ trợ
+                            </span>
+                          )}
                         </span>
                         <span style={{color: '#374151', textAlign: 'center'}}>{request.phone}</span>
                         <span style={{background: '#e5e7eb', padding: '2px 6px', borderRadius: '3px', fontSize: '11px', color: '#374151', textAlign: 'center'}}>
@@ -742,7 +803,7 @@ function RescueTeamDashboard() {
                           )}
                           
                           {/* Action Buttons */}
-                          {(request.status === 'PENDING' || request.status === 'Verified' || request.status === 'ACCEPTED' || request.status === 'Assigned') && (
+                          {(request.status === 'PENDING' || request.status === 'Verified' || request.status === 'ACCEPTED' || request.status === 'Assigned' || operationStatusKey === 'WAITING') && (
                             <div style={{display: 'flex', gap: '6px', marginTop: '12px', flexWrap: 'wrap'}}>
                               {/* Chấp Nhận button - Verified → Assigned */}
                               {(request.status === 'PENDING' || request.status === 'Verified') && (

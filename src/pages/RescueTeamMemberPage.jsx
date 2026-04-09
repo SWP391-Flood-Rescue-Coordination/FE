@@ -45,7 +45,8 @@ const ROLE_LABEL_MAP = {
 
 const TASK_STATUS_MAP = {
   ASSIGNED: { label: 'Được Giao', className: 'status-assigned', color: '#3b82f6' },
-  IN_PROGRESS: { label: 'Đang Thực Hiện', className: 'status-in-progress', color: '#f59e0b' },
+  IN_PROGRESS: { label: '\u0110ang Th\u1ef1c Hi\u1ec7n', className: 'status-in-progress', color: '#f59e0b' },
+  WAITING: { label: '\u0043h\u1edd \u0058\u00e1c \u004eh\u1eadn', className: 'status-in-progress', color: '#f59e0b' },
   COMPLETED: { label: 'Hoàn Tất', className: 'status-completed', color: '#10b981' },
   FAILED: { label: 'Thất Bại', className: 'status-failed', color: '#ef4444' },
 }
@@ -86,14 +87,19 @@ function RescueTeamMemberPage() {
       setLoading(true)
       const assignment = await rescueTeamService.getMyAssignment()
       if (assignment) {
-        setTasks([assignment])  // Only one task per member at a time
+        setTasks([assignment])
+        setSelectedTask((previousValue) => (previousValue?.id === assignment.id ? assignment : previousValue))
+        setModalTask((previousValue) => (previousValue?.id === assignment.id ? assignment : previousValue))
       } else {
         setTasks([])
+        setSelectedTask(null)
+        setModalTask(null)
       }
+      return assignment
     } catch (err) {
-
       const errorMessage = rescueTeamService.getOperationsErrorMessage(err)
       setError(errorMessage)
+      return null
     } finally {
       setLoading(false)
     }
@@ -159,11 +165,11 @@ function RescueTeamMemberPage() {
   }
 
   const getActiveTasks = () => {
-    return tasks.filter((task) => task.rawStatus === 'Assigned')
+    return tasks.filter((task) => !['COMPLETED', 'FAILED', 'CANCELLED', 'CANCELED'].includes(normalizeTaskStatus(task)))
   }
 
   const getCompletedTasks = () => {
-    return tasks.filter((task) => task.rawStatus !== 'Assigned')
+    return tasks.filter((task) => ['COMPLETED', 'FAILED', 'CANCELLED', 'CANCELED'].includes(normalizeTaskStatus(task)))
   }
 
   const displayTasks = filterStatus === 'ACTIVE' ? getActiveTasks() : getCompletedTasks()
@@ -171,6 +177,61 @@ function RescueTeamMemberPage() {
   // ============================================
   // Member Action Handlers
   // ============================================
+  const syncTaskState = (taskId, patch) => {
+    setTasks((previousValue) =>
+      previousValue.map((task) => (task.id === taskId ? { ...task, ...patch } : task)),
+    )
+    setSelectedTask((previousValue) =>
+      previousValue?.id === taskId ? { ...previousValue, ...patch } : previousValue,
+    )
+    setModalTask((previousValue) =>
+      previousValue?.id === taskId ? { ...previousValue, ...patch } : previousValue,
+    )
+  }
+
+  const handleSetTaskWaiting = async (task) => {
+    if (!task?.operationId) {
+      setError('\u004b\u0068\u00f4\u006e\u0067 \u0074\u00ec\u006d \u0074\u0068\u1ea5\u0079 \u006f\u0070\u0065\u0072\u0061\u0074\u0069\u006f\u006e \u0111\u1ec3 \u0063\u1ead\u0070 \u006e\u0068\u1ead\u0074 \u0074\u0072\u1ea1\u006e\u0067 \u0074\u0068\u00e1\u0069 \u0063\u0068\u1edd\u002e')
+      return
+    }
+
+    setConfirming(true)
+    try {
+      await rescueTeamService.setOperationWaiting(task.operationId)
+      setError(null)
+      const refreshedTask = await fetchMyAssignment()
+      if (!refreshedTask) {
+        syncTaskState(task.id, {
+          rawStatus: 'Waiting',
+          status: 'Waiting',
+        })
+      }
+      alert('\u0110\u00e3 \u0063\u0068\u0075\u0079\u1ec3\u006e \u006e\u0068\u0069\u1ec7\u006d \u0076\u1ee5 \u0073\u0061\u006e\u0067 \u0074\u0072\u1ea1\u006e\u0067 \u0074\u0068\u00e1\u0069 \u0063\u0068\u1edd\u002e')
+    } catch (err) {
+      const errorMessage = rescueTeamService.getUpdateStatusErrorMessage(err)
+      setError(`\u004c\u1ed7\u0069: ${errorMessage}`)
+    } finally {
+      setConfirming(false)
+    }
+  }
+
+  const handleRequestSupport = async () => {
+    setConfirming(true)
+    try {
+      await rescueTeamService.requestSupport()
+      setError(null)
+      alert('\u0110\u00e3 \u0067\u1eedi \u0079\u00ea\u0075 \u0063\u1ea7\u0075 \u0068\u1ed7 \u0074\u0072\u1ee3 \u0074\u0068\u00e0\u006e\u0068 \u0063\u00f4\u006e\u0067\u002e')
+    } catch (err) {
+      const errorMessage =
+        err?.response?.data?.message ||
+        err?.response?.data?.Message ||
+        '\u004b\u0068\u00f4\u006e\u0067 \u0074\u0068\u1ec3 \u0067\u1eedi \u0079\u00ea\u0075 \u0063\u1ea7\u0075 \u0068\u1ed7 \u0074\u0072\u1ee3\u002e \u0056\u0075\u0069 \u006c\u00f2\u006e\u0067 \u0074\u0068\u1eed \u006c\u1ea1\u0069\u002e'
+      setError(`\u004c\u1ed7\u0069: ${errorMessage}`)
+    } finally {
+      setConfirming(false)
+    }
+  }
+
   const handleConfirmTask = async (task) => {
     if (!task) return
 
@@ -209,7 +270,7 @@ function RescueTeamMemberPage() {
     setFinishReason('COMPLETED')
   }
 
-  const getStatusInfo = (status) => TASK_STATUS_MAP[status] || TASK_STATUS_MAP['ASSIGNED']
+  const getStatusInfo = (status) => TASK_STATUS_MAP[normalizeTaskStatus(status)] || TASK_STATUS_MAP['ASSIGNED']
   const getPriorityInfo = (priority) => PRIORITY_MAP[priority] || PRIORITY_MAP['MEDIUM']
 
   const formatTime = (dateString) => {
@@ -524,7 +585,7 @@ function RescueTeamMemberPage() {
                             </div>
 
                             {/* Actions */}
-                            {task.status === 'ASSIGNED' && (
+                            {normalizeTaskStatus(task) === 'ASSIGNED' && (
                               <div className="rtmp-card-actions">
                                 <button
                                   className="rtmp-btn rtmp-btn-start"
@@ -536,7 +597,7 @@ function RescueTeamMemberPage() {
                               </div>
                             )}
 
-                            {task.status === 'IN_PROGRESS' && (
+                            {normalizeTaskStatus(task) === 'IN_PROGRESS' && (
                               <div className="rtmp-card-actions">
                                 <button
                                   className="rtmp-btn rtmp-btn-complete"

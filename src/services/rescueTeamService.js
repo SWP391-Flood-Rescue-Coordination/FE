@@ -109,6 +109,12 @@ const getUpdateStatusErrorMessage = (error) => {
 
 const transformOperationToMission = (operation) => {
   const requestStatus = operation.requestStatus || operation.RequestStatus || ''
+  const operationStatus =
+    operation.operationStatus ||
+    operation.OperationStatus ||
+    operation.status ||
+    operation.Status ||
+    ''
 
   // Map estimatedTime: nếu là số, chuyển sang phút/hh:mm, nếu không có thì 'Đang cập nhật'
   let estimatedTimeRaw = operation.estimatedTime ?? operation.EstimatedTime;
@@ -138,8 +144,8 @@ const transformOperationToMission = (operation) => {
     description: operation.requestDescription || operation.RequestDescription || 'Không có mô tả',
     estimatedTime,
     priority: mapPriorityDisplay(operation.priorityName || operation.PriorityName),
-    status: mapStatusDisplay(operation.status || operation.Status),
-    rawStatus: operation.status || operation.Status,
+    status: mapStatusDisplay(operationStatus),
+    rawStatus: operationStatus,
     requestStatus: mapStatusDisplay(requestStatus),
     requestRawStatus: requestStatus,
     teamName: operation.teamName || operation.TeamName || 'N/A',
@@ -148,6 +154,15 @@ const transformOperationToMission = (operation) => {
     startedAt: operation.startedAt || operation.StartedAt,
     completedAt: operation.completedAt || operation.CompletedAt,
     title: operation.requestTitle || operation.RequestTitle || 'Nhiệm vụ cứu hộ',
+    adultCount: operation.adultCount ?? operation.AdultCount ?? 0,
+    elderlyCount: operation.elderlyCount ?? operation.ElderlyCount ?? 0,
+    childrenCount: operation.childrenCount ?? operation.ChildrenCount ?? 0,
+    totalPeople:
+      operation.numberOfAffectedPeople ??
+      operation.NumberOfAffectedPeople ??
+      ((operation.adultCount ?? operation.AdultCount ?? 0) +
+        (operation.elderlyCount ?? operation.ElderlyCount ?? 0) +
+        (operation.childrenCount ?? operation.ChildrenCount ?? 0)),
   }
 }
 
@@ -186,7 +201,7 @@ const rescueTeamService = {
     // Lỗi: 400 (status không hợp lệ), 401 (hết phiên), 403 (không quyền), 404 (không tìm), 409 (conflict - thay đổi bởi người khác), 500 (lỗi)
     try {
       const response = await api.put(`/rescue-team/operations/${operationId}/status`, {
-        newStatus,
+        status: newStatus,
       })
 
       return response.data
@@ -296,6 +311,11 @@ const rescueTeamService = {
             email: member.email ?? member.Email ?? 'N/A',
             phone: member.phone ?? member.Phone ?? member.phoneNumber ?? member.PhoneNumber ?? 'N/A',
             address: member.address ?? member.Address ?? 'N/A',
+            requestId: member.requestId ?? member.RequestId ?? null,
+            isBusy: Boolean(member.isBusy ?? member.IsBusy ?? false),
+            currentOperationId: member.currentOperationId ?? member.CurrentOperationId ?? null,
+            lastSupportRequestedAt:
+              member.lastSupportRequestedAt ?? member.LastSupportRequestedAt ?? null,
           }))
       }
       return []
@@ -553,17 +573,30 @@ const rescueTeamService = {
       return data.map((item) => {
         const requestId = item.requestId ?? item.RequestId ?? item.request_id ?? item.id ?? item.Id
         const backendStatus = String(item.status ?? item.Status ?? 'Pending').trim()
+        const requestStatus = String(item.requestStatus ?? item.RequestStatus ?? backendStatus).trim()
+        const operationStatus = String(
+          item.operationStatus ??
+            item.OperationStatus ??
+            item.currentOperationStatus ??
+            item.current_operation_status ??
+            backendStatus,
+        ).trim()
         
         let frontendStatus = 'PENDING'
-        if (backendStatus === 'Verified' || backendStatus === 'Pending') {
+        if (normalizeStatusKey(operationStatus) === 'WAITING') {
+          frontendStatus = 'WAITING'
+        } else if (normalizeStatusKey(operationStatus) === 'COMPLETED') {
+          frontendStatus = 'COMPLETED'
+        } else if (requestStatus === 'Verified' || requestStatus === 'Pending') {
           frontendStatus = 'PENDING'
-        } else if (backendStatus === 'Assigned' || backendStatus === 'Confirmed') {
+        } else if (requestStatus === 'Assigned' || requestStatus === 'Confirmed') {
           frontendStatus = 'ACCEPTED'
         }
         
         return {
           id: requestId,
           requestId: requestId,
+          operationId: item.operationId ?? item.OperationId ?? item.operation_id ?? null,
           teamId: item.teamId ?? item.TeamId ?? null,
           teamName: item.teamName ?? item.TeamName ?? 'N/A',
           title: item.title ?? item.Title ?? 'Yêu cầu cứu hộ',
@@ -579,11 +612,20 @@ const rescueTeamService = {
           adultCount: item.adultCount ?? item.AdultCount ?? 0,
           elderlyCount: item.elderlyCount ?? item.ElderlyCount ?? 0,
           childrenCount: item.childrenCount ?? item.ChildrenCount ?? 0,
-          numberOfAffectedPeople: (item.adultCount ?? 0) + (item.elderlyCount ?? 0) + (item.childrenCount ?? 0),
+          numberOfAffectedPeople:
+            item.numberOfAffectedPeople ??
+            item.NumberOfAffectedPeople ??
+            ((item.adultCount ?? item.AdultCount ?? 0) +
+              (item.elderlyCount ?? item.ElderlyCount ?? 0) +
+              (item.childrenCount ?? item.ChildrenCount ?? 0)),
           createdAt: item.createdAt ?? item.CreatedAt ?? null,
           updatedAt: item.updatedAt ?? item.UpdatedAt ?? null,
           estimatedTime: item.estimatedTime ?? item.EstimatedTime ?? 'Đang cập nhật',
-          rawStatus: backendStatus,
+          rawStatus: requestStatus,
+          operationRawStatus: operationStatus,
+          hasSupportRequest: Boolean(item.hasSupportRequest ?? item.HasSupportRequest ?? false),
+          lastSupportRequestedAt:
+            item.lastSupportRequestedAt ?? item.LastSupportRequestedAt ?? null,
         }
       })
     } catch (error) {
