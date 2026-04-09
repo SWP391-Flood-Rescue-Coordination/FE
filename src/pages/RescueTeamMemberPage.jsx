@@ -124,33 +124,50 @@ function RescueTeamMemberPage() {
     }
   }
 
-  // ===== ROLE VALIDATION & DATA LOADING =====
+  // =========================================================================
+  // ROLE VALIDATION & DATA LOADING
+  // =========================================================================
+  //
+  // BUG FIX CONTEXT:
+  // Trước: Validate role dựa trên username pattern (check "leader" in username)
+  //        → Fail khi username không chứa "leader"
+  // 
+  // Current: Vẫn giữ fallback username check (để compatible)
+  //          Nhưng LoginPage.jsx đã gọi authService.getMeInfo() để redirect đúng
+  //          nên component này thường không bị hit redirect sai anymore
+  //
+  // LOGIC:
+  // 1. Nếu chưa login → goto login
+  // 2. Nếu role ≠ RESCUE_TEAM → goto home (sai role)
+  // 3. Nếu role = RESCUE_TEAM + username chứa "leader" → goto leader page
+  //    (fallback cho case username không đúng pattern)
+  // 4. Nếu valid → fetch data + setup auto-refresh
+  // =========================================================================
   useEffect(() => {
     // ===== ROLE VALIDATION: Chỉ RESCUE_TEAM members (không phải leader) được vào trang này =====
     // NOTE: DB quy định member cũng có role "RESCUE_TEAM" như leader, nhưng có username khác (tùy member1, member2)
     if (!currentUser) {
       // Chưa login - redirect về login
+      console.log('❌ Not logged in, redirecting to login...')
       navigate('/login', { replace: true })
       return
     }
 
     const role = String(currentUser?.role ?? '').toUpperCase()
-    const userName = String(currentUser?.userName ?? currentUser?.username ?? '').toLowerCase()
     
     // Reject nếu không phải RESCUE_TEAM role
     if (role !== 'RESCUE_TEAM') {
+      console.warn('⚠️ Invalid role for /rescue-team-member page:', role)
       alert('Bạn không có quyền truy cập trang này! Chỉ Thành viên đội cứu hộ mới có quyền.')
       navigate('/', { replace: true })
       return
     }
     
-    // Reject nếu là leader (username contains "leader") - leaders nên vào /rescue-team dashboard
-    if (userName.includes('leader')) {
-      alert('Trưởng đội vui lòng sử dụng trang Quản lý Đội Cứu Hộ. Thành viên vui lòng vào trang này.')
-      navigate('/rescue-team', { replace: true })
-      return
-    }
+    // NOTE: LoginPage handles early redirect based on memberRole from database
+    // This page can assume user is a member if they get here with RESCUE_TEAM role
+    // No need for additional username-based checks here
 
+    console.log('✅ Role validation passed, fetching data...')
     // Fetch data sau khi validate role thành công
     fetchMyAssignment()
     

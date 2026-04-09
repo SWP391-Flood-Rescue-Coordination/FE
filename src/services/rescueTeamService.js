@@ -369,7 +369,15 @@ const rescueTeamService = {
     }
   },
 
+  // =========================================================================
   // Leader xem danh sách thành viên trong đội (hỗ trợ tìm kiếm)
+  // FIX: Return ALL members (including leader) + include memberRole
+  // =========================================================================
+  // NOTE: 原来のコードはleaderを除外していたが、LoginPageで memberRoleを検出するために
+  //      全メンバーを返す必要がある
+  // Used by:
+  // - LoginPage: Determine redirect (leader vs member)
+  // - RescueTeamDashboard: Show team member list (leader dashboard)
   getTeamMembers: async (search = '') => {
     try {
       const params = search ? { search } : {}
@@ -378,14 +386,8 @@ const rescueTeamService = {
       console.log('📦 Team members raw data:', data)
       
       // Normalize member data to have consistent field names
-      // Filter out leaders (only show actual team members)
       if (Array.isArray(data)) {
         return data
-          .filter((member) => {
-            // Exclude leaders - filter by username pattern
-            const userName = (member.userName ?? member.UserName ?? member.username ?? '').toLowerCase()
-            return !userName.includes('leader')
-          })
           .map((member) => {
             const memberId = member.id ?? member.Id ?? member.userId ?? member.UserId ?? null
             
@@ -395,7 +397,10 @@ const rescueTeamService = {
             }
             
             return {
+              // ✅ KEY FIX: Include memberRole for role detection
               id: memberId,
+              userId: memberId, // Ensure userId is set for matching
+              memberRole: member.memberRole ?? member.MemberRole ?? member.member_role ?? 'Member', // Default to Member if not specified
               name: member.name ?? member.Name ?? member.userName ?? member.UserName ?? member.fullName ?? member.FullName ?? member.displayName ?? member.DisplayName ?? 'N/A',
               userName: member.userName ?? member.UserName ?? member.name ?? member.Name ?? 'N/A',
               email: member.email ?? member.Email ?? 'N/A',
@@ -406,12 +411,14 @@ const rescueTeamService = {
               currentOperationId: member.currentOperationId ?? member.CurrentOperationId ?? null,
               lastSupportRequestedAt:
                 member.lastSupportRequestedAt ?? member.LastSupportRequestedAt ?? null,
+              joinedAt: member.joinedAt ?? member.JoinedAt ?? null,
             }
           })
-          .filter(m => m !== null)  // Remove invalid members
+          .filter(m => m !== null) // Remove invalid members
       }
       return []
     } catch (error) {
+      console.error('❌ Error fetching team members:', error)
       throw error
     }
   },
