@@ -241,10 +241,11 @@ function RescueTeamMemberPage() {
   const handleRequestSupport = async (operationId) => {
     setConfirming(true)
     try {
-      // Member chuyển operation sang "Waiting" status khi cần hỗ trợ
-      await rescueTeamService.setOperationToWaiting(operationId)
+      // Member gửi yêu cầu hỗ trợ cho task hiện tại
+      // API: POST /rescue-team/my-assignment/support (không cần operationId, dùng current assignment)
+      await rescueTeamService.requestSupport()
       setError(null)
-      alert('Đã chuyển nhiệm vụ sang trạng thái chờ.')
+      alert('Đã gửi yêu cầu hỗ trợ. Đội trưởng sẽ nhận được thông báo.')
       await fetchMyAssignment()
     } catch (err) {
       const errorMessage = rescueTeamService.getUpdateStatusErrorMessage(err)

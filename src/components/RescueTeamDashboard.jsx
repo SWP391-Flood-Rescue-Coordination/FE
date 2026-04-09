@@ -564,6 +564,27 @@ function RescueTeamDashboard() {
   const getStatusInfo = (status) => REQUEST_STATUS_MAP[status] || REQUEST_STATUS_MAP['PENDING'];
   const getPriorityInfo = (priority) => PRIORITY_MAP[priority] || PRIORITY_MAP['MEDIUM'];
 
+  // Format timestamp to relative time (e.g., "2 phút trước")
+  const formatRelativeTime = (timestamp) => {
+    if (!timestamp) return null;
+    const now = new Date();
+    const then = new Date(timestamp);
+    const diffMs = now - then;
+    const diffSeconds = Math.floor(diffMs / 1000);
+    const diffMinutes = Math.floor(diffSeconds / 60);
+    const diffHours = Math.floor(diffMinutes / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMinutes < 1) return 'Vừa xong';
+    if (diffMinutes < 60) return `${diffMinutes} phút trước`;
+    if (diffHours < 24) return `${diffHours} giờ trước`;
+    if (diffDays === 1) return 'Hôm qua';
+    if (diffDays < 7) return `${diffDays} ngày trước`;
+    
+    // Fallback: HH:MM
+    return then.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+  };
+
   const filteredRequests = requests.filter((req) => {
     if (filterStatus === 'ALL') return true;
     return req.status === filterStatus;
@@ -790,14 +811,25 @@ function RescueTeamDashboard() {
                           {priorityInfo.label}
                         </span>
                         <span style={{fontWeight: '600', textAlign: 'center'}}>#{request.requestId}</span>
-                        <span style={{overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#374151'}}>
-                          {request.address}
+                        <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                          <span style={{overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#374151', flex: 1}}>
+                            {request.address}
+                          </span>
                           {supportInfo.hasSupport && (
-                            <span style={{marginLeft: '8px', color: '#dc2626', fontWeight: '700'}}>
-                              Hỗ trợ
+                            <span style={{
+                              background: '#fee2e2',
+                              color: '#dc2626',
+                              fontWeight: '700',
+                              padding: '2px 6px',
+                              borderRadius: '3px',
+                              fontSize: '10px',
+                              whiteSpace: 'nowrap',
+                              flexShrink: 0
+                            }}>
+                              🆘 Hỗ trợ
                             </span>
                           )}
-                        </span>
+                        </div>
                         <span style={{color: '#374151', textAlign: 'center'}}>{request.phone}</span>
                         <span style={{background: '#e5e7eb', padding: '2px 6px', borderRadius: '3px', fontSize: '11px', color: '#374151', textAlign: 'center'}}>
                           {statusInfo.label}
@@ -815,6 +847,41 @@ function RescueTeamDashboard() {
                           <div style={{marginBottom: '8px'}}><strong>Tổng số người:</strong> {request.numberOfAffectedPeople ?? 0} (Người lớn: {request.adultCount ?? 0}, Người già: {request.elderlyCount ?? 0}, Trẻ em: {request.childrenCount ?? 0})</div>
                           {request.assignedMembers && request.assignedMembers.length > 0 && (
                             <div style={{marginBottom: '8px'}}><strong>Giao cho:</strong> {getAssignedMemberNames(request.assignedMembers)}</div>
+                          )}
+
+                          {/* Support Request Section */}
+                          {supportInfo.hasSupport && (
+                            <div style={{
+                              marginBottom: '12px',
+                              padding: '8px',
+                              background: '#fee2e2',
+                              border: '1px solid #fecaca',
+                              borderRadius: '4px'
+                            }}>
+                              <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                marginBottom: '6px',
+                                fontWeight: '600',
+                                color: '#dc2626'
+                              }}>
+                                🆘 Đang cần hỗ trợ
+                              </div>
+                              {supportInfo.lastSupportRequestedAt && (
+                                <div style={{fontSize: '11px', color: '#991b1b'}}>
+                                  Yêu cầu lúc: {formatRelativeTime(supportInfo.lastSupportRequestedAt)}
+                                </div>
+                              )}
+                              {/* Show support-requesting members */}
+                              {teamMembers
+                                .filter((m) => m.requestId === request.requestId && m.lastSupportRequestedAt)
+                                .map((member) => (
+                                  <div key={member.id} style={{fontSize: '11px', color: '#991b1b', marginTop: '4px'}}>
+                                    • {member.name}: {formatRelativeTime(member.lastSupportRequestedAt)}
+                                  </div>
+                                ))}
+                            </div>
                           )}
                           
                           {/* Action Buttons */}
