@@ -166,6 +166,46 @@ const transformOperationToMission = (operation) => {
   }
 }
 
+// Transform response from /rescue-team/my-current-task endpoint
+const transformMyCurrentTaskToMission = (taskData) => {
+  if (!taskData) return null
+
+  // Map vehicles from string array to vehicle objects if available
+  let vehicles = []
+  if (Array.isArray(taskData.operation?.vehicles)) {
+    vehicles = taskData.operation.vehicles.map(v => ({ vehicleName: v, name: v }))
+  }
+
+  return {
+    id: taskData.operationId || taskData.operation?.operationId,
+    operationId: taskData.operationId || taskData.operation?.operationId,
+    requestId: taskData.requestId,
+    address: taskData.address || 'Không có địa chỉ',
+    phone: taskData.phone || 'N/A',
+    location: {
+      lat: taskData.latitude ?? 0,
+      lng: taskData.longitude ?? 0,
+    },
+    description: taskData.description || 'Không có mô tả',
+    estimatedTime: taskData.operation?.estimatedTime ? `${taskData.operation.estimatedTime} phút` : 'Đang cập nhật',
+    priority: mapPriorityDisplay(taskData.priorityName),
+    status: mapStatusDisplay(taskData.operation?.status),
+    rawStatus: taskData.operation?.status,
+    requestStatus: mapStatusDisplay(taskData.status),
+    requestRawStatus: taskData.status,
+    teamName: taskData.teamName || 'N/A',
+    vehicles: vehicles,
+    assignedAt: taskData.operation?.assignedAt,
+    startedAt: taskData.operation?.startedAt,
+    completedAt: null, // Not in response
+    title: taskData.title || 'Nhiệm vụ cứu hộ',
+    adultCount: 0, // Not provided by this endpoint
+    elderlyCount: 0, // Not provided by this endpoint
+    childrenCount: 0, // Not provided by this endpoint
+    totalPeople: 0, // Not provided by this endpoint
+  }
+}
+
 const filterActiveMissions = (items) =>
   items.filter((mission) => !TERMINAL_REQUEST_STATUS_SET.has(normalizeStatusKey(mission.requestRawStatus)))
 
@@ -273,17 +313,33 @@ const rescueTeamService = {
   },
 
   // Leader giao nhiệm vụ cho một hoặc nhiều thành viên
-  assignTaskToMembers: async (requestId, userIds) => {
+  assignTaskToMembers: async (requestId, userIds, vehicleIds = []) => {
     try {
       const payload = {
         userIds: Array.isArray(userIds) ? userIds : [userIds],
         requestId: Number(requestId),
       }
-      console.log('🔍 Assigning task - Payload:', payload)
+      if (vehicleIds && vehicleIds.length > 0) {
+        payload.vehicleIds = Array.isArray(vehicleIds) ? vehicleIds : [vehicleIds]
+      }
+      
+      console.log('📤 Assigning members - Payload:', {
+        requestId: payload.requestId,
+        userIds: payload.userIds,
+        userIdsTypes: payload.userIds.map(id => typeof id + ':' + id),
+        vehicleIds: payload.vehicleIds,
+      })
+      
       const response = await api.post('/rescue-team/members/assign-task', payload)
+      console.log('✅ Members assigned successfully:', response.data)
       return response.data
     } catch (error) {
-      console.error('❌ Assign task error:', error?.response?.status, error?.response?.data)
+      console.error('❌ Assign task error:', {
+        status: error?.response?.status,
+        statusText: error?.response?.statusText,
+        message: error?.response?.data?.message,
+        fullError: error?.response?.data
+      })
       throw error
     }
   },
@@ -294,6 +350,7 @@ const rescueTeamService = {
       const params = search ? { search } : {}
       const response = await api.get('/rescue-team/members', { params })
       const data = unwrapApiData(response)
+      console.log('📦 Team members raw data:', data)
       
       // Normalize member data to have consistent field names
       // Filter out leaders (only show actual team members)
@@ -304,19 +361,29 @@ const rescueTeamService = {
             const userName = (member.userName ?? member.UserName ?? member.username ?? '').toLowerCase()
             return !userName.includes('leader')
           })
-          .map((member) => ({
-            id: member.id ?? member.Id ?? member.userId ?? member.UserId ?? null,
-            name: member.name ?? member.Name ?? member.userName ?? member.UserName ?? member.fullName ?? member.FullName ?? member.displayName ?? member.DisplayName ?? 'N/A',
-            userName: member.userName ?? member.UserName ?? member.name ?? member.Name ?? 'N/A',
-            email: member.email ?? member.Email ?? 'N/A',
-            phone: member.phone ?? member.Phone ?? member.phoneNumber ?? member.PhoneNumber ?? 'N/A',
-            address: member.address ?? member.Address ?? 'N/A',
-            requestId: member.requestId ?? member.RequestId ?? null,
-            isBusy: Boolean(member.isBusy ?? member.IsBusy ?? false),
-            currentOperationId: member.currentOperationId ?? member.CurrentOperationId ?? null,
-            lastSupportRequestedAt:
-              member.lastSupportRequestedAt ?? member.LastSupportRequestedAt ?? null,
-          }))
+          .map((member) => {
+            const memberId = member.id ?? member.Id ?? member.userId ?? member.UserId ?? null
+            
+            // CRITICAL: Reject member if id is 0 or null
+            if (!memberId || memberId === 0) {
+              return null
+            }
+            
+            return {
+              id: memberId,
+              name: member.name ?? member.Name ?? member.userName ?? member.UserName ?? member.fullName ?? member.FullName ?? member.displayName ?? member.DisplayName ?? 'N/A',
+              userName: member.userName ?? member.UserName ?? member.name ?? member.Name ?? 'N/A',
+              email: member.email ?? member.Email ?? 'N/A',
+              phone: member.phone ?? member.Phone ?? member.phoneNumber ?? member.PhoneNumber ?? 'N/A',
+              address: member.address ?? member.Address ?? 'N/A',
+              requestId: member.requestId ?? member.RequestId ?? null,
+              isBusy: Boolean(member.isBusy ?? member.IsBusy ?? false),
+              currentOperationId: member.currentOperationId ?? member.CurrentOperationId ?? null,
+              lastSupportRequestedAt:
+                member.lastSupportRequestedAt ?? member.LastSupportRequestedAt ?? null,
+            }
+          })
+          .filter(m => m !== null)  // Remove invalid members
       }
       return []
     } catch (error) {
@@ -328,17 +395,57 @@ const rescueTeamService = {
   // Thành viên xem nhiệm vụ được giao cho cá nhân
   getMyAssignment: async () => {
     try {
-      const response = await api.get('/rescue-team/my-assignment')
+      // Changed to use my-current-task endpoint which filters by member.RequestId
+      const response = await api.get('/rescue-team/my-current-task')
       const data = unwrapApiData(response)
       if (data && typeof data === 'object') {
-        return transformOperationToMission(data)
+        console.log('📦 My current task response:', data)
+        return transformMyCurrentTaskToMission(data)
       }
       return null
     } catch (error) {
       // Silently handle 404 - it's expected when member has no assignment
-      // Don't throw, just return null to avoid console errors
       if (error?.response?.status === 404) {
+        console.log('ℹ️ Member has no current task assignment')
         return null
+      }
+      throw error
+    }
+  },
+
+  // Leader lấy danh sách phương tiện khả dụng để phân công - USE /Vehicle endpoint instead
+
+  // Thành viên lấy danh sách phương tiện được gán cho task hiện tại
+  getMemberVehicles: async () => {
+    try {
+      console.log('📡 Calling API: GET /rescue-team/my-vehicles')
+      const response = await api.get('/rescue-team/my-vehicles')
+      console.log('📦 Raw response:', response)
+      const data = unwrapApiData(response)
+      console.log('📦 Unwrapped data:', data)
+      
+      if (Array.isArray(data)) {
+        const mapped = data.map(vehicle => ({
+          id: vehicle.vehicleId ?? vehicle.VehicleId ?? null,
+          vehicleId: vehicle.vehicleId ?? vehicle.VehicleId ?? null,
+          vehicleCode: vehicle.vehicleCode ?? vehicle.VehicleCode ?? '',
+          vehicleName: vehicle.vehicleName ?? vehicle.VehicleName ?? '',
+          licensePlate: vehicle.licensePlate ?? vehicle.LicensePlate ?? '',
+          vehicleTypeName: vehicle.vehicleTypeName ?? vehicle.VehicleTypeName ?? '',
+          status: vehicle.status ?? vehicle.Status ?? 'AVAILABLE',
+          capacity: vehicle.capacity ?? vehicle.Capacity ?? 0,
+        }))
+        console.log('✅ Mapped vehicles:', mapped)
+        return mapped
+      }
+      
+      console.log('⚠️ Data is not array:', data)
+      return []
+    } catch (error) {
+      console.error('❌ Get vehicles error:', error?.response?.status, error?.response?.data)
+      if (error?.response?.status === 404) {
+        console.log('ℹ️ 404: Member has no vehicles assigned')
+        return []
       }
       throw error
     }

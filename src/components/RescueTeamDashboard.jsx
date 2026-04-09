@@ -245,15 +245,18 @@ function RescueTeamDashboard() {
     if (showAssignModal) {
       (async () => {
         try {
-          const vehicles = await coordinatorService.getAvailableVehicles();
-          setAvailableVehicles(vehicles);
-          setVehicleLoadError(null);
+          // Direct call to coordinatorService which uses /Vehicle endpoint
+          // (Backend /rescue-team/available-vehicles doesn't exist, use /Vehicle instead)
+          console.log('🚗 Fetching available vehicles from /Vehicle endpoint...')
+          const vehicles = await coordinatorService.getAvailableVehicles()
+          setAvailableVehicles(vehicles)
+          setVehicleLoadError(null)
+          console.log('✅ Vehicles loaded successfully')
         } catch (err) {
           console.warn('⚠️ Failed to fetch vehicles:', err?.message);
           setAvailableVehicles([]);
-          // Check if it's a 403 Forbidden error
           if (err?.response?.status === 403 || err?.message?.includes('403')) {
-            setVehicleLoadError('Không thể tải danh sách phương tiện (quyền hạn người dùng không đủ)');
+            setVehicleLoadError('Không thể tải danh sách phương tiện (quyền hạn người dùng không đủ). Vui lòng liên hệ quản trị viên.');
           } else {
             setVehicleLoadError('Không thể tải danh sách phương tiện');
           }
@@ -343,6 +346,17 @@ function RescueTeamDashboard() {
       return;
     }
 
+    // Validate that all selected members are not busy
+    const busyMembers = teamMembers.filter(
+      (m) => selectedMembers.includes(m.id) && m.isBusy
+    );
+    if (busyMembers.length > 0) {
+      alert(
+        `Không thể giao cho những thành viên đang bận:\n${busyMembers.map((m) => m.name).join(', ')}`
+      );
+      return;
+    }
+
     if (!window.confirm(`Xác nhận giao nhiệm vụ cho ${selectedMembers.length} thành viên?`)) {
       return;
     }
@@ -350,20 +364,11 @@ function RescueTeamDashboard() {
     setUpdating(true);
     setUpdatingAction('accept-assign');
     try {
-      console.log('📋 Request details before assign:', {
-        requestId: selectedMission.requestId,
-        status: selectedMission.status,
-        members: selectedMembers
-      });
-      
-      // Assign members directly (coordinator already assigned request to team)
-      // No need to accept first - just assign members to the request
-      console.log('⏳ Assigning members to request...');
       const response = await rescueTeamService.assignTaskToMembers(
         selectedMission.requestId,
-        selectedMembers
+        selectedMembers,
+        selectedVehicles
       );
-      console.log('✅ Members assigned successfully');
       
       setError(null);
       
@@ -806,7 +811,7 @@ function RescueTeamDashboard() {
                           <div style={{marginBottom: '8px'}}><strong>Địa Chỉ:</strong> {request.address}</div>
                           <div style={{marginBottom: '8px'}}><strong>SĐT:</strong> <a href={`tel:${request.phone}`} style={{color: '#0066cc', textDecoration: 'none'}}>{request.phone}</a></div>
                           <div style={{marginBottom: '8px'}}><strong>Mô Tả:</strong> {request.description}</div>
-                          <div style={{marginBottom: '8px'}}><strong>Tổng số người:</strong> {request.numberOfAffectedPeople} (Người lớn: {request.adultCount}, Người già: {request.elderlyCount}, Trẻ em: {request.childrenCount})</div>
+                          <div style={{marginBottom: '8px'}}><strong>Tổng số người:</strong> {request.numberOfAffectedPeople ?? 0} (Người lớn: {request.adultCount ?? 0}, Người già: {request.elderlyCount ?? 0}, Trẻ em: {request.childrenCount ?? 0})</div>
                           {request.assignedMembers && request.assignedMembers.length > 0 && (
                             <div style={{marginBottom: '8px'}}><strong>Giao cho:</strong> {getAssignedMemberNames(request.assignedMembers)}</div>
                           )}
@@ -904,22 +909,49 @@ function RescueTeamDashboard() {
                 <p style={{fontSize: '12px', color: '#999'}}>Không có thành viên trong đội</p>
               ) : (
                 <div style={{display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', overflowY: 'auto'}}>
-                  {teamMembers.map((member) => (
-                    <label key={member.id} style={{display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: 'pointer'}}>
-                      <input
-                        type="checkbox"
-                        checked={selectedMembers.includes(member.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedMembers([...selectedMembers, member.id]);
-                          } else {
-                            setSelectedMembers(selectedMembers.filter((id) => id !== member.id));
-                          }
+                  {teamMembers.map((member) => {
+                    const isBusy = Boolean(member.isBusy);
+                    const isDisabled = isBusy;
+                    return (
+                      <label 
+                        key={member.id} 
+                        style={{
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: '8px', 
+                          fontSize: '12px', 
+                          cursor: isDisabled ? 'not-allowed' : 'pointer',
+                          opacity: isDisabled ? 0.5 : 1,
+                          color: isDisabled ? '#999' : '#333'
                         }}
-                      />
-                      <span>{member.name}</span>
-                    </label>
-                  ))}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedMembers.includes(member.id)}
+                          disabled={isDisabled}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedMembers([...selectedMembers, member.id]);
+                            } else {
+                              setSelectedMembers(selectedMembers.filter((id) => id !== member.id));
+                            }
+                          }}
+                        />
+                        <span>
+                          {member.name}
+                          {isBusy ? (
+                            <span style={{marginLeft: '8px', color: '#dc2626', fontSize: '11px'}}>
+                              (Đang bận)
+                            </span>
+                          ) : (
+                            <span style={{marginLeft: '8px', color: '#10b981', fontSize: '11px'}}>
+                              (Rảnh)
+                            </span>
+                          )}
+                        </span>
+                      </label>
+                    );
+                  })}
                 </div>
               )}
             </div>

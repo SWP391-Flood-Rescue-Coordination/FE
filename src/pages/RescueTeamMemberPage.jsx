@@ -58,6 +58,11 @@ const PRIORITY_MAP = {
   LOW: { label: 'Thấp', className: 'priority-low' },
 }
 
+const normalizeTaskStatus = (task) => {
+  const status = task?.status || task?.Status || task?.operationStatus || task?.OperationStatus || ''
+  return String(status).trim().toUpperCase()
+}
+
 function RescueTeamMemberPage() {
   const navigate = useNavigate()
   const [currentUser, setCurrentUser] = useState(() => authService.getUserInfo())
@@ -72,6 +77,7 @@ function RescueTeamMemberPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [confirming, setConfirming] = useState(false)
+  const [memberVehicles, setMemberVehicles] = useState([])
 
   const [tasks, setTasks] = useState([])  // Will be populated from API
 
@@ -85,17 +91,30 @@ function RescueTeamMemberPage() {
     try {
       setError(null)
       setLoading(true)
+      // Use getMyAssignment which calls /rescue-team/my-current-task
+      // This endpoint filters by member.RequestId to get ONLY this member's assignment
       const assignment = await rescueTeamService.getMyAssignment()
       if (assignment) {
+        // Member should only have one active assignment at a time
         setTasks([assignment])
-        setSelectedTask((previousValue) => (previousValue?.id === assignment.id ? assignment : previousValue))
-        setModalTask((previousValue) => (previousValue?.id === assignment.id ? assignment : previousValue))
+        setSelectedTask(assignment)
+        setModalTask(assignment)
       } else {
         setTasks([])
         setSelectedTask(null)
         setModalTask(null)
+        setMemberVehicles([])
       }
-      return assignment
+      
+      // SEPARATELY: Fetch member's vehicles using dedicated my-vehicles endpoint
+      try {
+        const vehicles = await rescueTeamService.getMemberVehicles()
+        setMemberVehicles(vehicles)
+      } catch (vehicleErr) {
+        setMemberVehicles([])
+      }
+
+      return assignment || null
     } catch (err) {
       const errorMessage = rescueTeamService.getOperationsErrorMessage(err)
       setError(errorMessage)
@@ -400,16 +419,12 @@ function RescueTeamMemberPage() {
                         Mức độ ưu tiên 
                         <span className="sort-icon">▴</span>
                       </th>
-                      <th className="sortable-header">
-                        Thời gian xử lý 
-                        <span className="sort-icon">▴</span>
-                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {tasks.length === 0 ? (
                       <tr>
-                        <td colSpan="5" style={{padding: '20px', textAlign: 'center', color: '#999'}}>
+                        <td colSpan="4" style={{padding: '20px', textAlign: 'center', color: '#999'}}>
                           Không có nhiệm vụ nào được giao
                         </td>
                       </tr>
@@ -453,7 +468,6 @@ function RescueTeamMemberPage() {
                                 {task.priority}
                               </span>
                             </td>
-                            <td>{task.estimatedTime}</td>
                           </tr>
                         )
                       })
@@ -552,15 +566,15 @@ function RescueTeamMemberPage() {
                             <div className="rtmp-details-grid">
                               <div className="rtmp-detail-item">
                                 <label>Người Già</label>
-                                <p>{task.elderly} người</p>
+                                <p>{task.elderlyCount ?? 0} người</p>
                               </div>
                               <div className="rtmp-detail-item">
                                 <label>Trẻ Em</label>
-                                <p>{task.children} người</p>
+                                <p>{task.childrenCount ?? 0} người</p>
                               </div>
                               <div className="rtmp-detail-item">
-                                <label>Trưởng Đội</label>
-                                <p>{task.leaderName}</p>
+                                <label>Phương Tiện</label>
+                                <p>{task.vehicles && task.vehicles.length > 0 ? task.vehicles.join(', ') : 'Không có'}</p>
                               </div>
                               <div className="rtmp-detail-item">
                                 <label>Thời Gian Thực Hiện</label>
@@ -689,11 +703,6 @@ function RescueTeamMemberPage() {
                     <label style={{fontSize: '13px', fontWeight: '600', color: '#1f2937', display: 'block', marginBottom: '2px'}}>MÔ TẢ SỰ CỐ</label>
                     <p style={{fontSize: '15px', color: '#6b7280', margin: 0, lineHeight: '1.5'}}>{modalTask.description}</p>
                   </div>
-
-                  <div>
-                    <label style={{fontSize: '13px', fontWeight: '600', color: '#1f2937', display: 'block', marginBottom: '4px'}}>THỜI GIAN DỰ KIẾN</label>
-                    <p style={{fontSize: '15px', color: '#6b7280', margin: 0}}>⏱️ {modalTask.estimatedTime}</p>
-                  </div>
                 </div>
 
                 {/* People Info */}
@@ -701,36 +710,44 @@ function RescueTeamMemberPage() {
                   <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px'}}>
                     <div style={{textAlign: 'center'}}>
                       <p style={{fontSize: '13px', color: '#1f2937', margin: '0 0 4px 0', fontWeight: '600'}}>Người Lớn</p>
-                      <p style={{fontSize: '15px', color: '#6b7280', margin: 0, fontWeight: '600'}}>{modalTask.totalPeople} người</p>
+                      <p style={{fontSize: '15px', color: '#6b7280', margin: 0, fontWeight: '600'}}>{modalTask.adultCount ?? 0} người</p>
                     </div>
                     <div style={{textAlign: 'center'}}>
                       <p style={{fontSize: '13px', color: '#1f2937', margin: '0 0 4px 0', fontWeight: '600'}}>Người Già</p>
-                      <p style={{fontSize: '15px', color: '#6b7280', margin: 0, fontWeight: '600'}}>{modalTask.elderly} người</p>
+                      <p style={{fontSize: '15px', color: '#6b7280', margin: 0, fontWeight: '600'}}>{modalTask.elderlyCount ?? 0} người</p>
                     </div>
                     <div style={{textAlign: 'center'}}>
                       <p style={{fontSize: '13px', color: '#1f2937', margin: '0 0 4px 0', fontWeight: '600'}}>Trẻ Em</p>
-                      <p style={{fontSize: '15px', color: '#6b7280', margin: 0, fontWeight: '600'}}>{modalTask.children} người</p>
+                      <p style={{fontSize: '15px', color: '#6b7280', margin: 0, fontWeight: '600'}}>{modalTask.childrenCount ?? 0} người</p>
                     </div>
                   </div>
                 </div>
 
-                {/* Other Info */}
+                {/* Vehicles Info */}
                 <div>
-                  <p style={{fontSize: '13px', color: '#1f2937', margin: '0 0 4px 0', fontWeight: '600'}}>TRƯỞNG ĐỘI CỨU HỘ</p>
-                  <p style={{fontSize: '15px', color: '#6b7280', margin: 0, fontWeight: '600'}}>{modalTask.leaderName}</p>
+                  <p style={{fontSize: '13px', color: '#1f2937', margin: '0 0 8px 0', fontWeight: '600'}}>PHƯƠNG TIỆN ĐƯỢC PHÂN CÔNG</p>
+                  {memberVehicles && memberVehicles.length > 0 ? (
+                    <div style={{display: 'flex', flexDirection: 'column', gap: '6px'}}>
+                      {memberVehicles.map((vehicle, idx) => (
+                        <div key={idx} style={{
+                          padding: '8px 12px',
+                          backgroundColor: '#f3f4f6',
+                          borderRadius: '4px',
+                          fontSize: '14px',
+                          color: '#374151'
+                        }}>
+                          <strong>{vehicle.vehicleName || vehicle.name}</strong>
+                          <div style={{fontSize: '12px', color: '#6b7280', marginTop: '2px'}}>
+                            {vehicle.vehicleCode && <span>{vehicle.vehicleCode}</span>}
+                            {vehicle.licensePlate && <span> • {vehicle.licensePlate}</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p style={{fontSize: '15px', color: '#6b7280', margin: 0}}>Không có phương tiện được phân công</p>
+                  )}
                 </div>
-              </div>
-
-              <div className="rtmp-modal-actions">
-                <button
-                  className="rtmp-btn rtmp-btn-start"
-                  onClick={() => {
-                    handleStartTask(modalTask);
-                    setShowTaskModal(false);
-                  }}
-                >
-                  Bắt Đầu Thực Hiện
-                </button>
               </div>
             </div>
           </div>
