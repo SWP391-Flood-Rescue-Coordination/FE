@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import LogoutConfirmModal from './LogoutConfirmModal';
 import './RescueTeamDashboard.css';
 import rescueTeamService from '../services/rescueTeamService';
+import coordinatorService from '../services/coordinatorService';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeftIcon,
@@ -71,6 +72,8 @@ function RescueTeamDashboard() {
   const [teamMembers, setTeamMembers] = useState([]);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [selectedMembers, setSelectedMembers] = useState([]);
+  const [selectedVehicles, setSelectedVehicles] = useState([]);
+  const [availableVehicles, setAvailableVehicles] = useState([]);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [memberLoading, setMemberLoading] = useState(false);
   const [requests, setRequests] = useState([]);
@@ -136,10 +139,11 @@ function RescueTeamDashboard() {
   // ============================================
   const fetchTeamAssignedRequests = async () => {
     try {
-      const data = await rescueTeamService.getTeamAssignedRequests();
+      const data = await rescueTeamService.getAssignedRequests();
       setRequests(data);
     } catch (err) {
       // Silently fail if requests can't load
+      console.warn('⚠️ Failed to fetch assigned requests:', err?.message);
     }
   };
 
@@ -171,13 +175,11 @@ function RescueTeamDashboard() {
     }
 
     // Fetch data sau khi validate role thành công
-    fetchMissions();
     fetchTeamMembers();
     fetchTeamAssignedRequests();
     
     // Auto-refresh mỗi 30 giây
     const interval = setInterval(() => {
-      fetchMissions();
       fetchTeamAssignedRequests();
     }, 30000);
     
@@ -196,6 +198,21 @@ function RescueTeamDashboard() {
       document.removeEventListener('mousedown', handleOutsideClick);
     };
   }, []);
+
+  // Fetch vehicles when modal opens
+  useEffect(() => {
+    if (showAssignModal) {
+      (async () => {
+        try {
+          const vehicles = await coordinatorService.getAvailableVehicles();
+          setAvailableVehicles(vehicles);
+        } catch (err) {
+          console.warn('⚠️ Failed to fetch vehicles:', err?.message);
+          setAvailableVehicles([]);
+        }
+      })();
+    }
+  }, [showAssignModal]);
 
   // ============================================
   // Leader Action Handlers
@@ -227,17 +244,18 @@ function RescueTeamDashboard() {
   const handleRejectRequest = async () => {
     if (!selectedMission) return;
     
+    const requestId = selectedMission.requestId || selectedMission.id;
     const reason = window.prompt('Vui lòng nhập lý do từ chối (nếu có):');
     if (reason === null) return; // User cancelled
 
-    if (!window.confirm(`Xác nhận từ chối yêu cầu #${selectedMission.requestId}?`)) {
+    if (!window.confirm(`Xác nhận từ chối yêu cầu #${requestId}?`)) {
       return;
     }
 
     setUpdating(true);
     setUpdatingAction('reject');
     try {
-      await rescueTeamService.rejectRequest(selectedMission.requestId, reason);
+      await rescueTeamService.rejectRequest(requestId, reason);
       setError(null);
       alert('Từ chối yêu cầu thành công. Yêu cầu sẽ quay trở lại trạng thái Chờ xử lý.');
       await fetchMissions({ suppressError: true });
@@ -260,6 +278,8 @@ function RescueTeamDashboard() {
   const handleCloseAssignModal = () => {
     setShowAssignModal(false);
     setSelectedMembers([]);
+    setSelectedVehicles([]);
+    setAvailableVehicles([]);
   };
 
   const handleToggleMemberSelection = (memberId) => {
@@ -722,28 +742,52 @@ function RescueTeamDashboard() {
                           )}
                           
                           {/* Action Buttons */}
-                          {(request.status === 'Assigned' || request.status === 'Verified') && (
-                            <div style={{display: 'flex', gap: '6px', marginTop: '12px'}}>
-                              <button
-                                onClick={() => {
-                                  setSelectedMission(request);
-                                  setSelectedRequest(request);
-                                  setSelectedMembers([]);
-                                  setShowAssignModal(true);
-                                }}
-                                style={{padding: '6px 12px', fontSize: '11px', background: '#10b981', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer'}}
-                              >
-                                ✓ Chấp Nhận & Giao việc
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setSelectedMission(request);
-                                  handleRejectRequest(request.requestId);
-                                }}
-                                style={{padding: '6px 12px', fontSize: '11px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer'}}
-                              >
-                                ✕ Từ Chối
-                              </button>
+                          {(request.status === 'PENDING' || request.status === 'Verified' || request.status === 'ACCEPTED' || request.status === 'Assigned') && (
+                            <div style={{display: 'flex', gap: '6px', marginTop: '12px', flexWrap: 'wrap'}}>
+                              {/* Chấp Nhận button - Verified → Assigned */}
+                              {(request.status === 'PENDING' || request.status === 'Verified') && (
+                                <button
+                                  onClick={() => {
+                                    setSelectedMission(request);
+                                    setSelectedRequest(request);
+                                    handleAcceptRequest();
+                                  }}
+                                  disabled={updating}
+                                  style={{padding: '6px 12px', fontSize: '11px', background: '#10b981', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer', opacity: updating ? 0.5 : 1}}
+                                >
+                                  ✅ Chấp Nhận
+                                </button>
+                              )}
+
+                              {/* Từ Chối button - Verified → Pending */}
+                              {(request.status === 'PENDING' || request.status === 'Verified') && (
+                                <button
+                                  onClick={() => {
+                                    setSelectedMission(request);
+                                    setSelectedRequest(request);
+                                    handleRejectRequest();
+                                  }}
+                                  disabled={updating}
+                                  style={{padding: '6px 12px', fontSize: '11px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer', opacity: updating ? 0.5 : 1}}
+                                >
+                                  ❌ Từ Chối
+                                </button>
+                              )}
+
+                              {/* Giao Việc button - Only after Accept (status=Assigned) */}
+                              {(request.status === 'ACCEPTED' || request.status === 'Assigned') && (
+                                <button
+                                  onClick={() => {
+                                    setSelectedMission(request);
+                                    setSelectedRequest(request);
+                                    setSelectedMembers([]);
+                                    setShowAssignModal(true);
+                                  }}
+                                  style={{padding: '6px 12px', fontSize: '11px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer'}}
+                                >
+                                  📋 Giao Việc
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>
@@ -804,6 +848,34 @@ function RescueTeamDashboard() {
                         }}
                       />
                       <span>{member.name}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div style={{marginBottom: '16px'}}>
+              <label style={{display: 'block', marginBottom: '8px', fontSize: '12px', fontWeight: '600'}}>
+                Phương tiện (tùy chọn):
+              </label>
+              {availableVehicles.length === 0 ? (
+                <p style={{fontSize: '12px', color: '#999'}}>Không có phương tiện khả dụng</p>
+              ) : (
+                <div style={{display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '150px', overflowY: 'auto'}}>
+                  {availableVehicles.map((vehicle) => (
+                    <label key={vehicle.id} style={{display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: 'pointer'}}>
+                      <input
+                        type="checkbox"
+                        checked={selectedVehicles.includes(vehicle.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedVehicles([...selectedVehicles, vehicle.id]);
+                          } else {
+                            setSelectedVehicles(selectedVehicles.filter((id) => id !== vehicle.id));
+                          }
+                        }}
+                      />
+                      <span>{vehicle.vehicleCode} - {vehicle.vehicleName} ({vehicle.status})</span>
                     </label>
                   ))}
                 </div>

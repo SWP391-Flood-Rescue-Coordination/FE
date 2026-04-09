@@ -334,6 +334,26 @@ const rescueTeamService = {
     }
   },
 
+  // Thành viên báo hỗ trợ cho task hiện tại
+  requestSupport: async () => {
+    try {
+      const response = await api.post('/rescue-team/my-assignment/support')
+      return response.data
+    } catch (error) {
+      throw error
+    }
+  },
+
+  // Leader đặt operation sang trạng thái chờ
+  setOperationWaiting: async (operationId) => {
+    try {
+      const response = await api.put(`/rescue-team/operations/${operationId}/waiting`)
+      return response.data
+    } catch (error) {
+      throw error
+    }
+  },
+
   // ===== ERROR HANDLERS =====
   getAcceptRejectErrorMessage: (error) => {
     const status = error?.response?.status
@@ -405,125 +425,92 @@ const rescueTeamService = {
   // Transform request object từ API thành format UI dễ hiển thị
   getTeamAssignedRequests: async () => {
     /**
-     * Lấy danh sách requests được coordinator gán cho team
-     * Dùng để leader xem và phân công cho members
+     * ✅ CORRECT FLOW:
      * 
-     * NOTE: Không dùng /RescueRequest (Coordinator role)
-     * Dùng /rescue-team/my-operations là operations đã được assign từ coordinator
-     * Status: "Assigned" = Coordinator gán, chờ leader phân công
+     * 1. Coordinator verify request WITH team_id → request.Status="Verified", request.TeamId set
+     * 2. Leader gọi /rescue-team/my-operations → return Verified + Assigned requests
+     * 3. FE map status: Verified/Pending → PENDING, Assigned → ACCEPTED
+     * 4. Leader thấy requests + có thể click Chấp Nhận / Giao Việc
      */
     try {
-      // Lấy my-operations, filter những cái ở status Assigned
       const response = await api.get('/rescue-team/my-operations')
       const data = unwrapApiData(response)
 
-      if (Array.isArray(data)) {
-        // Filter chỉ những requests ở trạng thái "Assigned" (chưa phân công members)
-        const filtered = data.filter((op) => {
-          const status = String(op.requestStatus ?? op.RequestStatus ?? op.status ?? op.Status ?? '').trim()
-          return status === 'Assigned' || status === 'Verified'
-        })
-
-        // Fetch full request details for each to get count fields
-        const enrichedRequests = await Promise.all(
-          filtered.map(async (req) => {
-            const requestId = req.requestId ?? req.RequestId ?? req.request_id ?? req.id ?? req.Id
-            try {
-              const fullReqResponse = await api.get(`/RescueRequest/${requestId}`)
-              const fullReq = unwrapApiData(fullReqResponse)
-              
-              return {
-                // IDs
-                id: req.id ?? req.Id ?? req.requestId ?? req.RequestId ?? req.operationId ?? req.OperationId,
-                requestId: requestId,
-                operationId: req.operationId ?? req.OperationId ?? req.operation_id,
-                
-                // User Info
-                citizenId: req.citizenId ?? req.CitizenId ?? req.citizen_id ?? fullReq?.citizenId ?? null,
-                updatedBy: req.updatedBy ?? req.UpdatedBy ?? req.updated_by ?? fullReq?.updatedBy ?? null,
-                teamId: req.teamId ?? req.TeamId ?? req.team_id ?? null,
-                teamName: req.teamName ?? req.TeamName ?? req.team_name ?? 'N/A',
-                
-                // Request Details
-                title: req.title ?? req.Title ?? req.requestTitle ?? req.RequestTitle ?? fullReq?.title ?? 'Yêu cầu cứu hộ',
-                description: req.description ?? req.Description ?? req.requestDescription ?? req.RequestDescription ?? fullReq?.description ?? '',
-                status: req.requestStatus ?? req.RequestStatus ?? req.status ?? req.Status ?? 'Assigned',
-                priority: mapPriorityDisplay(req.priorityName ?? req.PriorityName ?? req.priority_name ?? 'Trung bình'),
-                priorityName: req.priorityName ?? req.PriorityName ?? req.priority_name ?? 'Trung bình',
-                priorityLevelId: req.priorityLevelId ?? req.PriorityLevelId ?? req.priority_level_id ?? null,
-                
-                // Contact Info
-                phone: req.requestPhone ?? req.RequestPhone ?? req.phone ?? req.Phone ?? req.contactPhone ?? req.ContactPhone ?? req.contact_phone ?? req.request_phone ?? fullReq?.phone ?? fullReq?.contactPhone ?? 'N/A',
-                contactName: req.contactName ?? req.ContactName ?? req.contact_name ?? fullReq?.contactName ?? 'N/A',
-                
-                // Location
-                address: req.address ?? req.Address ?? req.requestAddress ?? req.RequestAddress ?? req.request_address ?? fullReq?.address ?? 'Không có địa chỉ',
-                location: {
-                  lat: req.latitude ?? req.Latitude ?? req.requestLatitude ?? req.RequestLatitude ?? req.request_latitude ?? fullReq?.latitude ?? 0,
-                  lng: req.longitude ?? req.Longitude ?? req.requestLongitude ?? req.RequestLongitude ?? req.request_longitude ?? fullReq?.longitude ?? 0,
-                },
-                
-                // Timestamps
-                createdAt: req.createdAt ?? req.CreatedAt ?? req.created_at ?? fullReq?.createdAt ?? null,
-                updatedAt: req.updatedAt ?? req.UpdatedAt ?? req.updated_at ?? fullReq?.updatedAt ?? null,
-                assignedAt: req.assignedAt ?? req.AssignedAt ?? req.assigned_at ?? new Date().toISOString(),
-                estimatedTime: req.estimatedTime ?? req.EstimatedTime ?? req.estimated_time ?? fullReq?.estimatedTime ?? 'Đang cập nhật',
-                
-                // People Counts - FROM FULL REQUEST DETAILS
-                adultCount: fullReq?.adultCount ?? fullReq?.AdultCount ?? fullReq?.adult_count ?? 0,
-                elderlyCount: fullReq?.elderlyCount ?? fullReq?.ElderlyCount ?? fullReq?.elderly_count ?? 0,
-                childrenCount: fullReq?.childrenCount ?? fullReq?.ChildrenCount ?? fullReq?.children_count ?? 0,
-                numberOfAffectedPeople: (() => {
-                  const adultCount = fullReq?.adultCount ?? fullReq?.AdultCount ?? fullReq?.adult_count ?? 0
-                  const elderlyCount = fullReq?.elderlyCount ?? fullReq?.ElderlyCount ?? fullReq?.elderly_count ?? 0
-                  const childrenCount = fullReq?.childrenCount ?? fullReq?.ChildrenCount ?? fullReq?.children_count ?? 0
-                  const total = fullReq?.numberOfAffectedPeople ?? fullReq?.NumberOfAffectedPeople ?? fullReq?.number_of_affected_people
-                  // If total not provided or is 0, calculate from individual counts
-                  return (total && total > 0) ? total : (adultCount + elderlyCount + childrenCount)
-                })(),
-              }
-            } catch (err) {
-              // Fallback to operation data if full request fetch fails
-              return {
-                id: req.id ?? req.Id ?? req.requestId ?? req.RequestId ?? req.operationId ?? req.OperationId,
-                requestId: requestId,
-                operationId: req.operationId ?? req.OperationId ?? req.operation_id,
-                citizenId: req.citizenId ?? req.CitizenId ?? req.citizen_id ?? null,
-                updatedBy: req.updatedBy ?? req.UpdatedBy ?? req.updated_by ?? null,
-                teamId: req.teamId ?? req.TeamId ?? req.team_id ?? null,
-                teamName: req.teamName ?? req.TeamName ?? req.team_name ?? 'N/A',
-                title: req.title ?? req.Title ?? req.requestTitle ?? req.RequestTitle ?? 'Yêu cầu cứu hộ',
-                description: req.description ?? req.Description ?? req.requestDescription ?? req.RequestDescription ?? '',
-                status: req.requestStatus ?? req.RequestStatus ?? req.status ?? req.Status ?? 'Assigned',
-                priority: mapPriorityDisplay(req.priorityName ?? req.PriorityName ?? req.priority_name ?? 'Trung bình'),
-                priorityName: req.priorityName ?? req.PriorityName ?? req.priority_name ?? 'Trung bình',
-                priorityLevelId: req.priorityLevelId ?? req.PriorityLevelId ?? req.priority_level_id ?? null,
-                phone: req.requestPhone ?? req.RequestPhone ?? req.phone ?? req.Phone ?? req.contactPhone ?? req.ContactPhone ?? req.contact_phone ?? req.request_phone ?? 'N/A',
-                contactName: req.contactName ?? req.ContactName ?? req.contact_name ?? 'N/A',
-                address: req.address ?? req.Address ?? req.requestAddress ?? req.RequestAddress ?? req.request_address ?? 'Không có địa chỉ',
-                location: {
-                  lat: req.latitude ?? req.Latitude ?? req.requestLatitude ?? req.RequestLatitude ?? req.request_latitude ?? 0,
-                  lng: req.longitude ?? req.Longitude ?? req.requestLongitude ?? req.RequestLongitude ?? req.request_longitude ?? 0,
-                },
-                createdAt: req.createdAt ?? req.CreatedAt ?? req.created_at ?? null,
-                updatedAt: req.updatedAt ?? req.UpdatedAt ?? req.updated_at ?? null,
-                assignedAt: req.assignedAt ?? req.AssignedAt ?? req.assigned_at ?? new Date().toISOString(),
-                estimatedTime: req.estimatedTime ?? req.EstimatedTime ?? req.estimated_time ?? 'Đang cập nhật',
-                adultCount: 0,
-                elderlyCount: 0,
-                childrenCount: 0,
-                numberOfAffectedPeople: 0,
-              }
-            }
-          })
-        )
-
-        return enrichedRequests
+      if (!Array.isArray(data)) {
+        return []
       }
 
-      return []
+      // Map backend response directly - no need to fetch individual requests
+      const enrichedRequests = data.map((item) => {
+        const requestId = item.requestId ?? item.RequestId ?? item.request_id ?? item.id ?? item.Id
+        
+        // Map backend status to frontend status
+        const backendStatus = String(item.requestStatus ?? item.RequestStatus ?? item.status ?? item.Status ?? 'Pending').trim()
+        let frontendStatus = 'PENDING'
+        
+        if (backendStatus === 'Verified' || backendStatus === 'Pending' || backendStatus === 'Rejected') {
+          frontendStatus = 'PENDING'
+        } else if (backendStatus === 'Assigned' || backendStatus === 'Confirmed') {
+          frontendStatus = 'ACCEPTED'
+        }
+        
+        return {
+          // IDs
+          id: item.operationId ?? item.OperationId ?? item.operation_id ?? requestId,
+          requestId: requestId,
+          operationId: item.operationId ?? item.OperationId ?? item.operation_id,
+          
+          // User Info
+          citizenId: item.citizenId ?? item.CitizenId ?? null,
+          updatedBy: item.updatedBy ?? item.UpdatedBy ?? null,
+          teamId: item.teamId ?? item.TeamId ?? null,
+          teamName: item.teamName ?? item.TeamName ?? 'N/A',
+          
+          // Request Details
+          title: item.requestTitle ?? item.RequestTitle ?? item.title ?? item.Title ?? 'Yêu cầu cứu hộ',
+          description: item.requestDescription ?? item.RequestDescription ?? item.description ?? item.Description ?? '',
+          status: frontendStatus,
+          priority: mapPriorityDisplay(item.priorityName ?? item.PriorityName ?? 'Trung bình'),
+          priorityName: item.priorityName ?? item.PriorityName ?? 'Trung bình',
+          priorityLevelId: item.priorityLevelId ?? item.PriorityLevelId ?? null,
+          
+          // Contact Info
+          phone: item.requestPhone ?? item.RequestPhone ?? item.phone ?? item.Phone ?? 'N/A',
+          contactName: item.contactName ?? item.ContactName ?? 'N/A',
+          
+          // Location
+          address: item.requestAddress ?? item.RequestAddress ?? item.address ?? item.Address ?? 'Không có địa chỉ',
+          location: {
+            lat: item.latitude ?? item.Latitude ?? 0,
+            lng: item.longitude ?? item.Longitude ?? 0,
+          },
+          
+          // Timestamps
+          createdAt: item.createdAt ?? item.CreatedAt ?? null,
+          updatedAt: item.updatedAt ?? item.UpdatedAt ?? null,
+          assignedAt: item.assignedAt ?? item.AssignedAt ?? new Date().toISOString(),
+          estimatedTime: item.estimatedTime ?? item.EstimatedTime ?? 'Đang cập nhật',
+          
+          // People Counts
+          adultCount: item.adultCount ?? item.AdultCount ?? 0,
+          elderlyCount: item.elderlyCount ?? item.ElderlyCount ?? 0,
+          childrenCount: item.childrenCount ?? item.ChildrenCount ?? 0,
+          numberOfAffectedPeople: (() => {
+            const adultCount = item.adultCount ?? item.AdultCount ?? 0
+            const elderlyCount = item.elderlyCount ?? item.ElderlyCount ?? 0
+            const childrenCount = item.childrenCount ?? item.ChildrenCount ?? 0
+            return (adultCount + elderlyCount + childrenCount)
+          })(),
+          
+          // Vehicles
+          vehicles: item.vehicles ?? item.Vehicles ?? [],
+          assignedMembers: [],
+        }
+      })
+      
+      return enrichedRequests.filter(req => req != null)
     } catch (error) {
-
+      console.error('❌ GetTeamAssignedRequests error:', error)
       throw error
     }
   },
@@ -545,6 +532,64 @@ const rescueTeamService = {
     }
 
     return data?.message || data?.Message || 'Không thể tải danh sách yêu cầu.'
+  },
+
+  // ============================================
+  // GET ASSIGNED REQUESTS (NEW ENDPOINT)
+  // ============================================
+  getAssignedRequests: async () => {
+    /**
+     * Leader API - Lấy danh sách requests đã được verify + assign cho team
+     * Support filter status (optional): ?status=Verified,Assigned
+     */
+    try {
+      const response = await api.get('/rescue-team/assigned-requests')
+      const data = unwrapApiData(response)
+
+      if (!Array.isArray(data)) {
+        return []
+      }
+
+      return data.map((item) => {
+        const requestId = item.requestId ?? item.RequestId ?? item.request_id ?? item.id ?? item.Id
+        const backendStatus = String(item.status ?? item.Status ?? 'Pending').trim()
+        
+        let frontendStatus = 'PENDING'
+        if (backendStatus === 'Verified' || backendStatus === 'Pending') {
+          frontendStatus = 'PENDING'
+        } else if (backendStatus === 'Assigned' || backendStatus === 'Confirmed') {
+          frontendStatus = 'ACCEPTED'
+        }
+        
+        return {
+          id: requestId,
+          requestId: requestId,
+          teamId: item.teamId ?? item.TeamId ?? null,
+          teamName: item.teamName ?? item.TeamName ?? 'N/A',
+          title: item.title ?? item.Title ?? 'Yêu cầu cứu hộ',
+          description: item.description ?? item.Description ?? '',
+          status: frontendStatus,
+          priority: mapPriorityDisplay(item.priorityName ?? item.PriorityName ?? 'Trung bình'),
+          priorityName: item.priorityName ?? item.PriorityName ?? 'Trung bình',
+          priorityLevelId: item.priorityLevelId ?? item.PriorityLevelId ?? null,
+          phone: item.phone ?? item.Phone ?? item.contactPhone ?? item.ContactPhone ?? 'N/A',
+          address: item.address ?? item.Address ?? 'Không có địa chỉ',
+          latitude: item.latitude ?? item.Latitude ?? 0,
+          longitude: item.longitude ?? item.Longitude ?? 0,
+          adultCount: item.adultCount ?? item.AdultCount ?? 0,
+          elderlyCount: item.elderlyCount ?? item.ElderlyCount ?? 0,
+          childrenCount: item.childrenCount ?? item.ChildrenCount ?? 0,
+          numberOfAffectedPeople: (item.adultCount ?? 0) + (item.elderlyCount ?? 0) + (item.childrenCount ?? 0),
+          createdAt: item.createdAt ?? item.CreatedAt ?? null,
+          updatedAt: item.updatedAt ?? item.UpdatedAt ?? null,
+          estimatedTime: item.estimatedTime ?? item.EstimatedTime ?? 'Đang cập nhật',
+          rawStatus: backendStatus,
+        }
+      })
+    } catch (error) {
+      console.error('❌ GetAssignedRequests error:', error)
+      throw error
+    }
   },
 
   getOperationsErrorMessage,

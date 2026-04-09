@@ -1232,6 +1232,18 @@ const managerService = {
     }
   },
 
+  getAllStockUnits: async () => {
+    // Lấy danh sách tất cả đơn vị kho (không phân trang)
+    // Output: Mảng stock unit objects { stockUnitId, name, address, region, type }
+    // Lỗi: 401 (hết phiên), 500 (lỗi server) - trả về [] nếu lỗi
+    try {
+      const response = await api.get('/StockUnit/all')
+      return normalizeArray(unwrapApiData(response))
+    } catch (error) {
+      return []
+    }
+  },
+
   getErrorMessage: (error) => {
     const status = error?.response?.status
     const data = error?.response?.data
