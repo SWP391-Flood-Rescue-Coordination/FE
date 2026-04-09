@@ -11,6 +11,7 @@ import {
   CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 import authService from '../services/authService';
+import { formatRelativeTimeVN } from '../pages/adminShared';
 const normalizeVietnamese = (value) =>
   String(value ?? '')
     .toLowerCase()
@@ -582,25 +583,8 @@ function RescueTeamDashboard() {
   const getPriorityInfo = (priority) => PRIORITY_MAP[priority] || PRIORITY_MAP['MEDIUM'];
 
   // Format timestamp to relative time (e.g., "2 phút trước")
-  const formatRelativeTime = (timestamp) => {
-    if (!timestamp) return null;
-    const now = new Date();
-    const then = new Date(timestamp);
-    const diffMs = now - then;
-    const diffSeconds = Math.floor(diffMs / 1000);
-    const diffMinutes = Math.floor(diffSeconds / 60);
-    const diffHours = Math.floor(diffMinutes / 60);
-    const diffDays = Math.floor(diffHours / 24);
-
-    if (diffMinutes < 1) return 'Vừa xong';
-    if (diffMinutes < 60) return `${diffMinutes} phút trước`;
-    if (diffHours < 24) return `${diffHours} giờ trước`;
-    if (diffDays === 1) return 'Hôm qua';
-    if (diffDays < 7) return `${diffDays} ngày trước`;
-    
-    // Fallback: HH:MM
-    return then.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-  };
+  // Converts UTC+0 from backend to UTC+7 for display
+  const formatRelativeTime = (timestamp) => formatRelativeTimeVN(timestamp);
 
   const filteredRequests = requests.filter((req) => {
     if (filterStatus === 'ALL') return true;

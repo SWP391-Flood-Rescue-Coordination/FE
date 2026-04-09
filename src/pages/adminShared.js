@@ -71,6 +71,27 @@ export const normalizeText = (value) =>
 
 const VIETNAM_TIME_ZONE = 'Asia/Bangkok'
 
+// Convert backend UTC+0 timestamp to proper Vietnam time (UTC+7)
+// Backend timestamps without timezone indicator are assumed to be UTC+0
+export const convertUtcToVietnam = (value) => {
+  if (!value) {
+    return null
+  }
+
+  let date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return null
+  }
+
+  // If timestamp string doesn't have timezone indicator, it's UTC+0 from backend
+  // Add UTC+7 offset (7 * 60 * 60 * 1000 ms)
+  if (typeof value === 'string' && !value.includes('Z') && !value.match(/[+-]\d{2}:\d{2}$/)) {
+    date = new Date(date.getTime() + 7 * 60 * 60 * 1000)
+  }
+
+  return date
+}
+
 export const toVietnamTime = (value) => {
   if (!value) {
     return null
@@ -96,6 +117,31 @@ export const formatDateTimeVN = (value, extraOptions = {}) => {
     hour12: false,
     ...extraOptions,
   }).format(date)
+}
+
+// Format relative time in Vietnam timezone (e.g., "2 phút trước", "Vừa xong")
+export const formatRelativeTimeVN = (timestamp) => {
+  if (!timestamp) return null
+
+  // Convert backend UTC+0 to Vietnam UTC+7
+  const then = convertUtcToVietnam(timestamp)
+  if (!then) return null
+
+  const now = new Date()
+  const diffMs = now - then
+  const diffSeconds = Math.floor(diffMs / 1000)
+  const diffMinutes = Math.floor(diffSeconds / 60)
+  const diffHours = Math.floor(diffMinutes / 60)
+  const diffDays = Math.floor(diffHours / 24)
+
+  if (diffMinutes < 1) return 'Vừa xong'
+  if (diffMinutes < 60) return `${diffMinutes} phút trước`
+  if (diffHours < 24) return `${diffHours} giờ trước`
+  if (diffDays === 1) return 'Hôm qua'
+  if (diffDays < 7) return `${diffDays} ngày trước`
+
+  // Fallback: HH:MM Vietnam time
+  return then.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
 }
 
 export const formatPriority = (priorityLevelId) => {

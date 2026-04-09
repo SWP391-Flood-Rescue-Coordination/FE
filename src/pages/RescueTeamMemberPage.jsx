@@ -18,6 +18,7 @@ import {
 import authService from '../services/authService'
 import rescueTeamService from '../services/rescueTeamService'
 import LogoutConfirmModal from '../components/LogoutConfirmModal'
+import { convertUtcToVietnam } from './adminShared'
 import './RescueTeamMemberPage.css'
 
 /*
@@ -331,14 +332,16 @@ function RescueTeamMemberPage() {
 
   const formatTime = (dateString) => {
     if (!dateString) return '-'
-    const date = new Date(dateString)
+    const date = convertUtcToVietnam(dateString)
+    if (!date) return '-'
     return date.toLocaleString('vi-VN')
   }
 
   const getTimeElapsed = (startedAt, completedAt) => {
     if (!startedAt) return '-'
-    const end = completedAt ? new Date(completedAt) : new Date()
-    const start = new Date(startedAt)
+    const end = completedAt ? convertUtcToVietnam(completedAt) : new Date()
+    const start = convertUtcToVietnam(startedAt)
+    if (!start || !end) return '-'
     const minutes = Math.round((end - start) / 60000)
     if (minutes < 60) return `${minutes} phút`
     const hours = Math.floor(minutes / 60)
