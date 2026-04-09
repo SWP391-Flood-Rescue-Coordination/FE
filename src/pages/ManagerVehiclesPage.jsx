@@ -35,8 +35,7 @@ const normalizeVehicleStatus = (status) => String(status ?? '').trim().toUpperCa
 const normalizeVehicleTypeKey = (value) => String(value ?? '').trim().toUpperCase().replace(/[\s-]+/g, '')
 const normalizeVehicleSearchKeyword = (value) =>
   String(value ?? '')
-    .replace(/[^\p{L}\s-]/gu, '')
-    .replace(/\s{2,}/g, ' ')
+    .replace(/[^\p{L}\p{N}\s-]/gu, '')
 const formatCoordinates = (latitude, longitude) => {
   if (latitude === null || latitude === undefined || longitude === null || longitude === undefined) {
     return '-'

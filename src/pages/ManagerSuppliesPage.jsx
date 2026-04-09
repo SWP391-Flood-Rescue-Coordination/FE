@@ -16,8 +16,7 @@ const SUPPLY_ITEM_SEARCH_DEBOUNCE_MS = 350
 
 const normalizeSupplySearchKeyword = (value) =>
   String(value ?? '')
-    .replace(/[^\p{L}\s]/gu, '')
-    .replace(/\s{2,}/g, ' ')
+    .replace(/[^\p{L}\s-]/gu, '')
 
 function ManagerSuppliesPage() {
   const navigate = useNavigate()
