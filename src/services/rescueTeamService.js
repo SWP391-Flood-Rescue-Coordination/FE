@@ -167,7 +167,8 @@ const transformOperationToMission = (operation) => {
 }
 
 // Transform response from /rescue-team/my-current-task endpoint
-const transformMyCurrentTaskToMission = (taskData) => {
+// Optionally merge with full request data to get people counts
+const transformMyCurrentTaskToMission = (taskData, fullRequestData) => {
   if (!taskData) return null
 
   // Map vehicles from string array to vehicle objects if available
@@ -176,6 +177,9 @@ const transformMyCurrentTaskToMission = (taskData) => {
     vehicles = taskData.operation.vehicles.map(v => ({ vehicleName: v, name: v }))
   }
 
+  // Get people counts from fullRequestData if available, otherwise from taskData
+  const sourceData = fullRequestData || taskData
+  
   return {
     id: taskData.operationId || taskData.operation?.operationId,
     operationId: taskData.operationId || taskData.operation?.operationId,
@@ -199,10 +203,10 @@ const transformMyCurrentTaskToMission = (taskData) => {
     startedAt: taskData.operation?.startedAt,
     completedAt: null, // Not in response
     title: taskData.title || 'Nhiệm vụ cứu hộ',
-    adultCount: 0, // Not provided by this endpoint
-    elderlyCount: 0, // Not provided by this endpoint
-    childrenCount: 0, // Not provided by this endpoint
-    totalPeople: 0, // Not provided by this endpoint
+    adultCount: sourceData.adultCount ?? sourceData.AdultCount ?? 0,
+    elderlyCount: sourceData.elderlyCount ?? sourceData.ElderlyCount ?? 0,
+    childrenCount: sourceData.childrenCount ?? sourceData.ChildrenCount ?? 0,
+    totalPeople: sourceData.numberOfAffectedPeople ?? sourceData.NumberOfAffectedPeople ?? 0,
   }
 }
 
@@ -400,7 +404,22 @@ const rescueTeamService = {
       const data = unwrapApiData(response)
       if (data && typeof data === 'object') {
         console.log('📦 My current task response:', data)
-        return transformMyCurrentTaskToMission(data)
+        
+        // Fetch full request details to get people counts
+        // (my-current-task doesn't include adultCount/elderlyCount/childrenCount)
+        let fullRequestData = null
+        if (data.requestId) {
+          try {
+            const requestResponse = await api.get(`/RescueRequest/${data.requestId}`)
+            const requestData = unwrapApiData(requestResponse)
+            fullRequestData = requestData
+            console.log('📋 Full request data:', requestData)
+          } catch (err) {
+            console.warn('⚠️ Could not fetch full request details:', err?.message)
+          }
+        }
+        
+        return transformMyCurrentTaskToMission(data, fullRequestData)
       }
       return null
     } catch (error) {

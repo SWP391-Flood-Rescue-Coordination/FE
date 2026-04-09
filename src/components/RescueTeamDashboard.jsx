@@ -573,8 +573,9 @@ function RescueTeamDashboard() {
     if (sortBy === 'priority') {
       const priorityOrder = { URGENT: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
       return (priorityOrder[a.priority] || 99) - (priorityOrder[b.priority] || 99);
-    } else if (sortBy === 'time') {
-      return new Date(b.assignedAt) - new Date(a.assignedAt);
+    } else if (sortBy === 'status') {
+      const statusOrder = { PENDING: 0, ACCEPTED: 1, WAITING: 2, REJECTED: 3 };
+      return (statusOrder[a.status] || 99) - (statusOrder[b.status] || 99);
     }
     return 0;
   });
@@ -735,7 +736,7 @@ function RescueTeamDashboard() {
                 style={{padding: '6px 8px', fontSize: '12px', borderRadius: '4px', border: '1px solid #ddd'}}
               >
                 <option value="priority">Độ Ưu Tiên</option>
-                <option value="time">Thời Gian Xử lý(Nhanh Nhất)</option>
+                <option value="status">Trạng Thái</option>
               </select>
             </div>
           </div>
