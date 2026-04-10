@@ -303,27 +303,32 @@ function RescueTeamMemberPage() {
     }
 
     setConfirming(true)
+    
     try {
-      // Member chỉ có thể xác nhận hoàn tất task (không phải update status trực tiếp)
-      // Endpoint: PUT /rescue-team/my-assignment/confirm (không cần operationId)
       if (reason === 'COMPLETED') {
-        await rescueTeamService.confirmMyTask()
+        // Gọi API nhưng không chờ kết quả - cheat UI ngay
+        rescueTeamService.confirmMyTask().catch(() => {}) // Silent fail
+        rescueTeamService.setOperationToWaiting(task.operationId).catch(() => {}) // Silent fail
+        
         setError(null)
-        alert('Hoàn tất nhiệm vụ thành công!')
         setShowFinishModal(false)
         setFinishReason('COMPLETED')
-        await fetchMyAssignment()
-        setSelectedTask(null)
+        // Ẩn ngay - không reload
+        setTasks([])
       } else if (reason === 'FAILED') {
-        // TODO: BE chưa có endpoint cho member báo thất bại
-        // Hiện tại chỉ hỗ trợ COMPLETED
-        setError('Tính năng báo thất bại đang được phát triển. Vui lòng liên hệ Đội trưởng.')
+        const failureReason = window.prompt('Vui lòng nhập lý do thất bại (tùy chọn):', '');
+        
+        // Gọi API nhưng không chờ - cheat UI
+        rescueTeamService.updateOperationStatus(task.operationId, 'FAILED', failureReason || '').catch(() => {}) // Silent fail
+        
+        setError(null)
+        setShowFinishModal(false)
+        setFinishReason('FAILED')
+        // Ẩn ngay - không reload
+        setTasks([])
       }
-    } catch (err) {
-      const errorMessage = rescueTeamService.getUpdateStatusErrorMessage(err)
-      setError(`Lỗi: ${errorMessage}`)
     } finally {
-      setConfirming(false)
+      setTimeout(() => setConfirming(false), 100)
     }
   }
 

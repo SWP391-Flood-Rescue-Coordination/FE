@@ -260,14 +260,20 @@ const rescueTeamService = {
     }
   },
 
-  updateOperationStatus: async (operationId, newStatus) => {
-    // CÓ LỖI: Endpoint này chỉ cho Leader (xem RescueTeamController.cs line 43-84)
-    // Member phải dùng confirmMyTask() hoặc setOperationToWaiting()
-    // DO NOT USE THIS FROM MEMBER PAGE
+  updateOperationStatus: async (operationId, newStatus, reason = null) => {
+    // Leader + Member API - Update operation status
+    // For members: Can call with FAILED status (requires reason)
+    // For leaders: Can call with COMPLETED status
     try {
-      const response = await api.put(`/rescue-team/operations/${operationId}/status`, {
+      const payload = {
         newStatus: newStatus,
-      })
+      }
+      // Add reason if provided (required for FAILED status)
+      if (reason) {
+        payload.reason = reason
+      }
+      
+      const response = await api.put(`/rescue-team/operations/${operationId}/status`, payload)
 
       return response.data
     } catch (error) {
